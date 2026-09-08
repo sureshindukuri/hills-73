@@ -237,15 +237,15 @@ export const BambooGrassGraphic = ({
         userSelect: 'none',
         pointerEvents: 'none',
         overflow: 'visible',
-        padding: '8px 4px 4px 4px',
+        padding: '6px 4px 2px 4px',
         ...style
       }}
     >
-      {/* Ambient Botanical Backdrop Light for Dark Sanctuary Theme */}
+      {/* Radiant Golden-Emerald Ambient Aura for Dark Theme Contrast */}
       <div className="bamboo-ambient-glow" />
 
       <img 
-        src="/assets/bamboo_grass_transparent.png" 
+        src="/assets/bamboo_grass_luxury.png" 
         alt="73 Hills Bamboo & Botanical Grass Illustration" 
         className="bamboo-grass-graphic-img"
         style={{
