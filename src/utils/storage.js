@@ -12,10 +12,10 @@ const SECTION_MEDIA_STORE = 'section_media';
 export const DEFAULT_GALLERY_ITEMS = [
   {
     id: 'default-1',
-    title: 'Luxury Estate Villa at Dusk',
-    category: 'Cottages',
+    title: '73 Acres Aerial Sanctuary & Lake',
+    category: 'Nature',
     type: 'image',
-    url: '/assets/hero_resort_villa.png',
+    url: '/assets/hero_aerial_73hills.jpg',
     isDefault: true,
     uploadedAt: '2026-09-01'
   },
@@ -97,15 +97,15 @@ export const DEFAULT_SECTION_MEDIA = {
   hero: {
     sectionKey: 'hero',
     mediaType: 'image',
-    url: '/assets/hero_resort_villa.png',
-    title: '73 Hills Luxury Estate Villa',
+    url: '/assets/hero_aerial_73hills.jpg',
+    title: '73 Hills 73 Acres Aerial Sanctuary',
     isDefault: true
   },
   celebrations: {
     sectionKey: 'celebrations',
     mediaType: 'image',
-    url: '/assets/celebration_wedding_lawn.png',
-    title: '73 Hills Outdoor Celebration Lawn',
+    url: '/assets/celebration_estate_aerial.jpg',
+    title: '73 Hills 73 Acres Grand Celebration Grounds',
     isDefault: true
   }
 };

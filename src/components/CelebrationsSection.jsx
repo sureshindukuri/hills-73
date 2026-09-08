@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Heart, Gift, Briefcase, Users, PartyPopper, CheckCircle2, ArrowRight } from 'lucide-react';
 
 export default function CelebrationsSection({ onOpenBooking, settings = {}, sectionMedia = {} }) {
-  const [inquireSent, setInquireSent] = useState(false);
 
   const celebrationMedia = sectionMedia?.celebrations;
   const isVideo = celebrationMedia?.mediaType === 'video';
-  const celebrationUrl = celebrationMedia?.url || '/assets/celebration_wedding_lawn.png';
+  const celebrationUrl = celebrationMedia?.url || '/assets/celebration_estate_aerial.jpg';
 
   const eventTypes = [
     { icon: <Heart size={24} color="#B38B59" />, label: 'Weddings' },
@@ -97,8 +96,9 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
               position: 'relative',
               borderRadius: 'var(--radius-md)',
               overflow: 'hidden',
-              boxShadow: 'var(--shadow-lg)',
-              border: '1px solid var(--border-light)'
+              boxShadow: '0 16px 40px rgba(19, 46, 31, 0.16)',
+              border: '1px solid var(--border-light)',
+              backgroundColor: '#0D2116'
             }}>
               {isVideo ? (
                 <video 
@@ -109,7 +109,7 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
                   playsInline 
                   style={{
                     width: '100%',
-                    height: '480px',
+                    height: '520px',
                     objectFit: 'cover',
                     display: 'block'
                   }} 
@@ -117,12 +117,14 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
               ) : (
                 <img 
                   src={celebrationUrl} 
-                  alt="73 Hills Outdoor Celebration Lawn"
+                  alt="73 Hills 73 Acres Grand Celebration Estate"
                   style={{
                     width: '100%',
-                    height: '480px',
+                    height: '520px',
                     objectFit: 'cover',
-                    display: 'block'
+                    objectPosition: 'center 45%',
+                    display: 'block',
+                    filter: 'contrast(1.05) brightness(0.98)'
                   }}
                 />
               )}
@@ -130,24 +132,25 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
               <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(19, 46, 31, 0.9) 100%)'
+                background: 'linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(13, 33, 22, 0.92) 100%)',
+                pointerEvents: 'none'
               }} />
 
               <div style={{
                 position: 'absolute',
-                bottom: '30px',
-                left: '30px',
-                right: '30px',
+                bottom: '26px',
+                left: '26px',
+                right: '26px',
                 color: '#FFFFFF'
               }}>
                 <span className="badge-gold" style={{ marginBottom: '8px', display: 'inline-block' }}>
-                  GRAND WEDDING VENUE
+                  73 ACRES GRAND CELEBRATION ESTATE
                 </span>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.75rem', color: '#FFFFFF', fontWeight: '600' }}>
-                  Natural Forest Lawn & Sparkling Canopy
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.7rem', color: '#FFFFFF', fontWeight: '600' }}>
+                  Grand Open-Air Lawn & Sandalwood Canopy
                 </h3>
-                <p style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.85)', marginTop: '4px' }}>
-                  Spanned across 73 acres of fragrant red sandalwood estate.
+                <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.88)', marginTop: '4px' }}>
+                  Spanned across 73 acres of fragrant red sandalwood forest in Yerravaram.
                 </p>
               </div>
 

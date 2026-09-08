@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { Play, CheckCircle2, Trees, X, Sparkles, Volume2, VolumeX, Maximize, Film } from 'lucide-react';
-import { SandalwoodBranchGraphic, SandalwoodBotanicalArt } from './SandalwoodGraphics';
+import { Play, CheckCircle2, Trees, X, Volume2, VolumeX, Maximize, Film } from 'lucide-react';
+import { SandalwoodBotanicalArt } from './SandalwoodGraphics';
 
 function getEmbedUrl(url) {
   if (!url) return null;

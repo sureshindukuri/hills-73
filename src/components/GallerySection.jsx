@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAllGalleryItems } from '../utils/storage';
-import { Play, Image as ImageIcon, Maximize2, X, Filter } from 'lucide-react';
+import { Play, Maximize2, X } from 'lucide-react';
 
 export default function GallerySection() {
   const [items, setItems] = useState([]);

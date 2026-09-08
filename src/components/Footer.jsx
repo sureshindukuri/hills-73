@@ -1,11 +1,49 @@
-import React from 'react';
-import { SandalwoodTreeLogo, SandalwoodBranchGraphic } from './SandalwoodGraphics';
-import { Phone, Mail, MapPin, Shield } from 'lucide-react';
+import React, { useState } from 'react';
+import { SandalwoodTreeLogo } from './SandalwoodGraphics';
+import { Shield, X, Info, Trees, Building, FileText, Lock } from 'lucide-react';
 
 export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, sectionMedia = {} }) {
+  const [infoModalItem, setInfoModalItem] = useState(null);
   const logoMedia = sectionMedia?.logo;
   const brandTitle = settings?.brandName || '73 HILLS';
   const brandSub = settings?.brandSubtitle || 'RESORT & REAL ESTATE';
+
+  const navLinks = [
+    { label: 'Home', href: '#home' },
+    { label: 'About Us', href: '#about' },
+    { label: 'Stay Rooms', href: '#stay-rooms' },
+    { label: 'Celebrations', href: '#celebrations' },
+    { label: 'Gallery', href: '#gallery' },
+    { label: 'Contact', href: '#contact' }
+  ];
+
+  const infoContents = {
+    'Privacy Policy': {
+      title: 'Privacy Policy & Data Security',
+      icon: <Lock size={22} color="#B38B59" />,
+      content: settings.privacyPolicy || 'At 73 Hills Resort, your privacy is strictly protected. Guest identity records and payment data are encrypted under 256-bit SSL protocols and will never be shared with third parties. All digital transactions are authenticated via secure Indian banking channels.'
+    },
+    'Terms & Conditions': {
+      title: 'Terms & Guest Conditions',
+      icon: <FileText size={22} color="#B38B59" />,
+      content: 'All guests must register with government-approved photo ID (Aadhaar, Passport, or Driving License) upon check-in. Standard check-in is from 02:00 PM and check-out is by 11:00 AM. Early check-in or late check-out is subject to availability and prior confirmation with management.'
+    },
+    'Cancellation Policy': {
+      title: 'Cancellation & Refund Policy',
+      icon: <Info size={22} color="#B38B59" />,
+      content: settings.cancellationPolicy || 'Free cancellation up to 48 hours before scheduled check-in date. Cancellations made within 48 hours are subject to a 1-night retention tariff charge. Refunds are processed back to original payment method within 5-7 business days.'
+    },
+    'Eco Preservation': {
+      title: '73 Acres Sandalwood Sanctuary Eco Guidelines',
+      icon: <Trees size={22} color="#B38B59" />,
+      content: '73 Hills is a biological sanctuary home to thousands of rare Red Sandalwood & Sandalwood (Santalum Album) trees. Open fires, cigarette smoking in forested areas, and damaging flora or fauna are strictly prohibited. We practice zero-plastic waste and eco-conscious hospitality.'
+    },
+    'Real Estate Buying': {
+      title: '73 Hills Real Estate & Sandalwood Farmland Plots',
+      icon: <Building size={22} color="#B38B59" />,
+      content: 'Own a piece of paradise in 73 Hills! We offer premium gated estate plots and high-yield Red Sandalwood plantation farm lands with 24/7 security, drip irrigation, resort club membership, and clear legal titles. Contact our real estate concierge desk at hello@73hills.com or +91 9948445143 for brochures and private site visits.'
+    }
+  };
 
   return (
     <footer style={{ backgroundColor: '#0D2116', color: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
@@ -92,15 +130,15 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
               Quick Links
             </h4>
             <ul style={{ listStyle: 'none', display: 'grid', gap: '10px', fontSize: '0.9rem' }}>
-              {['Home', 'About Us', 'Stay Rooms', 'Celebrations', 'Gallery', 'Contact'].map((link, idx) => (
+              {navLinks.map((link, idx) => (
                 <li key={idx}>
                   <a 
-                    href={`#${link.toLowerCase().replace(' ', '-')}`} 
+                    href={link.href} 
                     style={{ color: 'rgba(255, 255, 255, 0.75)', textDecoration: 'none', transition: 'color 0.2s ease' }}
                     onMouseEnter={(e) => e.target.style.color = '#B38B59'}
                     onMouseLeave={(e) => e.target.style.color = 'rgba(255, 255, 255, 0.75)'}
                   >
-                    {link}
+                    {link.label}
                   </a>
                 </li>
               ))}
@@ -113,23 +151,22 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
               Important Information
             </h4>
             <ul style={{ listStyle: 'none', display: 'grid', gap: '10px', fontSize: '0.9rem' }}>
-              {['Privacy Policy', 'Terms & Conditions', 'Cancellation Policy', 'Eco Preservation', 'Real Estate Buying'].map((item, idx) => (
+              {Object.keys(infoContents).map((item, idx) => (
                 <li key={idx}>
-                  <a 
-                    href="#" 
-                    onClick={(e) => { e.preventDefault(); alert(`${item} policy information: Please contact concierge.`); }}
-                    style={{ color: 'rgba(255, 255, 255, 0.75)', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                  <button 
+                    onClick={() => setInfoModalItem(item)}
+                    style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255, 255, 255, 0.75)', cursor: 'pointer', fontSize: '0.9rem', textAlign: 'left', transition: 'color 0.2s ease' }}
                     onMouseEnter={(e) => e.target.style.color = '#B38B59'}
                     onMouseLeave={(e) => e.target.style.color = 'rgba(255, 255, 255, 0.75)'}
                   >
                     {item}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Col 4: Location & Contact */}
+          {/* Col 4: Location & Contact & Admin Portal */}
           <div>
             <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: '#B38B59', marginBottom: '20px' }}>
               Resort Location
@@ -137,9 +174,39 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
             <p style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.75)', lineHeight: 1.6, marginBottom: '12px' }}>
               {settings?.location || 'HQ3Q+HP3, Yerravaram, Andhra Pradesh 531055'}
             </p>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.75)' }}>
+            <p style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.75)', marginBottom: '20px' }}>
               Email: {settings?.email || 'hello@73hills.com'}
             </p>
+
+            {/* Admin Portal Trigger */}
+            <button
+              onClick={onToggleAdmin}
+              style={{
+                backgroundColor: 'rgba(179, 139, 89, 0.15)',
+                border: '1px solid rgba(179, 139, 89, 0.4)',
+                color: '#EFE7DA',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.8rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = 'var(--color-gold)';
+                e.target.style.color = '#FFFFFF';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'rgba(179, 139, 89, 0.15)';
+                e.target.style.color = '#EFE7DA';
+              }}
+            >
+              <Shield size={14} />
+              Admin Portal
+            </button>
           </div>
 
         </div>
@@ -148,14 +215,81 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
         <div style={{
           paddingTop: '30px',
           borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          textAlign: 'center',
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '12px',
           fontSize: '0.8rem',
           color: 'rgba(255, 255, 255, 0.5)'
         }}>
-          © {new Date().getFullYear()} 73 Hills Resort & Real Estate. All Rights Reserved. Designed with Red Sandalwood Serenity.
+          <div>
+            © {new Date().getFullYear()} 73 Hills Resort & Real Estate. All Rights Reserved.
+          </div>
+          <div>
+            Designed with Red Sandalwood Serenity • Yerravaram, Andhra Pradesh
+          </div>
         </div>
 
       </div>
+
+      {/* Info & Policy Modal */}
+      {infoModalItem && infoContents[infoModalItem] && (
+        <div className="modal-overlay" onClick={() => setInfoModalItem(null)}>
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '600px', padding: '32px', backgroundColor: '#FFFFFF' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              onClick={() => setInfoModalItem(null)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-main)'
+              }}
+            >
+              <X size={22} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--bg-cream)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {infoContents[infoModalItem].icon}
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', fontWeight: '600' }}>
+                {infoContents[infoModalItem].title}
+              </h3>
+            </div>
+
+            <div style={{ color: 'var(--text-main)', fontSize: '0.95rem', lineHeight: 1.7, whiteSpace: 'pre-line', marginBottom: '24px' }}>
+              {infoContents[infoModalItem].content}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setInfoModalItem(null)}
+                className="btn-gold"
+                style={{ padding: '8px 24px', fontSize: '0.8rem' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </footer>
   );
 }

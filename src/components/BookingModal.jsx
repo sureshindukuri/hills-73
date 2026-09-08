@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { 
-  X, Calendar as CalendarIcon, Users, CheckCircle, ShieldCheck, 
+  X, CheckCircle, 
   ArrowRight, CreditCard, Smartphone, Building2, Lock, Download, 
-  QrCode, Sparkles, Check, ChevronRight, AlertCircle, RefreshCw
+  QrCode, Check, ChevronRight, RefreshCw
 } from 'lucide-react';
 import { getStoredBookings, saveStoredBookings } from '../utils/storage';
 
 export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = [], settings = {} }) {
-  if (!isOpen) return null;
-
   const defaultRoom = selectedRoom || rooms[0] || {};
   const [chosenRoomId, setChosenRoomId] = useState(defaultRoom.id || '');
   const [checkIn, setCheckIn] = useState('2026-09-20');
@@ -34,6 +32,8 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const [confirmedBooking, setConfirmedBooking] = useState(null);
+
+  if (!isOpen) return null;
 
   const activeRoom = rooms.find(r => r.id === chosenRoomId) || defaultRoom;
 

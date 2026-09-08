@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Phone, MessageCircle, Mail, MapPin, Send, CheckCircle2 } from 'lucide-react';
+import { Mail, MapPin, Send, CheckCircle2 } from 'lucide-react';
 
 export default function ContactSection({ settings }) {
   const [submitted, setSubmitted] = useState(false);

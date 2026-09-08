@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Shield, Upload, Trash2, Edit3, Plus, Check, Lock, LogOut, 
-  Image as ImageIcon, Video, Home, Calendar, Settings, RefreshCw,
-  Sparkles, Heart, Phone, Mail, MapPin, Eye, RotateCcw, X, Layers,
-  TrendingUp, Users, DollarSign, Clock, CheckCircle2, AlertCircle, BarChart3,
-  CreditCard, ArrowUpRight, Search, PhoneCall, MessageSquare
+  Video, Home, Calendar, RefreshCw,
+  Sparkles, Heart, Phone, RotateCcw, Layers,
+  TrendingUp, Users, Clock, CheckCircle2, BarChart3,
+  Search, MessageSquare
 } from 'lucide-react';
 import { 
   saveMediaItem, getAllGalleryItems, deleteMediaItem,
-  saveSectionMedia, getSectionMedia, getAllSectionMedia, deleteSectionMedia,
+  saveSectionMedia, getAllSectionMedia, deleteSectionMedia,
   getStoredRooms, saveStoredRooms, DEFAULT_ROOMS,
-  getStoredBookings, saveStoredBookings, clearStoredBookings, DEFAULT_BOOKINGS,
+  getStoredBookings, saveStoredBookings, clearStoredBookings,
   getSiteSettings, saveSiteSettings
 } from '../utils/storage';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';

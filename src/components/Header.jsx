@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
-import { Menu, X, Shield, Calendar, Phone } from 'lucide-react';
+import { Menu, X, Calendar } from 'lucide-react';
 
 export default function Header({ onOpenBooking, onToggleAdmin, isAdminView, settings = {}, sectionMedia = {} }) {
   const [scrolled, setScrolled] = useState(false);
@@ -44,7 +44,7 @@ export default function Header({ onOpenBooking, onToggleAdmin, isAdminView, sett
         }}>
           
           {/* Logo */}
-          <a href="#" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
             {logoMedia?.url ? (
               <img 
                 src={logoMedia.url} 
@@ -89,7 +89,7 @@ export default function Header({ onOpenBooking, onToggleAdmin, isAdminView, sett
           {/* Desktop Nav */}
           <nav style={{ display: 'flex', alignItems: 'center', gap: '32px' }} className="desktop-nav">
             {[
-              { label: 'Home', href: '#' },
+              { label: 'Home', href: '#', active: true },
               { label: 'About', href: '#about' },
               { label: 'Stay Rooms', href: '#stay-rooms' },
               { label: 'Celebrations', href: '#celebrations' },
@@ -103,14 +103,16 @@ export default function Header({ onOpenBooking, onToggleAdmin, isAdminView, sett
                   fontFamily: 'var(--font-sans)',
                   fontSize: '0.875rem',
                   fontWeight: '600',
-                  color: scrolled ? 'var(--text-main)' : '#FFFFFF',
+                  color: link.active ? '#B38B59' : (scrolled ? 'var(--text-main)' : '#FFFFFF'),
                   textDecoration: 'none',
                   letterSpacing: '0.04em',
                   transition: 'color 0.2s ease',
-                  position: 'relative'
+                  position: 'relative',
+                  paddingBottom: '4px',
+                  borderBottom: link.active ? '2px solid #B38B59' : '2px solid transparent'
                 }}
-                onMouseEnter={(e) => e.target.style.color = '#B38B59'}
-                onMouseLeave={(e) => e.target.style.color = scrolled ? 'var(--text-main)' : '#FFFFFF'}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#B38B59'}
+                onMouseLeave={(e) => e.currentTarget.style.color = link.active ? '#B38B59' : (scrolled ? 'var(--text-main)' : '#FFFFFF')}
               >
                 {link.label}
               </a>
@@ -120,7 +122,12 @@ export default function Header({ onOpenBooking, onToggleAdmin, isAdminView, sett
             <button 
               onClick={onOpenBooking}
               className="btn-gold"
-              style={{ padding: '10px 22px' }}
+              style={{ 
+                padding: '10px 22px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                letterSpacing: '0.06em'
+              }}
             >
               <Calendar size={16} />
               BOOK NOW
@@ -139,12 +146,17 @@ export default function Header({ onOpenBooking, onToggleAdmin, isAdminView, sett
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle navigation menu"
               style={{
                 background: 'none',
                 border: 'none',
-                color: 'var(--text-main)',
+                color: (scrolled || mobileMenuOpen) ? 'var(--text-main)' : '#FFFFFF',
                 cursor: 'pointer',
-                padding: '8px'
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'color 0.2s ease'
               }}
             >
               {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
