@@ -114,8 +114,8 @@ export default function ContactSection({ settings }) {
             </div>
 
             {/* Graphic Grass & Bamboo Plants Showcase */}
-            <div className="luxury-card" style={{ 
-              padding: '16px 20px 12px 20px', 
+            <div className="luxury-card botanical-bamboo-card" style={{ 
+              padding: '16px 18px 12px 18px', 
               backgroundColor: 'var(--bg-card)',
               border: '1px solid var(--border-light)',
               display: 'flex',
@@ -124,16 +124,16 @@ export default function ContactSection({ settings }) {
               position: 'relative',
               overflow: 'hidden'
             }}>
-              <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span className="badge-gold" style={{ fontSize: '0.65rem' }}>
+              <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
+                <span className="badge-gold" style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
                   73 ACRES BOTANICAL SANCTUARY
                 </span>
-                <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', whiteSpace: 'nowrap' }}>
                   Bamboo & Flora Groves
                 </span>
               </div>
 
-              <BambooGrassGraphic maxHeight={180} />
+              <BambooGrassGraphic maxHeight={190} />
             </div>
 
           </div>

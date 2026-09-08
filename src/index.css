@@ -441,6 +441,35 @@ h1, h2, h3, h4, h5, h6 {
   scrollbar-width: none;
 }
 
+/* Botanical Bamboo Plants & Grass Graphic Styling for Light and Dark Sanctuary Themes */
+.bamboo-grass-graphic-img {
+  filter: contrast(1.06) saturate(1.12) drop-shadow(0 4px 14px rgba(19, 46, 31, 0.1));
+}
+
+.bamboo-ambient-glow {
+  position: absolute;
+  inset: 8px;
+  background: radial-gradient(ellipse at 50% 60%, rgba(179, 139, 89, 0.1) 0%, transparent 70%);
+  filter: blur(12px);
+  z-index: 1;
+  pointer-events: none;
+}
+
+[data-theme="dark"] .bamboo-ambient-glow {
+  background: radial-gradient(ellipse at 50% 65%, rgba(61, 145, 95, 0.4) 0%, rgba(201, 163, 95, 0.18) 45%, transparent 75%);
+  filter: blur(16px);
+}
+
+[data-theme="dark"] .bamboo-grass-graphic-img {
+  filter: contrast(1.18) brightness(1.22) saturate(1.28) drop-shadow(0 0 20px rgba(50, 160, 95, 0.45));
+}
+
+[data-theme="dark"] .botanical-bamboo-card {
+  background: linear-gradient(180deg, #13261C 0%, #0E1C14 100%) !important;
+  border-color: rgba(201, 163, 95, 0.38) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(201, 163, 95, 0.25) !important;
+}
+
 /* ========================================================= */
 /* PRINT MEDIA STYLES — SINGLE-PAGE LUXURY INVOICE RECEIPT   */
 /* ========================================================= */

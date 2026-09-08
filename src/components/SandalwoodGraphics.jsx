@@ -215,7 +215,7 @@ export const SandalwoodSketchTree = ({
 /**
  * High-Definition Bamboo Plants & Grass Graphic Artwork Component
  * Renders an ultra-luxurious botanical illustration of bamboo plants with natural grass base.
- * Uses mix-blend-mode: multiply to seamlessly blend on cream / warm backgrounds.
+ * Specially rendered with transparency and ambient luxury lighting for both Dark & Light modes.
  */
 export const BambooGrassGraphic = ({
   width = '100%',
@@ -236,21 +236,26 @@ export const BambooGrassGraphic = ({
         position: 'relative',
         userSelect: 'none',
         pointerEvents: 'none',
-        overflow: 'hidden',
-        borderRadius: 'var(--radius-md)',
+        overflow: 'visible',
+        padding: '8px 4px 4px 4px',
         ...style
       }}
     >
+      {/* Ambient Botanical Backdrop Light for Dark Sanctuary Theme */}
+      <div className="bamboo-ambient-glow" />
+
       <img 
-        src="/assets/bamboo_grass_graphic.jpg" 
+        src="/assets/bamboo_grass_transparent.png" 
         alt="73 Hills Bamboo & Botanical Grass Illustration" 
+        className="bamboo-grass-graphic-img"
         style={{
           width: '100%',
           maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight,
           objectFit: 'contain',
           display: 'block',
-          mixBlendMode: 'multiply',
-          filter: 'contrast(1.06) brightness(1.02)'
+          position: 'relative',
+          zIndex: 2,
+          transition: 'all 0.3s ease'
         }}
       />
     </div>
