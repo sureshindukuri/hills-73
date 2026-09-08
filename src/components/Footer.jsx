@@ -48,18 +48,18 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
   return (
     <footer style={{ backgroundColor: '#0D2116', color: '#FFFFFF', position: 'relative', overflow: 'hidden' }}>
       
-      {/* Top Warm Teak Wood CTA Banner matching exact reference image! */}
+      {/* Top Warm Teak Wood CTA Banner */}
       <div style={{
         backgroundColor: '#B38B59',
         color: '#FFFFFF',
-        padding: '36px 0',
+        padding: '32px 0',
         position: 'relative',
         backgroundImage: 'linear-gradient(90deg, #967041 0%, #B38B59 50%, #8C6536 100%)',
         boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
       }}>
-        <div className="container" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
+        <div className="container" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
           
-          <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.25rem', color: '#FFFFFF', fontWeight: '500' }}>
+          <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.5rem, 3.5vw, 2.1rem)', color: '#FFFFFF', fontWeight: '500', lineHeight: 1.2 }}>
             Your perfect experience starts here.
           </h3>
 
@@ -68,12 +68,12 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
             style={{
               backgroundColor: '#FFFFFF',
               color: 'var(--color-emerald)',
-              padding: '14px 36px',
+              padding: '12px 32px',
               borderRadius: 'var(--radius-sm)',
               border: 'none',
               fontFamily: 'var(--font-sans)',
               fontWeight: '700',
-              fontSize: '0.875rem',
+              fontSize: '0.85rem',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               cursor: 'pointer',
@@ -89,52 +89,52 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
       </div>
 
       {/* Main Footer Container */}
-      <div className="container" style={{ padding: '80px 24px 40px 24px', position: 'relative', zIndex: 2 }}>
+      <div className="container" style={{ padding: '60px 24px 36px 24px', position: 'relative', zIndex: 2 }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '48px',
-          marginBottom: '60px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '36px',
+          marginBottom: '48px'
         }}>
           
           {/* Col 1: Logo & Mission */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               {logoMedia?.url ? (
                 <img 
                   src={logoMedia.url} 
                   alt={brandTitle} 
-                  style={{ maxHeight: '44px', maxWidth: '140px', objectFit: 'contain' }} 
+                  style={{ maxHeight: '40px', maxWidth: '140px', objectFit: 'contain' }} 
                 />
               ) : (
-                <SandalwoodTreeLogo size={42} color="#B38B59" />
+                <SandalwoodTreeLogo size={38} color="#B38B59" />
               )}
               <div>
-                <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', fontWeight: '700', color: '#FFFFFF', letterSpacing: '0.08em', display: 'block', lineHeight: 1 }}>
+                <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.45rem', fontWeight: '700', color: '#FFFFFF', letterSpacing: '0.06em', display: 'block', lineHeight: 1 }}>
                   {brandTitle}
                 </span>
-                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.65rem', fontWeight: '700', color: '#B38B59', letterSpacing: '0.22em', textTransform: 'uppercase', marginTop: '4px', display: 'block' }}>
+                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.6rem', fontWeight: '700', color: '#B38B59', letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: '3px', display: 'block' }}>
                   {brandSub}
                 </span>
               </div>
             </div>
 
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.6, marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.6, marginBottom: '16px' }}>
               73 Acres of pure serenity with Red Sandalwood & Sandalwood trees, crafted for luxury relaxation, grand celebrations, and timeless memories.
             </p>
           </div>
 
           {/* Col 2: Quick Links */}
           <div>
-            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: '#B38B59', marginBottom: '20px' }}>
+            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', color: '#B38B59', marginBottom: '16px' }}>
               Quick Links
             </h4>
-            <ul style={{ listStyle: 'none', display: 'grid', gap: '10px', fontSize: '0.9rem' }}>
+            <ul style={{ listStyle: 'none', display: 'grid', gap: '10px', fontSize: '0.875rem' }}>
               {navLinks.map((link, idx) => (
                 <li key={idx}>
                   <a 
                     href={link.href} 
-                    style={{ color: 'rgba(255, 255, 255, 0.75)', textDecoration: 'none', transition: 'color 0.2s ease' }}
+                    style={{ color: 'rgba(255, 255, 255, 0.75)', textDecoration: 'none', transition: 'color 0.2s ease', display: 'inline-block', padding: '2px 0' }}
                     onMouseEnter={(e) => e.target.style.color = '#B38B59'}
                     onMouseLeave={(e) => e.target.style.color = 'rgba(255, 255, 255, 0.75)'}
                   >
@@ -147,15 +147,15 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
 
           {/* Col 3: Important Policies */}
           <div>
-            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: '#B38B59', marginBottom: '20px' }}>
+            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', color: '#B38B59', marginBottom: '16px' }}>
               Important Information
             </h4>
-            <ul style={{ listStyle: 'none', display: 'grid', gap: '10px', fontSize: '0.9rem' }}>
+            <ul style={{ listStyle: 'none', display: 'grid', gap: '10px', fontSize: '0.875rem' }}>
               {Object.keys(infoContents).map((item, idx) => (
                 <li key={idx}>
                   <button 
                     onClick={() => setInfoModalItem(item)}
-                    style={{ background: 'none', border: 'none', padding: 0, color: 'rgba(255, 255, 255, 0.75)', cursor: 'pointer', fontSize: '0.9rem', textAlign: 'left', transition: 'color 0.2s ease' }}
+                    style={{ background: 'none', border: 'none', padding: '2px 0', color: 'rgba(255, 255, 255, 0.75)', cursor: 'pointer', fontSize: '0.875rem', textAlign: 'left', transition: 'color 0.2s ease' }}
                     onMouseEnter={(e) => e.target.style.color = '#B38B59'}
                     onMouseLeave={(e) => e.target.style.color = 'rgba(255, 255, 255, 0.75)'}
                   >
@@ -168,13 +168,13 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
 
           {/* Col 4: Location & Contact & Admin Portal */}
           <div>
-            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: '#B38B59', marginBottom: '20px' }}>
+            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', color: '#B38B59', marginBottom: '16px' }}>
               Resort Location
             </h4>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.75)', lineHeight: 1.6, marginBottom: '12px' }}>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.75)', lineHeight: 1.5, marginBottom: '10px' }}>
               {settings?.location || 'HQ3Q+HP3, Yerravaram, Andhra Pradesh 531055'}
             </p>
-            <p style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.75)', marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.75)', marginBottom: '18px' }}>
               Email: {settings?.email || 'hello@73hills.com'}
             </p>
 
@@ -213,14 +213,14 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
 
         {/* Bottom Copyright Line */}
         <div style={{
-          paddingTop: '30px',
+          paddingTop: '24px',
           borderTop: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'center',
-          gap: '12px',
-          fontSize: '0.8rem',
+          gap: '10px',
+          fontSize: '0.78rem',
           color: 'rgba(255, 255, 255, 0.5)'
         }}>
           <div>
@@ -238,42 +238,50 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
         <div className="modal-overlay" onClick={() => setInfoModalItem(null)}>
           <div 
             className="modal-content" 
-            style={{ maxWidth: '600px', padding: '32px', backgroundColor: '#FFFFFF' }}
+            style={{ maxWidth: '600px', width: '95%', padding: 'clamp(20px, 4vw, 32px)', backgroundColor: '#FFFFFF' }}
             onClick={(e) => e.stopPropagation()}
           >
             <button 
               onClick={() => setInfoModalItem(null)}
+              aria-label="Close dialog"
               style={{
                 position: 'absolute',
-                top: '20px',
-                right: '20px',
-                background: 'none',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(0,0,0,0.06)',
                 border: 'none',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 color: 'var(--text-main)'
               }}
             >
-              <X size={22} />
+              <X size={20} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
               <div style={{
-                width: '42px',
-                height: '42px',
+                width: '38px',
+                height: '38px',
                 borderRadius: '50%',
                 backgroundColor: 'var(--bg-cream)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                flexShrink: 0
               }}>
                 {infoContents[infoModalItem].icon}
               </div>
-              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', fontWeight: '600' }}>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.45rem', color: 'var(--color-emerald)', fontWeight: '600', lineHeight: 1.2 }}>
                 {infoContents[infoModalItem].title}
               </h3>
             </div>
 
-            <div style={{ color: 'var(--text-main)', fontSize: '0.95rem', lineHeight: 1.7, whiteSpace: 'pre-line', marginBottom: '24px' }}>
+            <div style={{ color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: 1.65, whiteSpace: 'pre-line', marginBottom: '20px' }}>
               {infoContents[infoModalItem].content}
             </div>
 
@@ -281,7 +289,7 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
               <button 
                 onClick={() => setInfoModalItem(null)}
                 className="btn-gold"
-                style={{ padding: '8px 24px', fontSize: '0.8rem' }}
+                style={{ padding: '8px 20px', fontSize: '0.8rem' }}
               >
                 Close
               </button>

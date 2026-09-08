@@ -5,20 +5,20 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
   const [selectedRoomModal, setSelectedRoomModal] = useState(null);
 
   return (
-    <section id="stay-rooms" style={{ padding: '100px 0', backgroundColor: 'var(--bg-main)' }}>
+    <section id="stay-rooms" style={{ padding: '80px 0', backgroundColor: 'var(--bg-main)' }}>
       <div className="container">
         
         {/* Header */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '50px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', gap: '16px', marginBottom: '40px' }}>
           <div>
             <div className="section-subtitle">
               STAY ROOMS & VILLAS
             </div>
-            <h2 className="section-title">
+            <h2 className="section-title" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.5rem)', marginBottom: '8px' }}>
               Luxury Cottages Rooted in Serenity
             </h2>
           </div>
-          <p style={{ maxWidth: '440px', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+          <p style={{ maxWidth: '440px', color: 'var(--text-muted)', fontSize: '0.925rem', lineHeight: 1.6 }}>
             Designed with natural teak wood, floor-to-ceiling glass, and panoramic views of 73 acres of sandalwood trees.
           </p>
         </div>
@@ -26,14 +26,14 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
         {/* Room Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '32px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '24px'
         }}>
           {rooms.map((room) => (
             <div key={room.id} className="luxury-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               
               {/* Room Image */}
-              <div style={{ position: 'relative', height: '260px', overflow: 'hidden' }}>
+              <div style={{ position: 'relative', height: '240px', overflow: 'hidden' }}>
                 <img 
                   src={room.image} 
                   alt={room.name} 
@@ -46,52 +46,52 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                 />
                 <div style={{
                   position: 'absolute',
-                  top: '16px',
-                  right: '16px',
+                  top: '14px',
+                  right: '14px',
                   backgroundColor: 'rgba(19, 46, 31, 0.9)',
                   color: '#FFFFFF',
-                  padding: '6px 14px',
+                  padding: '5px 12px',
                   borderRadius: 'var(--radius-full)',
-                  fontSize: '0.8rem',
+                  fontSize: '0.75rem',
                   fontWeight: '700',
                   letterSpacing: '0.05em',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px'
                 }}>
-                  <Star size={14} fill="#B38B59" color="#B38B59" />
+                  <Star size={13} fill="#B38B59" color="#B38B59" />
                   {room.rating || 4.9}
                 </div>
               </div>
 
               {/* Room Details */}
-              <div style={{ padding: '28px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                <span className="badge-gold" style={{ width: 'fit-content', marginBottom: '8px' }}>
+              <div style={{ padding: '22px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                <span className="badge-gold" style={{ width: 'fit-content', marginBottom: '8px', fontSize: '0.675rem' }}>
                   {room.subtitle}
                 </span>
 
                 <h3 style={{
                   fontFamily: 'var(--font-serif)',
-                  fontSize: '1.75rem',
+                  fontSize: '1.55rem',
                   color: 'var(--text-main)',
                   fontWeight: '600',
-                  marginBottom: '10px'
+                  marginBottom: '8px'
                 }}>
                   {room.name}
                 </h3>
 
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.6 }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: 1.55 }}>
                   {room.description}
                 </p>
 
                 {/* Amenities Badges */}
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', fontSize: '0.825rem', color: 'var(--text-main)', fontWeight: '600' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Users size={16} color="#B38B59" />
+                <div style={{ display: 'flex', gap: '14px', marginBottom: '18px', fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: '600' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Users size={15} color="#B38B59" />
                     {room.capacity}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Maximize size={16} color="#B38B59" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Maximize size={15} color="#B38B59" />
                     {room.size}
                   </div>
                 </div>
@@ -99,34 +99,35 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                 {/* Price & Book CTA */}
                 <div style={{
                   marginTop: 'auto',
-                  paddingTop: '20px',
+                  paddingTop: '16px',
                   borderTop: '1px solid var(--border-light)',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between'
+                  justifyContent: 'space-between',
+                  gap: '10px'
                 }}>
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase' }}>
                       STARTING FROM
                     </span>
-                    <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', fontWeight: '700' }}>
+                    <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.45rem', color: 'var(--color-emerald)', fontWeight: '700' }}>
                       ₹{room.price?.toLocaleString('en-IN')}
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}> / night</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> / night</span>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
                     <button 
                       onClick={() => setSelectedRoomModal(room)} 
                       className="btn-outline-dark"
-                      style={{ padding: '8px 14px', fontSize: '0.75rem' }}
+                      style={{ padding: '8px 12px', fontSize: '0.725rem' }}
                     >
                       Details
                     </button>
                     <button 
                       onClick={() => onSelectRoomForBooking(room)} 
                       className="btn-gold"
-                      style={{ padding: '8px 16px', fontSize: '0.75rem' }}
+                      style={{ padding: '8px 14px', fontSize: '0.725rem' }}
                     >
                       Book Now
                     </button>
@@ -144,20 +145,36 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
       {/* Room Details Modal */}
       {selectedRoomModal && (
         <div className="modal-overlay" onClick={() => setSelectedRoomModal(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ padding: '32px' }}>
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ 
+              maxWidth: '680px', 
+              width: '95%',
+              padding: 'clamp(18px, 4vw, 32px)', 
+              maxHeight: '90vh' 
+            }}
+          >
             <button 
               onClick={() => setSelectedRoomModal(null)}
+              aria-label="Close dialog"
               style={{
                 position: 'absolute',
-                top: '20px',
-                right: '20px',
-                background: 'none',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(0,0,0,0.06)',
                 border: 'none',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 color: 'var(--text-main)'
               }}
             >
-              <X size={24} />
+              <X size={20} />
             </button>
 
             <img 
@@ -165,42 +182,50 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
               alt={selectedRoomModal.name}
               style={{
                 width: '100%',
-                height: '300px',
+                height: 'clamp(180px, 35vw, 280px)',
                 objectFit: 'cover',
                 borderRadius: 'var(--radius-sm)',
-                marginBottom: '24px'
+                marginBottom: '18px'
               }}
             />
 
-            <span className="badge-gold">{selectedRoomModal.subtitle}</span>
+            <span className="badge-gold" style={{ fontSize: '0.675rem' }}>{selectedRoomModal.subtitle}</span>
 
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.25rem', margin: '12px 0 8px 0' }}>
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.5rem, 3.5vw, 2rem)', margin: '8px 0', lineHeight: 1.15 }}>
               {selectedRoomModal.name}
             </h3>
 
-            <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: '24px' }}>
+            <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontSize: '0.9rem', marginBottom: '20px' }}>
               {selectedRoomModal.description}
             </p>
 
-            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '12px', color: 'var(--color-emerald)' }}>
+            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', marginBottom: '10px', color: 'var(--color-emerald)' }}>
               Premium Amenities Included
             </h4>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '22px' }}>
               {selectedRoomModal.features?.map((feat, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
-                  <Check size={16} color="#B38B59" />
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                  <Check size={15} color="#B38B59" style={{ flexShrink: 0 }} />
                   <span>{feat}</span>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '20px', borderTop: '1px solid var(--border-light)' }}>
+            <div style={{ 
+              display: 'flex', 
+              flexWrap: 'wrap',
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              gap: '12px',
+              paddingTop: '16px', 
+              borderTop: '1px solid var(--border-light)' 
+            }}>
               <div>
-                <span style={{ fontSize: '1.75rem', fontFamily: 'var(--font-serif)', fontWeight: '700', color: 'var(--color-emerald)' }}>
+                <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-serif)', fontWeight: '700', color: 'var(--color-emerald)' }}>
                   ₹{selectedRoomModal.price?.toLocaleString('en-IN')}
                 </span>
-                <span style={{ color: 'var(--text-muted)' }}> / night (Excl. Tax)</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> / night (Excl. Tax)</span>
               </div>
 
               <button
@@ -210,8 +235,9 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                   onSelectRoomForBooking(room);
                 }}
                 className="btn-gold"
+                style={{ padding: '10px 20px', fontSize: '0.85rem' }}
               >
-                Proceed to Reserve <ArrowRight size={16} />
+                Proceed to Reserve <ArrowRight size={15} />
               </button>
             </div>
 

@@ -15,13 +15,13 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        paddingTop: '110px',
-        paddingBottom: '50px',
+        paddingTop: '100px',
+        paddingBottom: '60px',
         overflow: 'hidden',
         backgroundColor: '#0D2116'
       }}
     >
-      {/* 4K Pure Resolution Untouched Native Background */}
+      {/* Native Background */}
       {isVideo ? (
         <video 
           src={heroBgUrl} 
@@ -53,12 +53,12 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
         />
       )}
 
-      {/* Subtle Directional Ambient Vignette for Crystal Clear Text Readability without Dullness */}
+      {/* Subtle Directional Ambient Vignette for Crystal Clear Text Readability */}
       <div 
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.48) 38%, rgba(0, 0, 0, 0.12) 65%, rgba(0, 0, 0, 0) 100%)',
+          background: 'linear-gradient(90deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.52) 42%, rgba(0, 0, 0, 0.2) 75%, rgba(0, 0, 0, 0.05) 100%)',
           pointerEvents: 'none'
         }}
       />
@@ -66,18 +66,18 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 22%, transparent 78%, rgba(0, 0, 0, 0.65) 100%)',
+          background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, transparent 25%, transparent 75%, rgba(0, 0, 0, 0.75) 100%)',
           pointerEvents: 'none'
         }}
       />
 
-      {/* Top Right Floating Location Pill */}
+      {/* Top Right Floating Location Pill for Desktop */}
       <div 
-        className="hero-aerial-badge"
+        className="hero-aerial-badge-desktop"
         style={{
           position: 'absolute',
-          top: '110px',
-          right: '36px',
+          top: '105px',
+          right: '32px',
           zIndex: 20,
           backgroundColor: 'rgba(10, 24, 16, 0.88)',
           backdropFilter: 'blur(8px)',
@@ -109,36 +109,66 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
           padding: '10px 0'
         }}>
           
+          {/* Mobile Location Badge */}
+          <div 
+            className="hero-aerial-badge-mobile"
+            style={{
+              display: 'none',
+              width: 'fit-content',
+              backgroundColor: 'rgba(10, 24, 16, 0.88)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(179, 139, 89, 0.45)',
+              borderRadius: '9999px',
+              padding: '6px 14px',
+              alignItems: 'center',
+              gap: '6px',
+              marginBottom: '14px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <MapPin size={12} color="#B38B59" />
+            <span style={{
+              color: '#FFFFFF',
+              fontSize: '0.65rem',
+              fontWeight: '700',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              fontFamily: 'var(--font-sans)'
+            }}>
+              73 ACRES SANCTUARY • YERRAVARAM
+            </span>
+          </div>
+
           {/* Welcome Tag with Flanking Horizontal Lines */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            marginBottom: '18px'
+            gap: '10px',
+            marginBottom: '16px'
           }}>
-            <span style={{ width: '30px', height: '1.5px', backgroundColor: '#B38B59', display: 'inline-block' }} />
+            <span style={{ width: '26px', height: '1.5px', backgroundColor: '#B38B59', display: 'inline-block' }} />
             <span style={{
               color: '#B38B59',
-              fontSize: '0.8rem',
+              fontSize: '0.75rem',
               fontWeight: '700',
-              letterSpacing: '0.22em',
+              letterSpacing: '0.2em',
               textTransform: 'uppercase',
               fontFamily: 'var(--font-sans)'
             }}>
               WELCOME TO 73 HILLS
             </span>
-            <span style={{ width: '30px', height: '1.5px', backgroundColor: '#B38B59', display: 'inline-block' }} />
+            <span style={{ width: '26px', height: '1.5px', backgroundColor: '#B38B59', display: 'inline-block' }} />
           </div>
 
           {/* Main Title */}
           <h1 style={{
-            fontSize: 'clamp(2.8rem, 5.2vw, 4.5rem)',
+            fontSize: 'clamp(2.3rem, 5vw, 4.25rem)',
             fontFamily: 'var(--font-serif)',
             color: '#FFFFFF',
             fontWeight: '500',
             lineHeight: 1.12,
             letterSpacing: '-0.01em',
-            marginBottom: '20px',
+            marginBottom: '18px',
             textShadow: '0 4px 25px rgba(0, 0, 0, 0.8)'
           }}>
             A Luxury Escape Rooted<br />in Nature
@@ -146,12 +176,12 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
 
           {/* Subtitle */}
           <p style={{
-            fontSize: 'clamp(0.95rem, 1.5vw, 1.12rem)',
+            fontSize: 'clamp(0.9rem, 1.4vw, 1.08rem)',
             fontFamily: 'var(--font-sans)',
             color: 'rgba(255, 255, 255, 0.92)',
             fontWeight: '400',
             lineHeight: 1.6,
-            marginBottom: '32px',
+            marginBottom: '28px',
             maxWidth: '520px',
             textShadow: '0 2px 14px rgba(0, 0, 0, 0.85)'
           }}>
@@ -159,21 +189,28 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
           </p>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', marginBottom: '46px' }}>
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: '12px', 
+            alignItems: 'center', 
+            marginBottom: '38px' 
+          }}>
             <button 
               onClick={onOpenBooking} 
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '10px',
+                justifyContent: 'center',
+                gap: '8px',
                 backgroundColor: '#B38B59',
                 color: '#FFFFFF',
                 fontFamily: 'var(--font-sans)',
                 fontWeight: '700',
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
-                padding: '14px 28px',
+                padding: '13px 26px',
                 borderRadius: '8px',
                 border: 'none',
                 cursor: 'pointer',
@@ -199,16 +236,17 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '10px',
+                justifyContent: 'center',
+                gap: '8px',
                 backgroundColor: 'rgba(10, 24, 16, 0.65)',
                 backdropFilter: 'blur(6px)',
                 color: '#FFFFFF',
                 fontFamily: 'var(--font-sans)',
                 fontWeight: '600',
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
-                padding: '14px 28px',
+                padding: '13px 26px',
                 borderRadius: '8px',
                 border: '1px solid rgba(255, 255, 255, 0.55)',
                 textDecoration: 'none',
@@ -232,54 +270,48 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
             </a>
           </div>
 
-          {/* Stats Bar with Vertical Dividers */}
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: '24px',
-            paddingTop: '20px'
+          {/* Stats Bar Responsive Grid */}
+          <div className="hero-stats-container" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+            gap: '16px',
+            paddingTop: '16px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.15)'
           }}>
             {/* Stat 1 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Trees size={26} color="#B38B59" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Trees size={24} color="#B38B59" style={{ flexShrink: 0 }} />
               <div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', color: '#B38B59', fontWeight: '700', lineHeight: 1 }}>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', color: '#B38B59', fontWeight: '700', lineHeight: 1 }}>
                   73
                 </div>
-                <div style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px', lineHeight: 1.25 }}>
+                <div style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.625rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '3px', lineHeight: 1.2 }}>
                   ACRES SANDALWOOD<br />SANCTUARY
                 </div>
               </div>
             </div>
 
-            {/* Divider 1 */}
-            <div style={{ width: '1px', height: '36px', backgroundColor: 'rgba(255, 255, 255, 0.25)' }} />
-
             {/* Stat 2 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Star size={24} color="#B38B59" fill="#B38B59" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Star size={22} color="#B38B59" fill="#B38B59" style={{ flexShrink: 0 }} />
               <div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', color: '#B38B59', fontWeight: '700', lineHeight: 1 }}>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', color: '#B38B59', fontWeight: '700', lineHeight: 1 }}>
                   4.9
                 </div>
-                <div style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px', lineHeight: 1.25 }}>
+                <div style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.625rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '3px', lineHeight: 1.2 }}>
                   GUEST RATING<br />(30+ REVIEWS)
                 </div>
               </div>
             </div>
 
-            {/* Divider 2 */}
-            <div style={{ width: '1px', height: '36px', backgroundColor: 'rgba(255, 255, 255, 0.25)' }} />
-
             {/* Stat 3 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Shield size={24} color="#B38B59" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Shield size={22} color="#B38B59" style={{ flexShrink: 0 }} />
               <div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.65rem', color: '#B38B59', fontWeight: '700', lineHeight: 1 }}>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', color: '#B38B59', fontWeight: '700', lineHeight: 1 }}>
                   100%
                 </div>
-                <div style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px', lineHeight: 1.25 }}>
+                <div style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.625rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: '3px', lineHeight: 1.2 }}>
                   NATURAL PRIVACY &<br />LAKE VIEW
                 </div>
               </div>
@@ -291,8 +323,11 @@ export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
 
       <style>{`
         @media (max-width: 960px) {
-          .hero-aerial-badge {
+          .hero-aerial-badge-desktop {
             display: none !important;
+          }
+          .hero-aerial-badge-mobile {
+            display: flex !important;
           }
         }
       `}</style>

@@ -469,12 +469,12 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
     <div className="modal-overlay" onClick={onClose}>
       <div 
         className="modal-content" 
-        onClick={(e) => e.stopPropagation()} 
+        onClick={(e) => e.stopPropagation()}
         style={{ 
-          maxWidth: currentStep === 2 ? '740px' : '660px', 
+          maxWidth: '720px', 
           width: '95%',
-          padding: '32px',
-          maxHeight: '90vh',
+          maxHeight: '92vh',
+          padding: 'clamp(18px, 4vw, 32px)',
           overflowY: 'auto'
         }}
       >
@@ -484,34 +484,40 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
           onClick={onClose}
           style={{
             position: 'absolute',
-            top: '20px',
-            right: '20px',
-            background: 'none',
+            top: '16px',
+            right: '16px',
+            background: 'rgba(0,0,0,0.06)',
             border: 'none',
+            borderRadius: '50%',
+            width: '36px',
+            height: '36px',
             cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             color: 'var(--text-main)',
             zIndex: 10
           }}
           aria-label="Close modal"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
 
         {/* Multi-step progress indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '700', color: currentStep >= 1 ? 'var(--color-emerald)' : 'var(--text-light)' }}>
-            <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: currentStep >= 1 ? 'var(--color-gold)' : '#DDD', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>1</span>
-            Guest Details
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '22px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', fontWeight: '700', color: currentStep >= 1 ? 'var(--color-emerald)' : 'var(--text-light)' }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: currentStep >= 1 ? 'var(--color-gold)' : '#DDD', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>1</span>
+            Details
           </div>
-          <ChevronRight size={14} color="#B38B59" />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '700', color: currentStep >= 2 ? 'var(--color-emerald)' : 'var(--text-light)' }}>
-            <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: currentStep >= 2 ? 'var(--color-gold)' : '#DDD', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>2</span>
-            Payment Gateway
+          <ChevronRight size={13} color="#B38B59" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', fontWeight: '700', color: currentStep >= 2 ? 'var(--color-emerald)' : 'var(--text-light)' }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: currentStep >= 2 ? 'var(--color-gold)' : '#DDD', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>2</span>
+            Payment
           </div>
-          <ChevronRight size={14} color="#B38B59" />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '700', color: currentStep >= 3 ? 'var(--color-emerald)' : 'var(--text-light)' }}>
-            <span style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: currentStep >= 3 ? 'var(--color-gold)' : '#DDD', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>3</span>
-            Confirmed Receipt
+          <ChevronRight size={13} color="#B38B59" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.78rem', fontWeight: '700', color: currentStep >= 3 ? 'var(--color-emerald)' : 'var(--text-light)' }}>
+            <span style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: currentStep >= 3 ? 'var(--color-gold)' : '#DDD', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem' }}>3</span>
+            Receipt
           </div>
         </div>
 
@@ -524,14 +530,14 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
               RESERVE YOUR STAY
             </div>
 
-            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', marginTop: '4px', marginBottom: '20px', color: 'var(--color-emerald)' }}>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.6rem, 3.5vw, 2.1rem)', marginTop: '4px', marginBottom: '18px', color: 'var(--color-emerald)' }}>
               Book Your Luxury Cottage
             </h2>
 
             <form onSubmit={handleSaveDetails}>
               
               {/* Select Villa/Room */}
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '14px' }}>
                 <label className="form-label">Choose Accommodations</label>
                 <select 
                   className="form-select" 
@@ -547,7 +553,7 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
               </div>
 
               {/* Dates & Guests */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '14px' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Check-In Date</label>
                   <input 
@@ -579,7 +585,7 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8, 10].map(num => (
                       <option key={num} value={num}>
-                        {num} Guest{num > 1 ? 's' : ''} {num > baseCapacity ? `(+₹${extraGuestPrice}/extra guest)` : ''}
+                        {num} Guest{num > 1 ? 's' : ''} {num > baseCapacity ? `(+₹${extraGuestPrice}/extra)` : ''}
                       </option>
                     ))}
                   </select>
@@ -587,7 +593,7 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
               </div>
 
               {/* Guest Details */}
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '14px' }}>
                 <label className="form-label">Full Name</label>
                 <input 
                   type="text" 
@@ -599,8 +605,8 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Email Address</label>
                   <input 
                     type="email" 
@@ -612,12 +618,12 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Mobile Number</label>
                   <input 
                     type="tel" 
                     required 
-                    placeholder="Enter your mobile number"
+                    placeholder="Enter mobile number"
                     className="form-input" 
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -625,7 +631,7 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
                 </div>
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '18px' }}>
                 <label className="form-label">Special Requests (Optional)</label>
                 <input 
                   type="text" 
@@ -713,7 +719,7 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
             </div>
 
             {/* Payment Method Selector Tabs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginBottom: '20px' }}>
               {[
                 { id: 'upi', label: 'UPI / QR', icon: <Smartphone size={18} /> },
                 { id: 'card', label: 'Cards', icon: <CreditCard size={18} /> },
@@ -725,18 +731,18 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
                   type="button"
                   onClick={() => setPaymentMethod(m.id)}
                   style={{
-                    padding: '12px 8px',
+                    padding: '10px 6px',
                     borderRadius: 'var(--radius-sm)',
                     border: '1px solid',
                     borderColor: paymentMethod === m.id ? 'var(--color-gold)' : 'var(--border-light)',
                     backgroundColor: paymentMethod === m.id ? '#FFFFFF' : 'var(--bg-cream)',
                     color: paymentMethod === m.id ? 'var(--color-emerald)' : 'var(--text-muted)',
                     fontWeight: paymentMethod === m.id ? '700' : '500',
-                    fontSize: '0.8rem',
+                    fontSize: '0.78rem',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '4px',
                     cursor: 'pointer',
                     boxShadow: paymentMethod === m.id ? '0 2px 8px rgba(179, 139, 89, 0.2)' : 'none',
                     transition: 'all 0.2s ease'
@@ -753,8 +759,8 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
               backgroundColor: '#FFFFFF',
               border: '1px solid var(--border-light)',
               borderRadius: 'var(--radius-md)',
-              padding: '24px',
-              marginBottom: '24px',
+              padding: 'clamp(16px, 3vw, 24px)',
+              marginBottom: '20px',
               boxShadow: 'var(--shadow-sm)'
             }}>
 

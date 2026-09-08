@@ -587,41 +587,41 @@ export default function AdminPanel({
         <div 
           className="modal-content" 
           onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: '440px', padding: '40px', textAlign: 'center' }}
+          style={{ maxWidth: '440px', width: '95%', padding: 'clamp(24px, 5vw, 40px)', textAlign: 'center' }}
         >
           <div style={{
-            width: '64px',
-            height: '64px',
+            width: '60px',
+            height: '60px',
             borderRadius: '50%',
             backgroundColor: 'var(--bg-cream)',
             border: '1px solid var(--border-light)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '20px'
+            marginBottom: '16px'
           }}>
-            <Shield size={32} color="#B38B59" />
+            <Shield size={28} color="#B38B59" />
           </div>
 
-          <span className="badge-gold" style={{ marginBottom: '8px', display: 'inline-block' }}>
+          <span className="badge-gold" style={{ marginBottom: '8px', display: 'inline-block', fontSize: '0.675rem' }}>
             OWNER & ADMIN PORTAL
           </span>
 
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', marginBottom: '8px' }}>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', marginBottom: '6px' }}>
             73 Hills Control Panel
           </h2>
 
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
             Dashboard Analytics, Live Bookings, Prices, Video Uploads & Media Manager.
           </p>
 
           <form onSubmit={handleLogin}>
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: '14px' }}>
               <input 
                 type="password" 
                 placeholder="Passcode: admin73"
                 className="form-input"
-                style={{ textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.2em' }}
+                style={{ textAlign: 'center', fontSize: '1.05rem', letterSpacing: '0.15em' }}
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
                 autoFocus
@@ -629,19 +629,19 @@ export default function AdminPanel({
             </div>
 
             {authError && (
-              <div style={{ color: '#D9534F', fontSize: '0.85rem', marginBottom: '16px' }}>
+              <div style={{ color: '#D9534F', fontSize: '0.8rem', marginBottom: '14px' }}>
                 {authError}
               </div>
             )}
 
-            <button type="submit" className="btn-gold" style={{ width: '100%', padding: '12px' }}>
-              <Lock size={16} /> LOGIN TO ADMIN DASHBOARD
+            <button type="submit" className="btn-gold" style={{ width: '100%', padding: '12px', fontSize: '0.85rem' }}>
+              <Lock size={15} /> LOGIN TO ADMIN DASHBOARD
             </button>
           </form>
 
           <button 
             onClick={onClose}
-            style={{ marginTop: '20px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}
+            style={{ marginTop: '16px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.825rem' }}
           >
             ← Return to Public Website
           </button>
@@ -672,44 +672,46 @@ export default function AdminPanel({
       >
         
         <div style={{
-          padding: '18px 28px',
+          padding: '14px 20px',
           backgroundColor: 'var(--bg-forest)',
           color: '#FFFFFF',
           display: 'flex',
+          flexWrap: 'wrap',
+          gap: '12px',
           justifyContent: 'space-between',
           alignItems: 'center',
           borderBottom: '1px solid var(--border-light)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Shield size={26} color="#B38B59" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
+            <Shield size={24} color="#B38B59" style={{ flexShrink: 0 }} />
             <div>
-              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.45rem', color: '#FFFFFF', lineHeight: 1 }}>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem', color: '#FFFFFF', lineHeight: 1 }}>
                 73 Hills Executive Manager
               </h3>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                Real-Time Bookings, Monthly Analytics, Custom Pricing & Device Media Portal
+              <span style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                Real-Time Bookings, Analytics, Pricing & Media Portal
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             <button 
               onClick={handleClearAllBookings}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
+                gap: '5px',
+                padding: '6px 12px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'rgba(217, 83, 79, 0.2)',
                 color: '#FFA8A8',
                 border: '1px solid rgba(255, 107, 107, 0.5)',
                 cursor: 'pointer',
-                fontSize: '0.8rem'
+                fontSize: '0.75rem'
               }}
               title="Reset all bookings and analytics to 0"
             >
-              <Trash2 size={14} /> Clear Ledger Data
+              <Trash2 size={13} /> Clear Ledger
             </button>
 
             <button 
@@ -717,17 +719,17 @@ export default function AdminPanel({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
+                gap: '5px',
+                padding: '6px 12px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'rgba(255,255,255,0.1)',
                 color: '#FFFFFF',
                 border: '1px solid rgba(255,255,255,0.2)',
                 cursor: 'pointer',
-                fontSize: '0.8rem'
+                fontSize: '0.75rem'
               }}
             >
-              <RefreshCw size={14} /> Refresh
+              <RefreshCw size={13} /> Refresh
             </button>
 
             <button 
@@ -735,29 +737,29 @@ export default function AdminPanel({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
+                gap: '5px',
+                padding: '6px 12px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'rgba(255, 255, 255, 0.08)',
                 color: '#E0E0E0',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 cursor: 'pointer',
-                fontSize: '0.8rem'
+                fontSize: '0.75rem'
               }}
             >
-              <LogOut size={14} /> Logout
+              <LogOut size={13} /> Logout
             </button>
 
             <button 
               onClick={onClose}
               style={{
-                padding: '8px 16px',
+                padding: '6px 14px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'var(--color-gold)',
                 color: '#FFFFFF',
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: '0.8rem',
+                fontSize: '0.75rem',
                 fontWeight: '600'
               }}
             >
@@ -768,26 +770,30 @@ export default function AdminPanel({
 
         {actionFeedback.text && (
           <div style={{
-            padding: '12px 28px',
+            padding: '10px 20px',
             backgroundColor: actionFeedback.type === 'error' ? '#F8D7DA' : '#D4EDDA',
             color: actionFeedback.type === 'error' ? '#721C24' : '#155724',
-            fontSize: '0.9rem',
+            fontSize: '0.85rem',
             fontWeight: '600',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '6px'
           }}>
             ✓ {actionFeedback.text}
           </div>
         )}
 
-        <div style={{
-          display: 'flex',
-          overflowX: 'auto',
-          backgroundColor: '#FFFFFF',
-          borderBottom: '1px solid var(--border-light)',
-          padding: '0 20px'
-        }}>
+        <div 
+          className="no-scrollbar"
+          style={{
+            display: 'flex',
+            overflowX: 'auto',
+            backgroundColor: '#FFFFFF',
+            borderBottom: '1px solid var(--border-light)',
+            padding: '0 12px',
+            whiteSpace: 'nowrap'
+          }}
+        >
           {navTabs.map(tab => (
             <button
               key={tab.id}
@@ -795,16 +801,17 @@ export default function AdminPanel({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '14px 18px',
+                gap: '6px',
+                padding: '12px 14px',
                 border: 'none',
                 borderBottom: activeTab === tab.id ? '3px solid var(--color-gold)' : '3px solid transparent',
                 backgroundColor: 'transparent',
                 color: activeTab === tab.id ? 'var(--color-emerald)' : 'var(--text-muted)',
                 fontWeight: activeTab === tab.id ? '700' : '500',
                 cursor: 'pointer',
-                fontSize: '0.85rem',
-                whiteSpace: 'nowrap'
+                fontSize: '0.825rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
               {tab.icon}
@@ -813,7 +820,7 @@ export default function AdminPanel({
           ))}
         </div>
 
-        <div style={{ padding: '28px', minHeight: '460px', maxHeight: '68vh', overflowY: 'auto' }}>
+        <div style={{ padding: 'clamp(16px, 3vw, 24px)', minHeight: '440px', maxHeight: '72vh', overflowY: 'auto' }}>
           
           {activeTab === 'dashboard' && (
             <div>

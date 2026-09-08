@@ -8,35 +8,35 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
   const celebrationUrl = celebrationMedia?.url || '/assets/celebration_estate_aerial.jpg';
 
   const eventTypes = [
-    { icon: <Heart size={24} color="#B38B59" />, label: 'Weddings' },
-    { icon: <Gift size={24} color="#B38B59" />, label: 'Birthdays' },
-    { icon: <Briefcase size={24} color="#B38B59" />, label: 'Corporate Events' },
-    { icon: <Users size={24} color="#B38B59" />, label: 'Family Gatherings' },
-    { icon: <PartyPopper size={24} color="#B38B59" />, label: 'Special Occasions' }
+    { icon: <Heart size={20} color="#B38B59" />, label: 'Weddings' },
+    { icon: <Gift size={20} color="#B38B59" />, label: 'Birthdays' },
+    { icon: <Briefcase size={20} color="#B38B59" />, label: 'Corporate Retreats' },
+    { icon: <Users size={20} color="#B38B59" />, label: 'Family Reunions' },
+    { icon: <PartyPopper size={20} color="#B38B59" />, label: 'Milestone Events' }
   ];
 
   return (
-    <section id="celebrations" style={{ padding: '100px 0', backgroundColor: 'var(--bg-cream)', borderTop: '1px solid var(--border-light)' }}>
+    <section id="celebrations" style={{ padding: '80px 0', backgroundColor: 'var(--bg-cream)', borderTop: '1px solid var(--border-light)' }}>
       <div className="container">
         
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '50px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '40px',
           alignItems: 'center'
         }}>
           
           {/* Left Narrative & Category Pills */}
           <div>
             <div className="section-subtitle">
-              CELEBRATIONS
+              CELEBRATIONS & EVENTS
             </div>
             
-            <h2 className="section-title">
+            <h2 className="section-title" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.5rem)' }}>
               {settings?.celebrationHeadline || 'Make Every Moment Unforgettable'}
             </h2>
 
-            <p style={{ fontSize: '1.05rem', color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: '32px' }}>
+            <p style={{ fontSize: '1rem', color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: '26px' }}>
               {settings?.celebrationParagraph || 'Whether you are planning an intimate candle-lit wedding under sparkling sandalwood canopy, an executive corporate retreat, or a milestone family reunion, 73 Hills provides 73 acres of magical natural backdrop.'}
             </p>
 
@@ -44,8 +44,8 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
             <div style={{
               display: 'flex',
               flexWrap: 'wrap',
-              gap: '12px',
-              marginBottom: '40px'
+              gap: '10px',
+              marginBottom: '32px'
             }}>
               {eventTypes.map((event, idx) => (
                 <div 
@@ -53,12 +53,12 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '10px',
+                    gap: '8px',
                     backgroundColor: '#FFFFFF',
                     border: '1px solid var(--border-light)',
-                    padding: '10px 18px',
+                    padding: '8px 14px',
                     borderRadius: 'var(--radius-full)',
-                    fontSize: '0.9rem',
+                    fontSize: '0.825rem',
                     fontWeight: '600',
                     color: 'var(--text-main)',
                     boxShadow: 'var(--shadow-sm)'
@@ -71,21 +71,21 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
             </div>
 
             {/* Event Highlights List */}
-            <div style={{ display: 'grid', gap: '12px', marginBottom: '32px' }}>
+            <div style={{ display: 'grid', gap: '10px', marginBottom: '28px' }}>
               {[
                 'Spacious 5,000+ guest capacity open-air garden lawn',
                 'Customized gourmet catering & fine dining menu options',
                 'Dedicated event planners & luxury decor team',
                 'Private overnight cottage stays for bridal party & VIP guests'
               ].map((point, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.925rem', color: 'var(--text-main)' }}>
-                  <CheckCircle2 size={18} color="#B38B59" />
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', color: 'var(--text-main)' }}>
+                  <CheckCircle2 size={16} color="#B38B59" style={{ flexShrink: 0 }} />
                   <span>{point}</span>
                 </div>
               ))}
             </div>
 
-            <button onClick={onOpenBooking} className="btn-gold">
+            <button onClick={onOpenBooking} className="btn-gold" style={{ padding: '12px 24px' }}>
               PLAN YOUR EVENT <ArrowRight size={16} />
             </button>
           </div>
@@ -109,7 +109,7 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
                   playsInline 
                   style={{
                     width: '100%',
-                    height: '520px',
+                    height: 'clamp(280px, 44vw, 480px)',
                     objectFit: 'cover',
                     display: 'block'
                   }} 
@@ -120,7 +120,7 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
                   alt="73 Hills 73 Acres Grand Celebration Estate"
                   style={{
                     width: '100%',
-                    height: '520px',
+                    height: 'clamp(280px, 44vw, 480px)',
                     objectFit: 'cover',
                     objectPosition: 'center 45%',
                     display: 'block',
@@ -138,18 +138,18 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
 
               <div style={{
                 position: 'absolute',
-                bottom: '26px',
-                left: '26px',
-                right: '26px',
+                bottom: '20px',
+                left: '20px',
+                right: '20px',
                 color: '#FFFFFF'
               }}>
-                <span className="badge-gold" style={{ marginBottom: '8px', display: 'inline-block' }}>
+                <span className="badge-gold" style={{ marginBottom: '6px', display: 'inline-block', fontSize: '0.675rem' }}>
                   73 ACRES GRAND CELEBRATION ESTATE
                 </span>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.7rem', color: '#FFFFFF', fontWeight: '600' }}>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.25rem, 3vw, 1.6rem)', color: '#FFFFFF', fontWeight: '600', lineHeight: 1.2 }}>
                   Grand Open-Air Lawn & Sandalwood Canopy
                 </h3>
-                <p style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.88)', marginTop: '4px' }}>
+                <p style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.88)', marginTop: '4px' }}>
                   Spanned across 73 acres of fragrant red sandalwood forest in Yerravaram.
                 </p>
               </div>

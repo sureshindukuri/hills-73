@@ -5,22 +5,22 @@ import { SandalwoodLeafMotif, SandalwoodSketchTree } from './SandalwoodGraphics'
 export default function ExperienceDifference() {
   const highlights = [
     {
-      icon: <Trees size={32} color="#B38B59" />,
+      icon: <Trees size={30} color="#B38B59" />,
       title: 'Surrounded by Nature',
       description: '73 acres of lush greenery with rare red sandalwood trees.'
     },
     {
-      icon: <Home size={32} color="#B38B59" />,
+      icon: <Home size={30} color="#B38B59" />,
       title: 'Luxury Stay',
       description: 'Elegant cottages and premium amenities for a comfortable stay.'
     },
     {
-      icon: <Wine size={32} color="#B38B59" />,
+      icon: <Wine size={30} color="#B38B59" />,
       title: 'Perfect Celebrations',
       description: 'Ideal venue for weddings, parties and corporate events.'
     },
     {
-      icon: <Sparkles size={32} color="#B38B59" />,
+      icon: <Sparkles size={30} color="#B38B59" />,
       title: 'Peace & Privacy',
       description: 'Away from the noise, close to what matters.'
     }
@@ -35,7 +35,7 @@ export default function ExperienceDifference() {
         borderTop: '1px solid var(--border-light)',
         borderBottom: '1px solid var(--border-light)',
         position: 'relative',
-        overflow: 'visible'
+        overflow: 'hidden'
       }}
     >
       <div className="container" style={{ position: 'relative', zIndex: 2 }}>
@@ -43,7 +43,7 @@ export default function ExperienceDifference() {
         {/* Header Block with Flanking Sandalwood Graphic Trees */}
         <div style={{ 
           textAlign: 'center', 
-          marginBottom: '55px', 
+          marginBottom: '48px', 
           position: 'relative',
           padding: '10px 0'
         }}>
@@ -68,59 +68,62 @@ export default function ExperienceDifference() {
           <div className="section-subtitle" style={{ justifyContent: 'center' }}>
             WHY CHOOSE US
           </div>
-          <h2 className="section-title" style={{ fontSize: '2.4rem', marginBottom: '8px', letterSpacing: '0.02em' }}>
+          <h2 className="section-title" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.4rem)', marginBottom: '8px', letterSpacing: '0.02em' }}>
             EXPERIENCE THE DIFFERENCE
           </h2>
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 0 0' }}>
-            <SandalwoodLeafMotif size={26} color="#B38B59" />
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 0 0' }}>
+            <SandalwoodLeafMotif size={24} color="#B38B59" />
           </div>
         </div>
 
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '24px'
+          gap: '20px'
         }}>
           {highlights.map((item, idx) => (
             <div 
               key={idx}
               className="luxury-card"
               style={{
-                padding: '32px 24px',
+                padding: '28px 20px',
                 textAlign: 'center',
                 backgroundColor: '#FFFFFF',
                 borderRadius: 'var(--radius-md)',
-                position: 'relative'
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
               }}
             >
               <div style={{
-                width: '64px',
-                height: '64px',
+                width: '58px',
+                height: '58px',
                 borderRadius: '50%',
                 backgroundColor: 'var(--bg-cream)',
                 border: '1px solid var(--border-light)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '20px'
+                marginBottom: '16px'
               }}>
                 {item.icon}
               </div>
 
               <h3 style={{
                 fontFamily: 'var(--font-serif)',
-                fontSize: '1.4rem',
+                fontSize: '1.3rem',
                 fontWeight: '600',
                 color: 'var(--text-main)',
-                marginBottom: '10px'
+                marginBottom: '8px'
               }}>
                 {item.title}
               </h3>
 
               <p style={{
-                fontSize: '0.9rem',
+                fontSize: '0.875rem',
                 color: 'var(--text-muted)',
-                lineHeight: 1.5
+                lineHeight: 1.55
               }}>
                 {item.description}
               </p>

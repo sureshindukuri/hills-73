@@ -25,7 +25,7 @@ export default function GallerySection() {
       : items.filter(item => item.category?.toLowerCase() === activeCategory.toLowerCase());
 
   return (
-    <section id="gallery" style={{ padding: '100px 0', backgroundColor: 'var(--bg-main)' }}>
+    <section id="gallery" style={{ padding: '80px 0', backgroundColor: 'var(--bg-main)' }}>
       <div className="container">
         
         {/* Section Header */}
@@ -34,35 +34,47 @@ export default function GallerySection() {
           flexWrap: 'wrap',
           justifyContent: 'space-between',
           alignItems: 'flex-end',
-          marginBottom: '40px'
+          gap: '16px',
+          marginBottom: '32px'
         }}>
           <div>
             <div className="section-subtitle">
-              GALLERY
+              GALLERY SHOWCASE
             </div>
-            <h2 className="section-title">
+            <h2 className="section-title" style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.5rem)', marginBottom: '4px' }}>
               Moments That Stay Forever
             </h2>
           </div>
 
           {/* Category Filter Pills */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <div 
+            className="no-scrollbar"
+            style={{ 
+              display: 'flex', 
+              overflowX: 'auto', 
+              gap: '8px',
+              paddingBottom: '4px',
+              maxWidth: '100%'
+            }}
+          >
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 style={{
-                  padding: '8px 18px',
+                  padding: '7px 16px',
                   borderRadius: 'var(--radius-full)',
                   border: '1px solid',
                   borderColor: activeCategory === cat ? 'var(--color-gold)' : 'var(--border-light)',
                   backgroundColor: activeCategory === cat ? 'var(--color-gold)' : '#FFFFFF',
                   color: activeCategory === cat ? '#FFFFFF' : 'var(--text-main)',
-                  fontSize: '0.85rem',
+                  fontSize: '0.8rem',
                   fontWeight: '600',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  letterSpacing: '0.04em'
+                  letterSpacing: '0.04em',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
                 }}
               >
                 {cat}
@@ -74,8 +86,8 @@ export default function GallerySection() {
         {/* Gallery Image Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '20px'
+          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gap: '18px'
         }}>
           {filteredItems.map((item) => (
             <div 
@@ -83,7 +95,7 @@ export default function GallerySection() {
               onClick={() => setLightboxItem(item)}
               style={{
                 position: 'relative',
-                height: '280px',
+                height: '240px',
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
                 cursor: 'pointer',
@@ -101,7 +113,7 @@ export default function GallerySection() {
               ) : (
                 <img 
                   src={item.url} 
-                  alt={item.title}
+                  alt={item.title} 
                   style={{
                     width: '100%',
                     height: '100%',
@@ -115,26 +127,26 @@ export default function GallerySection() {
               <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(19, 46, 31, 0.85) 100%)',
+                background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(19, 46, 31, 0.88) 100%)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'flex-end',
-                padding: '20px',
+                padding: '16px',
                 color: '#FFFFFF'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <div>
-                    <span className="badge-gold" style={{ fontSize: '0.7rem', padding: '2px 8px', marginBottom: '4px', display: 'inline-block' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span className="badge-gold" style={{ fontSize: '0.65rem', padding: '2px 7px', marginBottom: '3px', display: 'inline-block' }}>
                       {item.category || 'Resort'}
                     </span>
-                    <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', color: '#FFFFFF', fontWeight: '500' }}>
+                    <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: '#FFFFFF', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.title}
                     </h4>
                   </div>
 
                   <div style={{
-                    width: '36px',
-                    height: '36px',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '50%',
                     backgroundColor: 'rgba(255, 255, 255, 0.25)',
                     backdropFilter: 'blur(4px)',
@@ -143,7 +155,7 @@ export default function GallerySection() {
                     justifyContent: 'center',
                     flexShrink: 0
                   }}>
-                    {item.type === 'video' ? <Play size={18} fill="#FFF" /> : <Maximize2 size={16} />}
+                    {item.type === 'video' ? <Play size={15} fill="#FFF" /> : <Maximize2 size={14} />}
                   </div>
                 </div>
               </div>
@@ -165,56 +177,57 @@ export default function GallerySection() {
           <div 
             className="modal-content" 
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '900px', backgroundColor: '#0A0E0C', padding: 0 }}
+            style={{ maxWidth: '900px', width: '96%', backgroundColor: '#0A0E0C', padding: 0 }}
           >
             <button
               onClick={() => setLightboxItem(null)}
+              aria-label="Close dialog"
               style={{
                 position: 'absolute',
-                top: '16px',
-                right: '16px',
+                top: '14px',
+                right: '14px',
                 zIndex: 10,
-                backgroundColor: 'rgba(0,0,0,0.6)',
+                backgroundColor: 'rgba(0,0,0,0.65)',
                 color: '#FFFFFF',
                 border: 'none',
                 borderRadius: '50%',
-                width: '40px',
-                height: '40px',
+                width: '36px',
+                height: '36px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
             >
-              <X size={24} />
+              <X size={20} />
             </button>
 
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px', maxHeight: '80vh', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', maxHeight: '75vh', padding: '16px' }}>
               {lightboxItem.type === 'video' ? (
                 <video 
                   src={lightboxItem.url} 
                   controls 
                   autoPlay 
-                  style={{ maxWidth: '100%', maxHeight: '75vh', borderRadius: 'var(--radius-sm)' }} 
+                  style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 'var(--radius-sm)' }} 
                 />
               ) : (
                 <img 
                   src={lightboxItem.url} 
                   alt={lightboxItem.title} 
-                  style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', borderRadius: 'var(--radius-sm)' }}
+                  style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 'var(--radius-sm)' }}
                 />
               )}
             </div>
 
-            <div style={{ padding: '20px 24px', backgroundColor: 'var(--bg-forest)', color: '#FFFFFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '16px 20px', backgroundColor: 'var(--bg-forest)', color: '#FFFFFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
               <div>
-                <span className="badge-gold">{lightboxItem.category}</span>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', color: '#FFFFFF', marginTop: '4px' }}>
+                <span className="badge-gold" style={{ fontSize: '0.65rem' }}>{lightboxItem.category}</span>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: '#FFFFFF', marginTop: '2px' }}>
                   {lightboxItem.title}
                 </h3>
               </div>
-              <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                73 Hills Resort & Real Estate
+              <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.65)', whiteSpace: 'nowrap' }}>
+                73 Hills Sanctuary
               </span>
             </div>
           </div>

@@ -38,13 +38,13 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
   };
 
   return (
-    <section id="about" style={{ padding: '100px 0', position: 'relative', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>
+    <section id="about" style={{ padding: '80px 0', position: 'relative', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>
       
       <div className="container" style={{ position: 'relative', zIndex: 2 }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '60px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '48px',
           alignItems: 'center'
         }}>
           
@@ -65,7 +65,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
             >
               {/* If YouTube / Embed Link */}
               {embedUrl ? (
-                <div style={{ position: 'relative', height: '480px', overflow: 'hidden' }}>
+                <div style={{ position: 'relative', height: 'clamp(280px, 42vw, 460px)', overflow: 'hidden' }}>
                   <iframe 
                     src={embedUrl}
                     title="73 Hills Resort Full View Tour"
@@ -75,7 +75,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                 </div>
               ) : isVideo ? (
                 /* Direct Video File / MP4 / WebM / Blob */
-                <div style={{ position: 'relative', height: '480px' }}>
+                <div style={{ position: 'relative', height: 'clamp(280px, 42vw, 460px)' }}>
                   <video 
                     ref={videoRef}
                     src={aboutUrl} 
@@ -96,25 +96,25 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                     onClick={toggleSound}
                     style={{
                       position: 'absolute',
-                      top: '16px',
-                      right: '16px',
+                      top: '14px',
+                      right: '14px',
                       zIndex: 10,
                       backgroundColor: 'rgba(13, 33, 22, 0.85)',
                       backdropFilter: 'blur(8px)',
                       color: '#FFFFFF',
                       border: '1px solid var(--color-gold)',
                       borderRadius: 'var(--radius-full)',
-                      padding: '8px 14px',
+                      padding: '6px 12px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
                       cursor: 'pointer',
-                      fontSize: '0.75rem',
+                      fontSize: '0.725rem',
                       fontWeight: '600'
                     }}
                     title={isMuted ? 'Click to Unmute Video Audio' : 'Mute Audio'}
                   >
-                    {isMuted ? <VolumeX size={16} color="#B38B59" /> : <Volume2 size={16} color="#28A745" />}
+                    {isMuted ? <VolumeX size={15} color="#B38B59" /> : <Volume2 size={15} color="#28A745" />}
                     <span>{isMuted ? 'SOUND OFF' : 'SOUND ON'}</span>
                   </button>
                 </div>
@@ -125,7 +125,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                   alt="73 Hills Sandalwood Walkway" 
                   style={{
                     width: '100%',
-                    height: '480px',
+                    height: 'clamp(280px, 42vw, 460px)',
                     objectFit: 'cover',
                     display: 'block',
                     transition: 'transform 0.5s ease'
@@ -148,8 +148,8 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  width: '80px',
-                  height: '80px',
+                  width: '70px',
+                  height: '70px',
                   borderRadius: '50%',
                   backgroundColor: 'rgba(253, 251, 247, 0.95)',
                   border: '2px solid var(--color-gold)',
@@ -162,49 +162,49 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                   zIndex: 5
                 }}
               >
-                <Play size={32} style={{ marginLeft: '4px' }} fill="currentColor" />
+                <Play size={28} style={{ marginLeft: '4px' }} fill="currentColor" />
               </div>
 
               {/* Top-Left Live Video Tag */}
               <div style={{
                 position: 'absolute',
-                top: '16px',
-                left: '16px',
+                top: '14px',
+                left: '14px',
                 backgroundColor: 'rgba(13, 33, 22, 0.85)',
                 backdropFilter: 'blur(8px)',
                 border: '1px solid rgba(179, 139, 89, 0.5)',
-                padding: '6px 12px',
+                padding: '5px 10px',
                 borderRadius: 'var(--radius-full)',
                 color: '#FFFFFF',
-                fontSize: '0.75rem',
+                fontSize: '0.7rem',
                 fontWeight: '700',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                letterSpacing: '0.08em',
+                gap: '6px',
+                letterSpacing: '0.06em',
                 textTransform: 'uppercase',
                 zIndex: 5
               }}>
                 <span style={{
-                  width: '8px',
-                  height: '8px',
+                  width: '7px',
+                  height: '7px',
                   borderRadius: '50%',
                   backgroundColor: '#4EBA6F',
                   display: 'inline-block',
                   boxShadow: '0 0 8px #4EBA6F'
                 }} />
-                RESORT FULL VIEW VIDEO
+                RESORT TOUR VIDEO
               </div>
 
               {/* Bottom Badge with Full Video Tour Caption */}
               <div style={{
                 position: 'absolute',
-                bottom: '16px',
-                left: '16px',
-                right: '16px',
+                bottom: '14px',
+                left: '14px',
+                right: '14px',
                 backgroundColor: 'rgba(19, 46, 31, 0.92)',
                 backdropFilter: 'blur(10px)',
-                padding: '12px 18px',
+                padding: '10px 14px',
                 borderRadius: 'var(--radius-sm)',
                 border: '1px solid rgba(179, 139, 89, 0.4)',
                 color: '#FFFFFF',
@@ -213,14 +213,14 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                 alignItems: 'center',
                 zIndex: 5
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Trees size={20} color="#B38B59" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Trees size={18} color="#B38B59" style={{ flexShrink: 0 }} />
                   <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#FFFFFF' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FFFFFF', lineHeight: 1.2 }}>
                       73 Acres Sandalwood Sanctuary Tour
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: '#B38B59', letterSpacing: '0.05em' }}>
-                      Click to watch in cinematic 4K full-screen
+                    <div style={{ fontSize: '0.675rem', color: '#B38B59', letterSpacing: '0.03em', marginTop: '2px' }}>
+                      Click to watch in cinematic full-screen
                     </div>
                   </div>
                 </div>
@@ -233,10 +233,11 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  fontSize: '0.7rem',
-                  fontWeight: '600'
+                  fontSize: '0.675rem',
+                  fontWeight: '600',
+                  flexShrink: 0
                 }}>
-                  <Maximize size={12} /> EXPAND
+                  <Maximize size={11} /> EXPAND
                 </div>
               </div>
             </div>
@@ -254,10 +255,10 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
             </h2>
 
             <p style={{
-              fontSize: '1.05rem',
+              fontSize: '1rem',
               color: 'var(--text-muted)',
               lineHeight: 1.7,
-              marginBottom: '28px'
+              marginBottom: '24px'
             }}>
               {settings?.aboutParagraph || "73 Hills is a premium resort and real estate property sprawled across 73 acres of fragrance, greenery and tranquility. Home to Red Sandalwood and Sandalwood Gandom trees, this is more than a stay — it's an experience that stays with you forever."}
             </p>
@@ -266,40 +267,42 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '20px',
+              gap: '16px',
               backgroundColor: '#FFFFFF',
               border: '1px solid var(--color-gold)',
               borderRadius: 'var(--radius-md)',
-              padding: '16px 20px',
-              marginBottom: '28px',
+              padding: '14px 18px',
+              marginBottom: '26px',
               boxShadow: 'var(--shadow-md)'
             }}>
-              <SandalwoodBotanicalArt width={90} height={90} shadow={false} />
+              <div style={{ flexShrink: 0 }}>
+                <SandalwoodBotanicalArt width={78} height={78} shadow={false} />
+              </div>
               
               <div>
                 <span className="badge-gold" style={{ fontSize: '0.65rem', marginBottom: '4px', display: 'inline-block' }}>
                   GENUINE BOTANICAL HERITAGE
                 </span>
-                <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', color: 'var(--color-emerald)', fontWeight: '600' }}>
+                <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: 'var(--color-emerald)', fontWeight: '600', lineHeight: 1.2 }}>
                   Santalum Album & Red Sandalwood
                 </h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.4 }}>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px', lineHeight: 1.4 }}>
                   Nurtured naturally across 73 acres of fragrant pristine forest.
                 </p>
               </div>
             </div>
 
             {/* Bullet Features */}
-            <div style={{ display: 'grid', gap: '14px', marginBottom: '32px' }}>
+            <div style={{ display: 'grid', gap: '12px', marginBottom: '28px' }}>
               {[
                 '73 Acres of rare Red Sandalwood & Sandalwood tree forest estate',
                 'Eco-friendly luxury wooden villas and private infinity pools',
                 'Exclusive venue for weddings, corporate retreats, and private celebrations',
                 'Located in pristine Yerravaram, Andhra Pradesh'
               ].map((feat, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                  <CheckCircle2 size={20} color="#B38B59" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: '500' }}>
+                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <CheckCircle2 size={18} color="#B38B59" style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '500' }}>
                     {feat}
                   </span>
                 </div>
@@ -307,7 +310,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
             </div>
 
             <a href="#stay-rooms" className="btn-gold">
-              VIEW MORE
+              EXPLORE ROOMS & COTTAGES
             </a>
 
           </div>
