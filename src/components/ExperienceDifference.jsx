@@ -30,12 +30,12 @@ export default function ExperienceDifference() {
     <section 
       className="experience-difference-section"
       style={{ 
-        padding: '70px 0 80px 0', 
+        padding: '90px 0 80px 0', 
         backgroundColor: 'var(--bg-cream)', 
         borderTop: '1px solid var(--border-light)',
         borderBottom: '1px solid var(--border-light)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'visible'
       }}
     >
       <div className="container" style={{ position: 'relative', zIndex: 2 }}>

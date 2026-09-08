@@ -299,11 +299,11 @@ h1, h2, h3, h4, h5, h6 {
   text-transform: uppercase;
 }
 
-/* Sandalwood Graphic Tree Flanking (Desktop & Tablet & Mobile Responsive) */
+/* Sandalwood Graphic Tree Flanking (Desktop & Tablet & Mobile Responsive - Zero Clipping) */
 .experience-tree-left {
   position: absolute;
-  top: -160px;
-  left: 0px;
+  top: -45px;
+  left: 10px;
   z-index: 3;
   pointer-events: none;
   transition: all 0.3s ease;
@@ -311,54 +311,60 @@ h1, h2, h3, h4, h5, h6 {
 
 .experience-tree-right {
   position: absolute;
-  top: -160px;
-  right: 0px;
+  top: -45px;
+  right: 10px;
   z-index: 3;
   pointer-events: none;
   transition: all 0.3s ease;
 }
 
+.experience-tree-left .sandalwood-sketch-tree-wrapper,
+.experience-tree-right .sandalwood-sketch-tree-wrapper {
+  width: 290px !important;
+  height: 290px !important;
+}
+
 @media (max-width: 1200px) {
   .experience-tree-left {
-    left: -15px;
-    top: -130px;
+    left: 0px;
+    top: -40px;
   }
   .experience-tree-right {
-    right: -15px;
-    top: -130px;
+    right: 0px;
+    top: -40px;
   }
   .experience-tree-left .sandalwood-sketch-tree-wrapper,
   .experience-tree-right .sandalwood-sketch-tree-wrapper {
-    width: 260px !important;
-    height: 260px !important;
+    width: 240px !important;
+    height: 240px !important;
   }
 }
 
 @media (max-width: 990px) {
   .experience-tree-left {
-    top: -90px;
-    left: -10px;
+    top: -30px;
+    left: -5px;
   }
   .experience-tree-right {
-    top: -90px;
-    right: -10px;
+    top: -30px;
+    right: -5px;
   }
   .experience-tree-left .sandalwood-sketch-tree-wrapper,
   .experience-tree-right .sandalwood-sketch-tree-wrapper {
-    width: 200px !important;
-    height: 200px !important;
+    width: 190px !important;
+    height: 190px !important;
   }
 }
 
 /* Mobile Frame Experience Graphic Trees: Refined presentation flanking the header cleanly */
 @media (max-width: 768px) {
   .experience-tree-left {
-    top: -45px;
+    top: -15px;
     left: -10px;
     opacity: 0.85;
   }
   .experience-tree-right {
-    top: -45px;
+    top: -15px;
     right: -10px;
     opacity: 0.85;
   }
@@ -371,19 +377,19 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 480px) {
   .experience-tree-left {
-    top: -35px;
+    top: -10px;
     left: -15px;
     opacity: 0.75;
   }
   .experience-tree-right {
-    top: -35px;
+    top: -10px;
     right: -15px;
     opacity: 0.75;
   }
   .experience-tree-left .sandalwood-sketch-tree-wrapper,
   .experience-tree-right .sandalwood-sketch-tree-wrapper {
-    width: 100px !important;
-    height: 100px !important;
+    width: 95px !important;
+    height: 95px !important;
   }
 }
 
