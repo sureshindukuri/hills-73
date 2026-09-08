@@ -212,6 +212,51 @@ export const SandalwoodSketchTree = ({
   );
 };
 
+/**
+ * High-Definition Bamboo Plants & Grass Graphic Artwork Component
+ * Renders an ultra-luxurious botanical illustration of bamboo plants with natural grass base.
+ * Uses mix-blend-mode: multiply to seamlessly blend on cream / warm backgrounds.
+ */
+export const BambooGrassGraphic = ({
+  width = '100%',
+  height = 'auto',
+  maxHeight = 220,
+  className = "",
+  style = {}
+}) => {
+  return (
+    <div 
+      className={`bamboo-grass-graphic-wrapper ${className}`}
+      style={{
+        width: typeof width === 'number' ? `${width}px` : width,
+        height: typeof height === 'number' ? `${height}px` : height,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        userSelect: 'none',
+        pointerEvents: 'none',
+        overflow: 'hidden',
+        borderRadius: 'var(--radius-md)',
+        ...style
+      }}
+    >
+      <img 
+        src="/assets/bamboo_grass_graphic.jpg" 
+        alt="73 Hills Bamboo & Botanical Grass Illustration" 
+        style={{
+          width: '100%',
+          maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight,
+          objectFit: 'contain',
+          display: 'block',
+          mixBlendMode: 'multiply',
+          filter: 'contrast(1.06) brightness(1.02)'
+        }}
+      />
+    </div>
+  );
+};
+
 
 
 

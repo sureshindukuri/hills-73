@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, MapPin, Send, CheckCircle2 } from 'lucide-react';
+import { BambooGrassGraphic } from './SandalwoodGraphics';
 
 export default function ContactSection({ settings }) {
   const [submitted, setSubmitted] = useState(false);
@@ -110,6 +111,29 @@ export default function ContactSection({ settings }) {
                 </p>
                 <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)' }}>73 Acres Sandalwood Sanctuary</span>
               </div>
+            </div>
+
+            {/* Graphic Grass & Bamboo Plants Showcase */}
+            <div className="luxury-card" style={{ 
+              padding: '16px 20px 12px 20px', 
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border-light)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span className="badge-gold" style={{ fontSize: '0.65rem' }}>
+                  73 ACRES BOTANICAL SANCTUARY
+                </span>
+                <span style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+                  Bamboo & Flora Groves
+                </span>
+              </div>
+
+              <BambooGrassGraphic maxHeight={180} />
             </div>
 
           </div>
