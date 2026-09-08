@@ -88,7 +88,7 @@ export default function ExperienceDifference() {
               style={{
                 padding: '28px 20px',
                 textAlign: 'center',
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--bg-card)',
                 borderRadius: 'var(--radius-md)',
                 position: 'relative',
                 display: 'flex',
@@ -100,7 +100,7 @@ export default function ExperienceDifference() {
                 width: '58px',
                 height: '58px',
                 borderRadius: '50%',
-                backgroundColor: 'var(--bg-cream)',
+                backgroundColor: 'var(--icon-bg)',
                 border: '1px solid var(--border-light)',
                 display: 'inline-flex',
                 alignItems: 'center',

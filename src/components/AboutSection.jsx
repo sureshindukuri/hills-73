@@ -268,7 +268,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
               display: 'flex',
               alignItems: 'center',
               gap: '16px',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid var(--color-gold)',
               borderRadius: 'var(--radius-md)',
               padding: '14px 18px',

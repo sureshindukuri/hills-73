@@ -66,7 +66,7 @@ export default function GallerySection() {
                   borderRadius: 'var(--radius-full)',
                   border: '1px solid',
                   borderColor: activeCategory === cat ? 'var(--color-gold)' : 'var(--border-light)',
-                  backgroundColor: activeCategory === cat ? 'var(--color-gold)' : '#FFFFFF',
+                  backgroundColor: activeCategory === cat ? 'var(--color-gold)' : 'var(--bg-card)',
                   color: activeCategory === cat ? '#FFFFFF' : 'var(--text-main)',
                   fontSize: '0.8rem',
                   fontWeight: '600',

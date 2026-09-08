@@ -18,9 +18,33 @@ export default function App() {
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState(null);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
 
+  // Dark / Light Mode Theme State
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('73hills_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch (e) {
+      return 'light';
+    }
+  });
+
   const [rooms, setRooms] = useState(getStoredRooms());
   const [settings, setSettings] = useState(getSiteSettings());
   const [sectionMedia, setSectionMedia] = useState({});
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('73hills_theme', theme);
+    } catch (e) {
+      // ignore
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   useEffect(() => {
     // Load section media (logo, hero video/image, about media, celebrations media, etc.)
@@ -78,6 +102,8 @@ export default function App() {
         onOpenBooking={() => handleOpenBooking()}
         onToggleAdmin={handleToggleAdmin}
         isAdminView={adminPanelOpen}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main Website Sections */}
@@ -119,6 +145,8 @@ export default function App() {
         sectionMedia={sectionMedia}
         onOpenBooking={() => handleOpenBooking()}
         onToggleAdmin={handleToggleAdmin}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Booking Modal */}

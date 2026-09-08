@@ -116,7 +116,7 @@ export default function ContactSection({ settings }) {
             {/* Graphic Grass & Bamboo Plants Showcase */}
             <div className="luxury-card" style={{ 
               padding: '16px 20px 12px 20px', 
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--bg-card)',
               border: '1px solid var(--border-light)',
               display: 'flex',
               flexDirection: 'column',
@@ -139,7 +139,7 @@ export default function ContactSection({ settings }) {
           </div>
 
           {/* Form Card (Right Side) */}
-          <div className="luxury-card" style={{ padding: 'clamp(20px, 4vw, 32px)', backgroundColor: '#FFFFFF' }}>
+          <div className="luxury-card" style={{ padding: 'clamp(20px, 4vw, 32px)', backgroundColor: 'var(--bg-card)' }}>
             {submitted ? (
               <div style={{ textAlign: 'center', padding: '30px 16px' }}>
                 <CheckCircle2 size={48} color="#28A745" style={{ margin: '0 auto 12px auto' }} />

@@ -54,7 +54,7 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--bg-card)',
                     border: '1px solid var(--border-light)',
                     padding: '8px 14px',
                     borderRadius: 'var(--radius-full)',

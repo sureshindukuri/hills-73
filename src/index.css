@@ -1,4 +1,4 @@
-:root {
+:root, [data-theme="light"] {
   --bg-main: #FDFBF7;
   --bg-card: #FFFFFF;
   --bg-cream: #F7F3EB;
@@ -13,7 +13,7 @@
   --text-main: #1C231F;
   --text-muted: #5E6961;
   --text-light: #8E9991;
-  --border-light: rgba(179, 139, 89, 0.2);
+  --border-light: rgba(179, 139, 89, 0.22);
   --border-green: rgba(27, 62, 43, 0.15);
   --shadow-sm: 0 4px 12px rgba(19, 46, 31, 0.04);
   --shadow-md: 0 8px 24px rgba(19, 46, 31, 0.08);
@@ -27,6 +27,42 @@
   --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  --header-scrolled-bg: rgba(253, 251, 247, 0.98);
+  --input-bg: #FFFFFF;
+  --input-border: rgba(179, 139, 89, 0.3);
+  --drawer-bg: #FDFBF7;
+  --table-stripe: rgba(179, 139, 89, 0.04);
+  --table-border: rgba(179, 139, 89, 0.15);
+  --icon-bg: #F7F3EB;
+}
+
+[data-theme="dark"] {
+  --bg-main: #0B1711;
+  --bg-card: #13241B;
+  --bg-cream: #0E1D16;
+  --bg-cream-dark: #172D22;
+  --bg-forest: #07120D;
+  --bg-forest-dark: #040B07;
+  --color-gold: #C9A35F;
+  --color-gold-dark: #AD8947;
+  --color-gold-light: rgba(201, 163, 95, 0.16);
+  --color-emerald: #2B6244;
+  --color-emerald-soft: #3D7F5B;
+  --text-main: #F3F7F5;
+  --text-muted: #A3B5AA;
+  --text-light: #7E9186;
+  --border-light: rgba(201, 163, 95, 0.25);
+  --border-green: rgba(61, 127, 91, 0.25);
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.75);
+  --header-scrolled-bg: rgba(11, 23, 17, 0.98);
+  --input-bg: #0D1A13;
+  --input-border: rgba(201, 163, 95, 0.35);
+  --drawer-bg: #0B1711;
+  --table-stripe: rgba(255, 255, 255, 0.03);
+  --table-border: rgba(201, 163, 95, 0.18);
+  --icon-bg: #1A3025;
 }
 
 * {
@@ -38,6 +74,8 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
+  background-color: var(--bg-main);
+  color-scheme: light dark;
 }
 
 body {
@@ -47,6 +85,7 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -271,8 +310,8 @@ h1, h2, h3, h4, h5, h6 {
 .form-input, .form-select, .form-textarea {
   width: 100%;
   padding: 12px 16px;
-  background-color: var(--bg-main);
-  border: 1px solid rgba(179, 139, 89, 0.3);
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
   font-family: var(--font-sans);
   font-size: 0.95rem;
@@ -284,7 +323,7 @@ h1, h2, h3, h4, h5, h6 {
 .form-input:focus, .form-select:focus, .form-textarea:focus {
   border-color: var(--color-gold);
   box-shadow: 0 0 0 3px rgba(179, 139, 89, 0.15);
-  background-color: #FFFFFF;
+  background-color: var(--input-bg);
 }
 
 /* Badge tag */
