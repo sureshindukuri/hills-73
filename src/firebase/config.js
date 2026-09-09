@@ -7,13 +7,13 @@ import { getFirestore } from 'firebase/firestore';
  * Paste your Firebase Project Credentials below or pass them via environment variables.
  */
 export const firebaseConfig = {
-  apiKey: "AIzaSyCwjcsr6NVrWWZw0NWeU9KKdA924gc24O8",
-  authDomain: "hills73-9ed52.firebaseapp.com",
-  projectId: "hills73-9ed52",
-  storageBucket: "hills73-9ed52.firebasestorage.app",
-  messagingSenderId: "340098624726",
-  appId: "1:340098624726:web:a9efdb31ec693ccf26ad77",
-  measurementId: "G-1D9N3FLF4N"
+  apiKey: "AIzaSyBdZtdXdtFMvXagVohjOEtC7Zc9mmtZjtk",
+  authDomain: "hill-c5066.firebaseapp.com",
+  projectId: "hill-c5066",
+  storageBucket: "hill-c5066.firebasestorage.app",
+  messagingSenderId: "640249066143",
+  appId: "1:640249066143:web:6d4658499aa286b72428aa",
+  measurementId: "G-J6265T8YMM"
 };
 
 // Initialize Firebase safely
