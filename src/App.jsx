@@ -11,7 +11,13 @@ import Footer from './components/Footer';
 import BookingModal from './components/BookingModal';
 import AdminPanel from './components/AdminPanel';
 
-import { getStoredRooms, getSiteSettings, getAllSectionMedia } from './utils/storage';
+import { 
+  getStoredRooms, 
+  getSiteSettings, 
+  getAllSectionMedia,
+  syncFromCloudToLocal 
+} from './utils/storage';
+import { subscribeToCloudUpdates } from './utils/cloudSync';
 
 export default function App() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -47,16 +53,44 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Load section media (logo, hero video/image, about media, celebrations media, etc.)
-    const loadMedia = async () => {
+    // 1. Initial local load
+    const loadInitialLocal = async () => {
       try {
         const mediaMap = await getAllSectionMedia();
         setSectionMedia(mediaMap);
       } catch (e) {
-        console.warn('Failed to load section media:', e);
+        console.warn('Failed to load local section media:', e);
       }
     };
-    loadMedia();
+    loadInitialLocal();
+
+    // 2. Fetch live state from Cloud to sync all devices
+    const syncCloud = async () => {
+      try {
+        const cloudState = await syncFromCloudToLocal();
+        if (cloudState) {
+          if (cloudState.settings) setSettings(cloudState.settings);
+          if (cloudState.rooms) setRooms(cloudState.rooms);
+          if (cloudState.sectionMedia) {
+            const freshMedia = await getAllSectionMedia();
+            setSectionMedia(freshMedia);
+          }
+        }
+      } catch (e) {
+        console.warn('Cloud sync error:', e);
+      }
+    };
+    syncCloud();
+
+    // 3. Subscribe to real-time broadcasts
+    const unsubscribe = subscribeToCloudUpdates((newState) => {
+      if (newState.settings) setSettings(newState.settings);
+      if (newState.rooms) setRooms(newState.rooms);
+      if (newState.sectionMedia) setSectionMedia(newState.sectionMedia);
+    });
+
+    // 4. Periodic background sync for active visitor devices (every 12 seconds)
+    const syncInterval = setInterval(syncCloud, 12000);
 
     const checkAdminRoute = () => {
       const isRoute = window.location.pathname.toLowerCase().includes('/admin') || 
@@ -68,9 +102,14 @@ export default function App() {
 
     window.addEventListener('popstate', checkAdminRoute);
     window.addEventListener('hashchange', checkAdminRoute);
+    window.addEventListener('focus', syncCloud);
+
     return () => {
+      unsubscribe();
+      clearInterval(syncInterval);
       window.removeEventListener('popstate', checkAdminRoute);
       window.removeEventListener('hashchange', checkAdminRoute);
+      window.removeEventListener('focus', syncCloud);
     };
   }, []);
 

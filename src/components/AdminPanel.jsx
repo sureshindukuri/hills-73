@@ -11,7 +11,7 @@ import {
   saveSectionMedia, getAllSectionMedia, deleteSectionMedia,
   getStoredRooms, saveStoredRooms, DEFAULT_ROOMS,
   getStoredBookings, saveStoredBookings, clearStoredBookings,
-  getSiteSettings, saveSiteSettings
+  getSiteSettings, saveSiteSettings, syncFromCloudToLocal
 } from '../utils/storage';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 
@@ -119,6 +119,9 @@ export default function AdminPanel({
 
   const loadAllAdminData = async () => {
     try {
+      // Sync latest cloud state first
+      await syncFromCloudToLocal();
+
       const sMedia = await getAllSectionMedia();
       setSectionMedia(sMedia);
       const gItems = await getAllGalleryItems();
@@ -695,6 +698,22 @@ export default function AdminPanel({
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '5px 10px',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: 'rgba(40, 167, 69, 0.18)',
+              border: '1px solid rgba(40, 167, 69, 0.4)',
+              color: '#75E096',
+              fontSize: '0.72rem',
+              fontWeight: '600'
+            }}>
+              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#28A745', display: 'inline-block', boxShadow: '0 0 6px #28A745' }} />
+              Cloud Sync: Live Worldwide
+            </div>
+
             <button 
               onClick={handleClearAllBookings}
               style={{
@@ -728,8 +747,9 @@ export default function AdminPanel({
                 cursor: 'pointer',
                 fontSize: '0.75rem'
               }}
+              title="Sync all changes with cloud database"
             >
-              <RefreshCw size={13} /> Refresh
+              <RefreshCw size={13} /> Sync & Refresh
             </button>
 
             <button 

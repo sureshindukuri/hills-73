@@ -1,6 +1,8 @@
+import { pushCloudUpdate, fetchLatestCloudState, fileToDataUrl } from './cloudSync';
+
 /**
- * Storage Utility using IndexedDB for high-capacity media files (photos & videos uploaded from device)
- * combined with LocalStorage for settings, bookings, and rooms configuration.
+ * Storage Utility with IndexedDB for high-capacity local media
+ * and automatic Real-Time Cloud Sync for all cross-device Admin updates.
  */
 
 const DB_NAME = '73HillsResortDB';
@@ -112,10 +114,7 @@ export const DEFAULT_SECTION_MEDIA = {
 
 /**
  * Save Section-Specific Media (Logo, Hero, About, Celebrations, etc.)
- * Supports either a device File/Blob OR a direct Video URL / Embed link.
- * @param {string} sectionKey - 'logo' | 'hero' | 'about' | 'celebrations' | 'room-[id]'
- * @param {File|string} fileOrUrl - Device File object (Image or Video) or URL string
- * @param {object} meta - Optional metadata (title, subtitle, etc.)
+ * Automatically broadcasts and syncs to all devices via Cloud Sync.
  */
 export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
   try {
@@ -124,8 +123,9 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
     const store = transaction.objectStore(SECTION_MEDIA_STORE);
 
     let record;
+    let cloudUrl = null;
+
     if (typeof fileOrUrl === 'string') {
-      // Direct URL provided (e.g. YouTube, Vimeo, or MP4 link)
       const isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
       record = {
         sectionKey,
@@ -136,28 +136,59 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
         isDefault: false,
         ...meta
       };
+      cloudUrl = fileOrUrl;
     } else {
-      // Device File/Blob
+      // Device file / blob: convert to dataUrl for cross-device cloud persistence
+      try {
+        cloudUrl = await fileToDataUrl(fileOrUrl);
+      } catch(e) {
+        console.warn('Could not create dataUrl:', e);
+      }
+
       record = {
         sectionKey,
         fileName: fileOrUrl.name,
         fileType: fileOrUrl.type,
         mediaType: fileOrUrl.type.startsWith('video/') ? 'video' : 'image',
         fileBlob: fileOrUrl,
+        customUrl: cloudUrl || null,
         updatedAt: new Date().toISOString(),
         isDefault: false,
         ...meta
       };
     }
 
-    return new Promise((resolve, reject) => {
+    const savedRecord = await new Promise((resolve, reject) => {
       const request = store.put(record);
       request.onsuccess = () => {
-        const url = record.fileBlob ? createBlobUrl(record.fileBlob) : record.customUrl;
+        const url = record.customUrl || (record.fileBlob ? createBlobUrl(record.fileBlob) : null);
         resolve({ ...record, url });
       };
       request.onerror = (err) => reject(err);
     });
+
+    // Sync to Cloud so all devices receive the new video/image
+    try {
+      const allCurrent = await getAllSectionMedia();
+      const updatedCloudMap = {
+        ...allCurrent,
+        [sectionKey]: {
+          sectionKey,
+          customUrl: savedRecord.customUrl || savedRecord.url,
+          url: savedRecord.customUrl || savedRecord.url,
+          mediaType: savedRecord.mediaType,
+          fileName: savedRecord.fileName,
+          title: savedRecord.title || meta.title,
+          updatedAt: savedRecord.updatedAt,
+          isDefault: false
+        }
+      };
+      pushCloudUpdate('sectionMedia', updatedCloudMap);
+    } catch(e) {
+      console.warn('[Storage] Cloud sync broadcast error:', e);
+    }
+
+    return savedRecord;
   } catch (error) {
     console.error(`Error saving section media (${sectionKey}):`, error);
     throw error;
@@ -165,8 +196,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
 }
 
 /**
- * Retrieve Section-Specific Media from IndexedDB
- * @param {string} sectionKey - 'logo' | 'hero' | 'about' | 'celebrations'
+ * Retrieve Section-Specific Media from IndexedDB / Cloud Cache
  */
 export async function getSectionMedia(sectionKey) {
   try {
@@ -179,7 +209,7 @@ export async function getSectionMedia(sectionKey) {
       request.onsuccess = (event) => {
         const result = event.target.result;
         if (result) {
-          const url = result.fileBlob ? createBlobUrl(result.fileBlob) : result.customUrl;
+          const url = result.customUrl || (result.fileBlob ? createBlobUrl(result.fileBlob) : null);
           resolve({ ...result, url });
         } else {
           resolve(DEFAULT_SECTION_MEDIA[sectionKey] || null);
@@ -194,7 +224,7 @@ export async function getSectionMedia(sectionKey) {
 }
 
 /**
- * Get all Section Media items as a key-value dictionary { logo: { url, ... }, hero: { url, ... }, about: { url, ... } }
+ * Get all Section Media items as a key-value dictionary
  */
 export async function getAllSectionMedia() {
   try {
@@ -208,8 +238,8 @@ export async function getAllSectionMedia() {
         const results = event.target.result || [];
         const mediaMap = { ...DEFAULT_SECTION_MEDIA };
         results.forEach(item => {
-          if (item) {
-            const url = item.fileBlob ? createBlobUrl(item.fileBlob) : item.customUrl;
+          if (item && item.sectionKey) {
+            const url = item.customUrl || (item.fileBlob ? createBlobUrl(item.fileBlob) : item.url);
             mediaMap[item.sectionKey] = {
               ...item,
               url
@@ -228,7 +258,6 @@ export async function getAllSectionMedia() {
 
 /**
  * Delete a Section-Specific Media record (Resets section to default asset)
- * @param {string} sectionKey
  */
 export async function deleteSectionMedia(sectionKey) {
   try {
@@ -236,11 +265,21 @@ export async function deleteSectionMedia(sectionKey) {
     const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
     const store = transaction.objectStore(SECTION_MEDIA_STORE);
 
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       const request = store.delete(sectionKey);
       request.onsuccess = () => resolve(true);
       request.onerror = (err) => reject(err);
     });
+
+    // Cloud Sync deletion
+    try {
+      const allCurrent = await getAllSectionMedia();
+      const updated = { ...allCurrent };
+      delete updated[sectionKey];
+      pushCloudUpdate('sectionMedia', updated);
+    } catch(e) {}
+
+    return true;
   } catch (error) {
     console.error(`Failed to delete section media (${sectionKey}):`, error);
     return false;
@@ -248,7 +287,7 @@ export async function deleteSectionMedia(sectionKey) {
 }
 
 /**
- * Save custom media item (File uploaded from device) to Gallery
+ * Save custom media item to Gallery with Cloud Sync
  */
 export async function saveMediaItem(mediaMeta, file) {
   try {
@@ -256,25 +295,39 @@ export async function saveMediaItem(mediaMeta, file) {
     const transaction = db.transaction(GALLERY_STORE, 'readwrite');
     const store = transaction.objectStore(GALLERY_STORE);
     
+    let dataUrl = null;
+    try {
+      dataUrl = await fileToDataUrl(file);
+    } catch(e) {}
+
     const record = {
       id: mediaMeta.id || 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       title: mediaMeta.title || file.name,
       category: mediaMeta.category || 'General',
       type: file.type.startsWith('video/') ? 'video' : 'image',
       fileName: file.name,
-      fileBlob: file, // Store actual File / Blob in IndexedDB
+      fileBlob: file,
+      customUrl: dataUrl || null,
       uploadedAt: new Date().toISOString().split('T')[0],
       isDefault: false
     };
 
-    return new Promise((resolve, reject) => {
+    const saved = await new Promise((resolve, reject) => {
       const request = store.put(record);
       request.onsuccess = () => {
-        const url = createBlobUrl(file);
+        const url = record.customUrl || createBlobUrl(file);
         resolve({ ...record, url });
       };
       request.onerror = (err) => reject(err);
     });
+
+    // Sync Gallery to Cloud
+    try {
+      const allGallery = await getAllGalleryItems();
+      pushCloudUpdate('gallery', allGallery);
+    } catch(e) {}
+
+    return saved;
   } catch (error) {
     console.error('Error saving media to IndexedDB:', error);
     throw error;
@@ -282,7 +335,7 @@ export async function saveMediaItem(mediaMeta, file) {
 }
 
 /**
- * Fetch all gallery media items (merging defaults with IndexedDB user uploads)
+ * Fetch all gallery media items
  */
 export async function getAllGalleryItems() {
   try {
@@ -294,10 +347,10 @@ export async function getAllGalleryItems() {
       const request = store.getAll();
       request.onsuccess = (event) => {
         const customItems = (event.target.result || []).map(item => {
-          const blobUrl = createBlobUrl(item.fileBlob);
+          const url = item.customUrl || (item.fileBlob ? createBlobUrl(item.fileBlob) : item.url);
           return {
             ...item,
-            url: blobUrl
+            url
           };
         });
         resolve([...DEFAULT_GALLERY_ITEMS, ...customItems]);
@@ -321,11 +374,18 @@ export async function deleteMediaItem(id) {
     const transaction = db.transaction(GALLERY_STORE, 'readwrite');
     const store = transaction.objectStore(GALLERY_STORE);
     
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
       const request = store.delete(id);
       request.onsuccess = () => resolve(true);
       request.onerror = (err) => reject(err);
     });
+
+    try {
+      const allGallery = await getAllGalleryItems();
+      pushCloudUpdate('gallery', allGallery);
+    } catch(e) {}
+
+    return true;
   } catch (error) {
     console.error('Failed to delete media:', error);
     return false;
@@ -395,6 +455,7 @@ export function getStoredRooms() {
 
 export function saveStoredRooms(rooms) {
   localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
+  pushCloudUpdate('rooms', rooms);
 }
 
 export const DEFAULT_BOOKINGS = [];
@@ -412,24 +473,12 @@ export function getStoredBookings() {
 
 export function saveStoredBookings(bookings) {
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
+  pushCloudUpdate('bookings', bookings);
 }
 
 export function clearStoredBookings() {
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify([]));
-}
-
-export function getSiteSettings() {
-  const stored = localStorage.getItem(SETTINGS_KEY);
-  if (stored) {
-    try { 
-      const parsed = JSON.parse(stored);
-      return {
-        ...DEFAULT_POLICIES_FALLBACK,
-        ...parsed
-      };
-    } catch(e) {}
-  }
-  return DEFAULT_POLICIES_FALLBACK;
+  pushCloudUpdate('bookings', []);
 }
 
 export const DEFAULT_POLICIES_FALLBACK = {
@@ -461,8 +510,62 @@ export const DEFAULT_POLICIES_FALLBACK = {
   receiptFooterNote: 'Thank you for choosing 73 Hills Resort. We look forward to offering you an unforgettable luxury sanctuary experience!'
 };
 
+export function getSiteSettings() {
+  const stored = localStorage.getItem(SETTINGS_KEY);
+  if (stored) {
+    try { 
+      const parsed = JSON.parse(stored);
+      return {
+        ...DEFAULT_POLICIES_FALLBACK,
+        ...parsed
+      };
+    } catch(e) {}
+  }
+  return DEFAULT_POLICIES_FALLBACK;
+}
+
 export function saveSiteSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  pushCloudUpdate('settings', settings);
 }
+
+/**
+ * Synchronize local storage & IndexedDB with the latest Cloud state.
+ * Called when any device loads or receives live cloud broadcast.
+ */
+export async function syncFromCloudToLocal() {
+  try {
+    const cloudState = await fetchLatestCloudState();
+    if (!cloudState) return null;
+
+    if (cloudState.settings) {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudState.settings));
+    }
+    if (cloudState.rooms) {
+      localStorage.setItem(ROOMS_KEY, JSON.stringify(cloudState.rooms));
+    }
+    if (cloudState.bookings) {
+      localStorage.setItem(BOOKINGS_KEY, JSON.stringify(cloudState.bookings));
+    }
+    if (cloudState.sectionMedia) {
+      try {
+        const db = await openDB();
+        const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
+        const store = transaction.objectStore(SECTION_MEDIA_STORE);
+        Object.entries(cloudState.sectionMedia).forEach(([key, record]) => {
+          if (record && record.sectionKey) {
+            store.put(record);
+          }
+        });
+      } catch(e) {}
+    }
+
+    return cloudState;
+  } catch(e) {
+    console.warn('[Storage] Error during cloud sync to local:', e);
+    return null;
+  }
+}
+
 
 
