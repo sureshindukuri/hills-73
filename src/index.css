@@ -338,7 +338,7 @@ h1, h2, h3, h4, h5, h6 {
   text-transform: uppercase;
 }
 
-/* Sandalwood Graphic Tree Flanking (Desktop & Tablet & Mobile Responsive - Zero Clipping) */
+/* Sandalwood Graphic Tree Flanking (Desktop & Tablet & Mobile Responsive - Zero Clipping & Flawless Aesthetics) */
 .experience-tree-left {
   position: absolute;
   top: -45px;
@@ -395,40 +395,44 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Mobile Frame Experience Graphic Trees: Refined presentation flanking the header cleanly */
+/* Mobile Frame Experience Graphic Trees: Delicate botanical watermark accent, zero text overlap */
 @media (max-width: 768px) {
   .experience-tree-left {
-    top: -15px;
-    left: -10px;
-    opacity: 0.85;
+    top: -42px;
+    left: -15px;
+    opacity: 0.22;
+    z-index: 0;
   }
   .experience-tree-right {
-    top: -15px;
-    right: -10px;
-    opacity: 0.85;
+    top: -42px;
+    right: -15px;
+    opacity: 0.22;
+    z-index: 0;
   }
   .experience-tree-left .sandalwood-sketch-tree-wrapper,
   .experience-tree-right .sandalwood-sketch-tree-wrapper {
-    width: 130px !important;
-    height: 130px !important;
+    width: 80px !important;
+    height: 80px !important;
   }
 }
 
 @media (max-width: 480px) {
   .experience-tree-left {
-    top: -10px;
-    left: -15px;
-    opacity: 0.75;
+    top: -40px;
+    left: -18px;
+    opacity: 0.18;
+    z-index: 0;
   }
   .experience-tree-right {
-    top: -10px;
-    right: -15px;
-    opacity: 0.75;
+    top: -40px;
+    right: -18px;
+    opacity: 0.18;
+    z-index: 0;
   }
   .experience-tree-left .sandalwood-sketch-tree-wrapper,
   .experience-tree-right .sandalwood-sketch-tree-wrapper {
-    width: 95px !important;
-    height: 95px !important;
+    width: 65px !important;
+    height: 65px !important;
   }
 }
 
@@ -442,32 +446,80 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Botanical Bamboo Plants & Grass Graphic Styling for Light and Dark Sanctuary Themes */
+.botanical-bamboo-card {
+  background: linear-gradient(180deg, var(--bg-card) 0%, rgba(179, 139, 89, 0.05) 100%) !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.botanical-bamboo-card:hover {
+  box-shadow: 0 8px 30px rgba(179, 139, 89, 0.12);
+  border-color: rgba(179, 139, 89, 0.4) !important;
+}
+
+.bamboo-grass-graphic-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .bamboo-grass-graphic-img {
-  filter: contrast(1.05) saturate(1.1) drop-shadow(0 4px 16px rgba(19, 46, 31, 0.08));
+  filter: contrast(1.06) saturate(1.12) drop-shadow(0 4px 16px rgba(19, 46, 31, 0.1));
+  transition: transform 0.4s ease, filter 0.3s ease;
+  max-width: 100%;
+  height: auto;
+}
+
+.botanical-bamboo-card:hover .bamboo-grass-graphic-img {
+  transform: scale(1.02);
 }
 
 .bamboo-ambient-glow {
   position: absolute;
-  inset: 10px;
-  background: radial-gradient(ellipse at 50% 60%, rgba(179, 139, 89, 0.12) 0%, transparent 70%);
+  inset: 5px;
+  background: radial-gradient(ellipse at 50% 65%, rgba(179, 139, 89, 0.1) 0%, rgba(61, 145, 95, 0.08) 45%, transparent 70%);
   filter: blur(14px);
   z-index: 1;
   pointer-events: none;
 }
 
+@media (max-width: 768px) {
+  .botanical-bamboo-card {
+    padding: 14px 14px 10px 14px !important;
+  }
+  .bamboo-grass-graphic-img {
+    max-height: 175px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .botanical-bamboo-card {
+    padding: 12px 12px 8px 12px !important;
+  }
+  .bamboo-grass-graphic-img {
+    max-height: 160px !important;
+  }
+}
+
 [data-theme="dark"] .bamboo-ambient-glow {
-  background: radial-gradient(ellipse at 50% 60%, rgba(201, 163, 95, 0.3) 0%, rgba(61, 145, 95, 0.35) 40%, transparent 75%);
+  background: radial-gradient(ellipse at 50% 70%, rgba(61, 145, 95, 0.25) 0%, rgba(201, 163, 95, 0.18) 40%, transparent 72%);
   filter: blur(16px);
 }
 
 [data-theme="dark"] .bamboo-grass-graphic-img {
-  filter: contrast(1.15) brightness(1.2) saturate(1.25) drop-shadow(0 0 18px rgba(201, 163, 95, 0.4)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.8));
+  filter: contrast(1.06) brightness(1.04) saturate(1.15) drop-shadow(0 6px 20px rgba(0, 0, 0, 0.7));
 }
 
 [data-theme="dark"] .botanical-bamboo-card {
-  background: linear-gradient(180deg, #162B20 0%, #0F1E16 100%) !important;
-  border-color: rgba(201, 163, 95, 0.4) !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(201, 163, 95, 0.3) !important;
+  background: linear-gradient(180deg, #14281E 0%, #0C1912 100%) !important;
+  border-color: rgba(201, 163, 95, 0.3) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(201, 163, 95, 0.2) !important;
 }
 
 /* ========================================================= */

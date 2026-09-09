@@ -116,24 +116,34 @@ export default function ContactSection({ settings }) {
             {/* Graphic Grass & Bamboo Plants Showcase */}
             <div className="luxury-card botanical-bamboo-card" style={{ 
               padding: '16px 18px 12px 18px', 
-              backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-light)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               position: 'relative',
               overflow: 'hidden'
             }}>
-              <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '10px' }}>
+              <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '8px' }}>
                 <span className="badge-gold" style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
                   73 ACRES BOTANICAL SANCTUARY
                 </span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-gold)', fontWeight: '600', whiteSpace: 'nowrap' }}>
                   Bamboo & Flora Groves
                 </span>
               </div>
 
-              <BambooGrassGraphic maxHeight={190} />
+              <BambooGrassGraphic maxHeight={185} />
+
+              <div style={{ 
+                width: '100%', 
+                textAlign: 'center', 
+                paddingTop: '6px', 
+                borderTop: '1px dashed var(--border-light)',
+                marginTop: '4px'
+              }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', letterSpacing: '0.02em' }}>
+                  Natural bamboo groves & sanctuary flora
+                </span>
+              </div>
             </div>
 
           </div>
