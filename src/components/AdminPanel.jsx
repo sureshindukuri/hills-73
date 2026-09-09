@@ -13,7 +13,7 @@ import {
   getStoredBookings, saveStoredBookings, clearStoredBookings,
   getSiteSettings, saveSiteSettings, syncFromCloudToLocal
 } from '../utils/storage';
-import { signInWithGoogle, logOutAdmin, onAdminAuthStateChanged } from '../firebase/authService';
+import { signInWithGoogle, signInWithEmailPass, logOutAdmin, onAdminAuthStateChanged } from '../firebase/authService';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 
 export default function AdminPanel({ 
@@ -27,6 +27,8 @@ export default function AdminPanel({
   const [adminUser, setAdminUser] = useState(null);
   const [authError, setAuthError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   const [activeTab, setActiveTab] = useState(initialTab); 
   const [bookingFilter, setBookingFilter] = useState('all'); // 'all' | 'pending' | 'confirmed' | 'cancelled'
@@ -115,6 +117,27 @@ export default function AdminPanel({
   const showNotification = (text, type = 'success') => {
     setActionFeedback({ text, type });
     setTimeout(() => setActionFeedback({ text: '', type: '' }), 4000);
+  };
+
+  const handleEmailPassLogin = async (e) => {
+    if (e) e.preventDefault();
+    setAuthError('');
+    setIsAuthenticating(true);
+    try {
+      const { user, isAuthorized, error } = await signInWithEmailPass(loginEmail, loginPassword);
+      if (isAuthorized && user) {
+        setIsAuthenticated(true);
+        setAdminUser(user);
+        loadAllAdminData();
+        showNotification(`Welcome back, ${user.email}!`);
+      } else {
+        setAuthError(error || 'Access Denied: Only users registered in Firebase Authentication have access.');
+      }
+    } catch (err) {
+      setAuthError(err.message || 'Authentication error.');
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -667,6 +690,67 @@ export default function AdminPanel({
             </div>
           )}
 
+          {/* Firebase Email & Password Login Form */}
+          <form onSubmit={handleEmailPassLogin} style={{ textAlign: 'left', marginBottom: '16px' }}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-main)', marginBottom: '6px' }}>
+                Firebase Admin Email
+              </label>
+              <input 
+                type="email"
+                required
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="owner@hills73.com"
+                className="form-input"
+                style={{ marginBottom: 0, padding: '10px 12px', fontSize: '0.875rem' }}
+                disabled={isAuthenticating}
+              />
+            </div>
+
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-main)', marginBottom: '6px' }}>
+                Password
+              </label>
+              <input 
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="••••••••••••"
+                className="form-input"
+                style={{ marginBottom: 0, padding: '10px 12px', fontSize: '0.875rem' }}
+                disabled={isAuthenticating}
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={isAuthenticating}
+              className="btn-gold"
+              style={{ 
+                width: '100%', 
+                padding: '12px 18px', 
+                fontSize: '0.92rem',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <Lock size={16} />
+              {isAuthenticating ? 'Authenticating with Firebase...' : 'Sign In with Email & Password'}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-light)' }} />
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>OR</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-light)' }} />
+          </div>
+
           {/* Official Google Sign-In Button */}
           <button 
             type="button" 
@@ -674,8 +758,8 @@ export default function AdminPanel({
             disabled={isAuthenticating}
             style={{ 
               width: '100%', 
-              padding: '13px 18px', 
-              fontSize: '0.92rem',
+              padding: '11px 18px', 
+              fontSize: '0.88rem',
               fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
@@ -686,32 +770,32 @@ export default function AdminPanel({
               border: '1px solid #DADCE0',
               borderRadius: 'var(--radius-md)',
               cursor: isAuthenticating ? 'wait' : 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
               transition: 'all 0.2s ease'
             }}
-            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.15)'}
-            onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'}
+            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)'}
+            onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)'}
           >
             {/* Google G Logo SVG */}
-            <svg width="20" height="20" viewBox="0 0 48 48">
+            <svg width="18" height="18" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
               <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
               <path fill="none" d="M0 0h48v48H0z"/>
             </svg>
-            {isAuthenticating ? 'Authenticating with Google...' : 'Sign in with Google (Owner)'}
+            {isAuthenticating ? 'Connecting...' : 'Sign in with Google'}
           </button>
 
-          <div style={{ marginTop: '18px', padding: '10px 12px', backgroundColor: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+          <div style={{ marginTop: '16px', padding: '10px 12px', backgroundColor: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
             <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', lineHeight: 1.4 }}>
-              🔒 Protected by <strong>Firebase Authentication</strong>. Only designated 73 Hills Owner Google emails have administrative clearance.
+              🔒 Protected by <strong>Firebase Authentication</strong>. Only users added in Firebase Console have administrative access.
             </span>
           </div>
 
           <button 
             onClick={onClose}
-            style={{ marginTop: '18px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.825rem' }}
+            style={{ marginTop: '16px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.825rem' }}
           >
             ← Return to Public Website
           </button>
