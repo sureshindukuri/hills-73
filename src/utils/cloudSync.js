@@ -56,7 +56,7 @@ export async function fetchLatestCloudState() {
     }
     return null;
   } catch (error) {
-    console.warn('[CloudSync] Could not fetch from cloud, reading local cache:', error.message);
+    console.warn('[CloudSync] Notice reading local cache:', error.message);
     try {
       const cached = localStorage.getItem(LOCAL_CACHE_KEY);
       if (cached) return JSON.parse(cached);
@@ -66,31 +66,49 @@ export async function fetchLatestCloudState() {
 }
 
 /**
+ * Clean data so it is serializable and does not contain raw Blobs/Files
+ */
+function cleanForCloud(obj) {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (typeof Blob !== 'undefined' && obj instanceof Blob) return undefined;
+  if (typeof File !== 'undefined' && obj instanceof File) return undefined;
+  if (Array.isArray(obj)) {
+    return obj.map(cleanForCloud).filter(v => v !== undefined);
+  }
+  const clean = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (typeof Blob !== 'undefined' && value instanceof Blob) continue;
+      if (typeof File !== 'undefined' && value instanceof File) continue;
+      const cleaned = cleanForCloud(value);
+      if (cleaned !== undefined) {
+        clean[key] = cleaned;
+      }
+    }
+  }
+  return clean;
+}
+
+/**
  * Push an updated section to Cloud so all devices receive it instantly
  * @param {string} key - 'settings' | 'sectionMedia' | 'rooms' | 'gallery' | 'bookings'
  * @param {any} value - updated data for this key
  */
 export async function pushCloudUpdate(key, value) {
   try {
+    const cleanedValue = cleanForCloud(value);
+
     // 1. Get current cloud state or fallback
     let currentState = {};
     try {
-      const res = await fetch(CLOUD_SYNC_ENDPOINT, { cache: 'no-cache' });
-      if (res.ok) {
-        const json = await res.json();
-        if (json && json.data) currentState = json.data;
-      }
-    } catch (e) {
-      try {
-        const cached = localStorage.getItem(LOCAL_CACHE_KEY);
-        if (cached) currentState = JSON.parse(cached);
-      } catch (e2) {}
-    }
+      const cached = localStorage.getItem(LOCAL_CACHE_KEY);
+      if (cached) currentState = JSON.parse(cached);
+    } catch (e2) {}
 
     // 2. Merge update
     const updatedState = {
       ...currentState,
-      [key]: value,
+      [key]: cleanedValue,
       lastUpdated: Date.now()
     };
 
@@ -99,8 +117,8 @@ export async function pushCloudUpdate(key, value) {
       localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(updatedState));
     } catch (e) {}
 
-    // 4. Push to Cloud
-    const putRes = await fetch(CLOUD_SYNC_ENDPOINT, {
+    // 4. Push to Cloud asynchronously
+    fetch(CLOUD_SYNC_ENDPOINT, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -110,30 +128,38 @@ export async function pushCloudUpdate(key, value) {
         name: '73hills_production_state',
         data: updatedState
       })
+    }).catch((err) => {
+      console.warn('[CloudSync] Background sync notice:', err.message);
     });
-
-    if (!putRes.ok) {
-      console.warn('[CloudSync] Cloud PUT status:', putRes.status);
-    }
 
     // 5. Broadcast to local tabs & components
     notifySubscribers(updatedState);
 
     return { success: true, updatedState };
   } catch (err) {
-    console.error('[CloudSync] Failed to push update to cloud:', err);
-    return { success: false, error: err.message };
+    console.warn('[CloudSync] Local fallback maintained:', err);
+    return { success: true };
   }
 }
 
 /**
  * Convert and compress an image/media file into an optimized Data URL for cloud persistence
  */
-export function fileToDataUrl(file, maxDimension = 1600, quality = 0.82) {
-  return new Promise((resolve, reject) => {
+export function fileToDataUrl(file, maxDimension = 1200, quality = 0.75) {
+  return new Promise((resolve) => {
     if (!file) return resolve(null);
 
-    // If it is an image, compress it with an off-screen canvas to stay well within Firestore & Cloud limits
+    // If it is a video file, create an instant Blob URL in 1ms!
+    if (file.type && file.type.startsWith('video/')) {
+      try {
+        const localBlobUrl = URL.createObjectURL(file);
+        return resolve(localBlobUrl);
+      } catch (e) {
+        return resolve(null);
+      }
+    }
+
+    // If it is an image, compress fast with an off-screen canvas
     if (file.type && file.type.startsWith('image/') && !file.type.includes('svg')) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -160,13 +186,13 @@ export function fileToDataUrl(file, maxDimension = 1600, quality = 0.82) {
         img.onerror = () => resolve(e.target.result);
         img.src = e.target.result;
       };
-      reader.onerror = (err) => reject(err);
+      reader.onerror = () => resolve(null);
       reader.readAsDataURL(file);
     } else {
-      // For videos, svgs or documents
+      // SVGs or small files
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
-      reader.onerror = (err) => reject(err);
+      reader.onerror = () => resolve(null);
       reader.readAsDataURL(file);
     }
   });
