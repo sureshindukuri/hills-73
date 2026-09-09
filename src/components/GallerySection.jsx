@@ -86,89 +86,99 @@ export default function GallerySection() {
         {/* Gallery Image Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gridTemplateColumns: filteredItems.length > 0 ? 'repeat(auto-fill, minmax(240px, 1fr))' : '1fr',
           gap: '18px'
         }}>
-          {filteredItems.map((item) => (
-            <div 
-              key={item.id}
-              onClick={() => setLightboxItem(item)}
-              style={{
-                position: 'relative',
-                height: '240px',
-                borderRadius: 'var(--radius-md)',
-                overflow: 'hidden',
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-sm)',
-                border: '1px solid var(--border-light)'
-              }}
-              className="luxury-card"
-            >
-              {item.type === 'video' ? (
-                <video 
-                  src={item.url} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  muted 
-                />
-              ) : (
-                <img 
-                  src={item.url} 
-                  alt={item.title} 
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'transform 0.5s ease'
-                  }}
-                />
-              )}
+          {filteredItems.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px dashed var(--border-light)'
+            }}>
+              <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-gold)', marginBottom: '6px' }}>
+                Gallery Ready for 4K Media
+              </h4>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                New luxury photographs & sanctuary moments will appear here.
+              </p>
+            </div>
+          ) : (
+            filteredItems.map((item) => (
+              <div 
+                key={item.id}
+                onClick={() => setLightboxItem(item)}
+                style={{
+                  position: 'relative',
+                  height: '240px',
+                  borderRadius: 'var(--radius-md)',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)',
+                  border: '1px solid var(--border-light)'
+                }}
+                className="luxury-card"
+              >
+                {item.type === 'video' ? (
+                  <video 
+                    src={item.url} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    muted 
+                  />
+                ) : (
+                  <img 
+                    src={item.url} 
+                    alt={item.title} 
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      transition: 'transform 0.5s ease'
+                    }}
+                  />
+                )}
 
-              {/* Hover overlay with title & icon */}
-              <div style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(19, 46, 31, 0.88) 100%)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-end',
-                padding: '16px',
-                color: '#FFFFFF'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <span className="badge-gold" style={{ fontSize: '0.65rem', padding: '2px 7px', marginBottom: '3px', display: 'inline-block' }}>
-                      {item.category || 'Resort'}
-                    </span>
-                    <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: '#FFFFFF', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.title}
-                    </h4>
-                  </div>
+                {/* Hover overlay with title & icon */}
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(19, 46, 31, 0.88) 100%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  padding: '16px',
+                  color: '#FFFFFF'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '10px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <span className="badge-gold" style={{ fontSize: '0.65rem', padding: '2px 7px', marginBottom: '3px', display: 'inline-block' }}>
+                        {item.category || 'Resort'}
+                      </span>
+                      <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: '#FFFFFF', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.title}
+                      </h4>
+                    </div>
 
-                  <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-                    backdropFilter: 'blur(4px)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {item.type === 'video' ? <Play size={15} fill="#FFF" /> : <Maximize2 size={14} />}
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                      backdropFilter: 'blur(4px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {item.type === 'video' ? <Play size={15} fill="#FFF" /> : <Maximize2 size={14} />}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
-
-        {filteredItems.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)' }}>
-            No media files found in this category. Upload photos or videos in the Admin Panel!
-          </div>
-        )}
-
       </div>
 
       {/* Lightbox Modal */}

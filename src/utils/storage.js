@@ -10,43 +10,52 @@ const DB_VERSION = 2;
 const GALLERY_STORE = 'gallery_media';
 const SECTION_MEDIA_STORE = 'section_media';
 
-// Initial default gallery items
+// 4K Enhanced Sanctuary & Cultural Moments Gallery
 export const DEFAULT_GALLERY_ITEMS = [
   {
-    id: 'default-1',
-    title: '73 Acres Aerial Sanctuary & Lake',
+    id: 'gallery-1',
+    title: 'Organic Strawberry & Flora Harvest',
     category: 'Nature',
     type: 'image',
-    url: '/assets/hero_aerial_73hills.jpg',
+    url: '/assets/gallery/gallery_strawberry_plantation.jpg',
     isDefault: true,
-    uploadedAt: '2026-09-01'
+    uploadedAt: '2026-09-09'
   },
   {
-    id: 'default-2',
-    title: 'Illuminated Sandalwood Pathway',
+    id: 'gallery-2',
+    title: 'Sandalwood Sanctuary & Forest Walk',
     category: 'Nature',
     type: 'image',
-    url: '/assets/about_sandalwood_path.png',
+    url: '/assets/gallery/gallery_sandalwood_forest_tour.jpg',
     isDefault: true,
-    uploadedAt: '2026-09-01'
+    uploadedAt: '2026-09-09'
   },
   {
-    id: 'default-3',
-    title: 'Master Teak Suite Interior',
-    category: 'Cottages',
-    type: 'image',
-    url: '/assets/gallery_interior_room.png',
-    isDefault: true,
-    uploadedAt: '2026-09-01'
-  },
-  {
-    id: 'default-4',
-    title: 'Outdoor Wedding & Celebration Lawn',
+    id: 'gallery-3',
+    title: '73 Hills Grand Gathering & Event Lawn',
     category: 'Celebrations',
     type: 'image',
-    url: '/assets/celebration_wedding_lawn.png',
+    url: '/assets/gallery/gallery_resort_community_gathering.jpg',
     isDefault: true,
-    uploadedAt: '2026-09-01'
+    uploadedAt: '2026-09-09'
+  },
+  {
+    id: 'gallery-4',
+    title: 'Sankranthi Sambaralu Festive Tradition',
+    category: 'Celebrations',
+    type: 'image',
+    url: '/assets/gallery/gallery_sankranthi_festival_celebration.jpg',
+    isDefault: true,
+    uploadedAt: '2026-09-09'
+  },
+  {
+    id: 'gallery-5',
+    title: 'Folk Heritage & Haridasu Performance',
+    category: 'Celebrations',
+    type: 'image',
+    url: '/assets/gallery/gallery_haridasu_cultural_heritage.jpg',
+    isDefault: true,
+    uploadedAt: '2026-09-09'
   }
 ];
 
