@@ -77,7 +77,7 @@ export async function signInWithEmailPass(email, password) {
       return {
         user: null,
         isAuthorized: false,
-        error: `ACCESS DENIED: "${cleanEmail}" is NOT authorized. Only the registered Owner (${OWNER_EMAIL}) has access to this Admin Panel.`
+        error: `ACCESS DENIED: The email "${cleanEmail}" is not authorized. Only registered administrators can access this portal.`
       };
     }
 
@@ -93,7 +93,7 @@ export async function signInWithEmailPass(email, password) {
       return {
         user: null,
         isAuthorized: false,
-        error: `ACCESS DENIED: "${userEmail}" is NOT authorized. Only the registered Owner (${OWNER_EMAIL}) has access.`
+        error: 'ACCESS DENIED: This account does not have administrative privileges.'
       };
     }
 
