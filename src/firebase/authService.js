@@ -4,32 +4,19 @@ import {
   signOut as fbSignOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
-import { auth, googleProvider, AUTHORIZED_ADMIN_EMAILS, db } from './config';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth, googleProvider, AUTHORIZED_ADMIN_EMAILS } from './config';
+
+export const OWNER_EMAIL = 'sureshindukuri02@gmail.com';
 
 /**
- * Strictly verify if an email address belongs to authorized owner list
+ * Strictly verify if an email address belongs to the authorized owner.
+ * Synchronous and instant - impossible for unauthorized users to slip through.
  */
-export async function isEmailAuthorized(email) {
-  if (!email) return false;
+export function isEmailAuthorized(email) {
+  if (!email || typeof email !== 'string') return false;
   const cleanEmail = email.toLowerCase().trim();
-
-  // 1. Check local authorized config list
-  if (AUTHORIZED_ADMIN_EMAILS.map(e => e.toLowerCase().trim()).includes(cleanEmail)) {
-    return true;
-  }
-
-  // 2. Check Firestore 'authorized_admins' collection if extra admins were added
-  try {
-    const adminDoc = await getDoc(doc(db, 'authorized_admins', cleanEmail));
-    if (adminDoc.exists() && adminDoc.data()?.active !== false) {
-      return true;
-    }
-  } catch (e) {
-    // Ignore firestore lookup error and fall back to strict local check
-  }
-
-  return false;
+  return cleanEmail === OWNER_EMAIL.toLowerCase().trim() || 
+         AUTHORIZED_ADMIN_EMAILS.map(e => e.toLowerCase().trim()).includes(cleanEmail);
 }
 
 /**
@@ -55,11 +42,23 @@ function getReadableAuthError(error) {
   if (code === 'auth/popup-closed-by-user') {
     return 'Google Sign-In was cancelled.';
   }
-  return error?.message || 'Authentication failed. Please verify your credentials in Firebase.';
+  return error?.message || 'Authentication failed. Please verify your credentials.';
 }
 
 /**
- * Sign in with Firebase Email & Password (strictly checking authorization)
+ * Clear all local admin tokens/session storage
+ */
+export function clearAdminSession() {
+  sessionStorage.removeItem('73hills_admin_auth');
+  sessionStorage.removeItem('73hills_admin_email');
+  sessionStorage.removeItem('73hills_admin_name');
+  sessionStorage.removeItem('73hills_admin_photo');
+  localStorage.removeItem('73hills_admin_auth');
+  localStorage.removeItem('73hills_admin_email');
+}
+
+/**
+ * Sign in with Firebase Email & Password (strictly owner only)
  */
 export async function signInWithEmailPass(email, password) {
   try {
@@ -68,7 +67,17 @@ export async function signInWithEmailPass(email, password) {
       return {
         user: null,
         isAuthorized: false,
-        error: 'Please enter both your Firebase admin email and password.'
+        error: 'Please enter both your admin email and password.'
+      };
+    }
+
+    // Pre-flight check: Deny unauthorized email immediately before network call
+    if (!isEmailAuthorized(cleanEmail)) {
+      clearAdminSession();
+      return {
+        user: null,
+        isAuthorized: false,
+        error: `ACCESS DENIED: "${cleanEmail}" is NOT authorized. Only the registered Owner (${OWNER_EMAIL}) has access to this Admin Panel.`
       };
     }
 
@@ -77,15 +86,14 @@ export async function signInWithEmailPass(email, password) {
     const user = result.user;
     const userEmail = (user.email || '').toLowerCase().trim();
 
-    // STRICT OWNER CHECK: Deny any other user
-    const authorized = await isEmailAuthorized(userEmail);
-    if (!authorized) {
+    // Post-flight check
+    if (!isEmailAuthorized(userEmail)) {
       await fbSignOut(auth);
-      sessionStorage.clear();
+      clearAdminSession();
       return {
         user: null,
         isAuthorized: false,
-        error: `Access Denied: The account "${userEmail}" is NOT authorized to access the Admin Panel. Only the official Owner email is permitted.`
+        error: `ACCESS DENIED: "${userEmail}" is NOT authorized. Only the registered Owner (${OWNER_EMAIL}) has access.`
       };
     }
 
@@ -102,6 +110,7 @@ export async function signInWithEmailPass(email, password) {
     };
   } catch (error) {
     console.error('Firebase Email/Password Sign-In Error:', error);
+    clearAdminSession();
     return {
       user: null,
       isAuthorized: false,
@@ -121,15 +130,14 @@ export async function signInWithGoogle() {
     const userEmail = (user.email || '').toLowerCase().trim();
 
     // STRICT OWNER CHECK: Deny any other Google account immediately
-    const authorized = await isEmailAuthorized(userEmail);
-    if (!authorized) {
-      // Sign out unauthorized user immediately
+    if (!isEmailAuthorized(userEmail)) {
+      // Sign out unauthorized user from Firebase immediately
       await fbSignOut(auth);
-      sessionStorage.clear();
+      clearAdminSession();
       return {
         user: null,
         isAuthorized: false,
-        error: `Access Denied: The Google account "${userEmail}" is NOT authorized. Only the official 73 Hills Owner email (${AUTHORIZED_ADMIN_EMAILS[0]}) has clearance.`
+        error: `ACCESS DENIED: "${userEmail}" is NOT authorized. Only the official 73 Hills Owner (${OWNER_EMAIL}) has access to the Admin Panel.`
       };
     }
 
@@ -146,6 +154,7 @@ export async function signInWithGoogle() {
     };
   } catch (error) {
     console.error('Google Sign-In Error:', error);
+    clearAdminSession();
     return {
       user: null,
       isAuthorized: false,
@@ -161,54 +170,45 @@ export async function logOutAdmin() {
   try {
     await fbSignOut(auth);
   } catch (e) {}
-  sessionStorage.removeItem('73hills_admin_auth');
-  sessionStorage.removeItem('73hills_admin_email');
-  sessionStorage.removeItem('73hills_admin_name');
-  sessionStorage.removeItem('73hills_admin_photo');
+  clearAdminSession();
 }
 
 /**
  * Listen for auth state changes with strict owner email validation
  */
 export function onAdminAuthStateChanged(callback) {
-  return onAuthStateChanged(auth, async (user) => {
+  return onAuthStateChanged(auth, (user) => {
     if (user) {
       const email = (user.email || '').toLowerCase().trim();
-      const authorized = await isEmailAuthorized(email);
-      if (authorized) {
+      if (isEmailAuthorized(email)) {
         sessionStorage.setItem('73hills_admin_auth', 'true');
         sessionStorage.setItem('73hills_admin_email', email);
         sessionStorage.setItem('73hills_admin_name', user.displayName || email.split('@')[0]);
         sessionStorage.setItem('73hills_admin_photo', user.photoURL || '');
         callback(user);
       } else {
-        // Unknown or unauthorized account: force logout immediately
-        try {
-          await fbSignOut(auth);
-        } catch (e) {}
-        sessionStorage.removeItem('73hills_admin_auth');
-        sessionStorage.removeItem('73hills_admin_email');
-        sessionStorage.removeItem('73hills_admin_name');
-        sessionStorage.removeItem('73hills_admin_photo');
+        // Unknown or unauthorized account: force signout immediately
+        fbSignOut(auth).catch(() => {});
+        clearAdminSession();
         callback(null);
       }
     } else {
       const hasLocalSession = sessionStorage.getItem('73hills_admin_auth') === 'true';
       const localEmail = (sessionStorage.getItem('73hills_admin_email') || '').toLowerCase().trim();
-      const authorized = await isEmailAuthorized(localEmail);
 
-      if (hasLocalSession && authorized) {
+      if (hasLocalSession && isEmailAuthorized(localEmail)) {
         callback({
           email: localEmail,
           displayName: sessionStorage.getItem('73hills_admin_name') || 'Owner',
           photoURL: sessionStorage.getItem('73hills_admin_photo') || ''
         });
       } else {
-        sessionStorage.clear();
+        clearAdminSession();
         callback(null);
       }
     }
   });
 }
+
 
 

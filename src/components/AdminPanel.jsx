@@ -92,33 +92,24 @@ export default function AdminPanel({
   const [receiptFooterNote, setReceiptFooterNote] = useState('');
 
   useEffect(() => {
-    const checkSession = async () => {
-      const authStatus = sessionStorage.getItem('73hills_admin_auth');
-      const email = sessionStorage.getItem('73hills_admin_email');
-      if (authStatus === 'true' && email) {
-        const authorized = await isEmailAuthorized(email);
-        if (authorized) {
-          setIsAuthenticated(true);
-          setAdminUser({
-            email: email,
-            displayName: sessionStorage.getItem('73hills_admin_name') || 'Owner',
-            photoURL: sessionStorage.getItem('73hills_admin_photo') || ''
-          });
-          loadAllAdminData();
-        } else {
-          sessionStorage.clear();
-          setIsAuthenticated(false);
-          setAdminUser(null);
-        }
-      } else {
-        setIsAuthenticated(false);
-      }
-    };
-
-    checkSession();
+    const authStatus = sessionStorage.getItem('73hills_admin_auth');
+    const email = (sessionStorage.getItem('73hills_admin_email') || '').toLowerCase().trim();
+    if (authStatus === 'true' && isEmailAuthorized(email)) {
+      setIsAuthenticated(true);
+      setAdminUser({
+        email: email,
+        displayName: sessionStorage.getItem('73hills_admin_name') || 'Owner',
+        photoURL: sessionStorage.getItem('73hills_admin_photo') || ''
+      });
+      loadAllAdminData();
+    } else {
+      sessionStorage.clear();
+      setIsAuthenticated(false);
+      setAdminUser(null);
+    }
 
     const unsubscribe = onAdminAuthStateChanged((user) => {
-      if (user) {
+      if (user && isEmailAuthorized(user.email)) {
         setIsAuthenticated(true);
         setAdminUser(user);
         loadAllAdminData();
