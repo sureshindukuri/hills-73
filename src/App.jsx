@@ -18,6 +18,7 @@ import {
   syncFromCloudToLocal 
 } from './utils/storage';
 import { subscribeToCloudUpdates } from './utils/cloudSync';
+import { subscribeToFirebaseLiveUpdates, getFirebaseLiveState } from './firebase/firestoreSync';
 
 export default function App() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -64,9 +65,19 @@ export default function App() {
     };
     loadInitialLocal();
 
-    // 2. Fetch live state from Cloud to sync all devices
+    // 2. Fetch live state from Cloud / Firestore to sync all devices
     const syncCloud = async () => {
       try {
+        // First check Firebase Firestore
+        const fbState = await getFirebaseLiveState();
+        if (fbState) {
+          if (fbState.settings) setSettings(fbState.settings);
+          if (fbState.rooms) setRooms(fbState.rooms);
+          if (fbState.sectionMedia) setSectionMedia(fbState.sectionMedia);
+          return;
+        }
+
+        // Cloud sync fallback
         const cloudState = await syncFromCloudToLocal();
         if (cloudState) {
           if (cloudState.settings) setSettings(cloudState.settings);
@@ -83,13 +94,22 @@ export default function App() {
     syncCloud();
 
     // 3. Subscribe to real-time broadcasts
-    const unsubscribe = subscribeToCloudUpdates((newState) => {
+    const unsubscribeCloud = subscribeToCloudUpdates((newState) => {
       if (newState.settings) setSettings(newState.settings);
       if (newState.rooms) setRooms(newState.rooms);
       if (newState.sectionMedia) setSectionMedia(newState.sectionMedia);
     });
 
-    // 4. Periodic background sync for active visitor devices (every 12 seconds)
+    // 4. Subscribe to real-time Firebase Firestore updates
+    const unsubscribeFirebase = subscribeToFirebaseLiveUpdates((fbState) => {
+      if (fbState) {
+        if (fbState.settings) setSettings(fbState.settings);
+        if (fbState.rooms) setRooms(fbState.rooms);
+        if (fbState.sectionMedia) setSectionMedia(fbState.sectionMedia);
+      }
+    });
+
+    // 5. Periodic background sync for active visitor devices (every 12 seconds)
     const syncInterval = setInterval(syncCloud, 12000);
 
     const checkAdminRoute = () => {
@@ -105,7 +125,8 @@ export default function App() {
     window.addEventListener('focus', syncCloud);
 
     return () => {
-      unsubscribe();
+      unsubscribeCloud();
+      if (typeof unsubscribeFirebase === 'function') unsubscribeFirebase();
       clearInterval(syncInterval);
       window.removeEventListener('popstate', checkAdminRoute);
       window.removeEventListener('hashchange', checkAdminRoute);

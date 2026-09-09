@@ -1,4 +1,5 @@
 import { pushCloudUpdate, fetchLatestCloudState, fileToDataUrl } from './cloudSync';
+import { saveToFirebaseCloud } from '../firebase/firestoreSync';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -465,6 +466,7 @@ export function getStoredRooms() {
 export function saveStoredRooms(rooms) {
   localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
   pushCloudUpdate('rooms', rooms);
+  saveToFirebaseCloud('rooms', rooms);
 }
 
 export const DEFAULT_BOOKINGS = [];
@@ -483,11 +485,13 @@ export function getStoredBookings() {
 export function saveStoredBookings(bookings) {
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
   pushCloudUpdate('bookings', bookings);
+  saveToFirebaseCloud('bookings', bookings);
 }
 
 export function clearStoredBookings() {
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify([]));
   pushCloudUpdate('bookings', []);
+  saveToFirebaseCloud('bookings', []);
 }
 
 export const DEFAULT_POLICIES_FALLBACK = {
@@ -536,6 +540,7 @@ export function getSiteSettings() {
 export function saveSiteSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   pushCloudUpdate('settings', settings);
+  saveToFirebaseCloud('settings', settings);
 }
 
 /**

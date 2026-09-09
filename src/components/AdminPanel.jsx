@@ -4,7 +4,7 @@ import {
   Video, Home, Calendar, RefreshCw,
   Sparkles, Heart, Phone, RotateCcw, Layers,
   TrendingUp, Users, Clock, CheckCircle2, BarChart3,
-  Search, MessageSquare
+  Search, MessageSquare, AlertTriangle, UserCheck
 } from 'lucide-react';
 import { 
   saveMediaItem, getAllGalleryItems, deleteMediaItem,
@@ -13,6 +13,7 @@ import {
   getStoredBookings, saveStoredBookings, clearStoredBookings,
   getSiteSettings, saveSiteSettings, syncFromCloudToLocal
 } from '../utils/storage';
+import { signInWithGoogle, logOutAdmin, onAdminAuthStateChanged } from '../firebase/authService';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 
 export default function AdminPanel({ 
@@ -23,8 +24,9 @@ export default function AdminPanel({
   initialTab = 'dashboard' 
 }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
+  const [adminUser, setAdminUser] = useState(null);
   const [authError, setAuthError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [activeTab, setActiveTab] = useState(initialTab); 
   const [bookingFilter, setBookingFilter] = useState('all'); // 'all' | 'pending' | 'confirmed' | 'cancelled'
@@ -91,8 +93,23 @@ export default function AdminPanel({
     const authStatus = sessionStorage.getItem('73hills_admin_auth');
     if (authStatus === 'true') {
       setIsAuthenticated(true);
+      setAdminUser({
+        email: sessionStorage.getItem('73hills_admin_email') || 'Authorized Owner',
+        displayName: sessionStorage.getItem('73hills_admin_name') || 'Owner',
+        photoURL: sessionStorage.getItem('73hills_admin_photo') || ''
+      });
       loadAllAdminData();
     }
+
+    const unsubscribe = onAdminAuthStateChanged((user) => {
+      if (user) {
+        setIsAuthenticated(true);
+        setAdminUser(user);
+        loadAllAdminData();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const showNotification = (text, type = 'success') => {
@@ -100,21 +117,30 @@ export default function AdminPanel({
     setTimeout(() => setActionFeedback({ text: '', type: '' }), 4000);
   };
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (passwordInput === 'admin73' || passwordInput === 'admin' || passwordInput === '73hills') {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('73hills_admin_auth', 'true');
-      setAuthError('');
-      loadAllAdminData();
-    } else {
-      setAuthError('Invalid Admin Passcode. Use "admin73" or "73hills".');
+  const handleGoogleLogin = async () => {
+    setAuthError('');
+    setIsAuthenticating(true);
+    try {
+      const { user, isAuthorized, error } = await signInWithGoogle();
+      if (isAuthorized && user) {
+        setIsAuthenticated(true);
+        setAdminUser(user);
+        loadAllAdminData();
+        showNotification(`Welcome back, ${user.displayName || user.email}!`);
+      } else {
+        setAuthError(error || 'Access Denied. Only designated Owner Google accounts are authorized.');
+      }
+    } catch (err) {
+      setAuthError(err.message || 'Google sign-in encountered an error.');
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logOutAdmin();
     setIsAuthenticated(false);
-    sessionStorage.removeItem('73hills_admin_auth');
+    setAdminUser(null);
   };
 
   const loadAllAdminData = async () => {
@@ -590,61 +616,102 @@ export default function AdminPanel({
         <div 
           className="modal-content" 
           onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: '440px', width: '95%', padding: 'clamp(24px, 5vw, 40px)', textAlign: 'center' }}
+          style={{ maxWidth: '460px', width: '95%', padding: 'clamp(28px, 5vw, 44px)', textAlign: 'center', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-lg)' }}
         >
           <div style={{
-            width: '60px',
-            height: '60px',
+            width: '64px',
+            height: '64px',
             borderRadius: '50%',
             backgroundColor: 'var(--bg-cream)',
             border: '1px solid var(--border-light)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '16px'
+            marginBottom: '16px',
+            boxShadow: '0 8px 24px rgba(179, 139, 89, 0.15)'
           }}>
-            <Shield size={28} color="#B38B59" />
+            <Shield size={30} color="#B38B59" />
           </div>
 
-          <span className="badge-gold" style={{ marginBottom: '8px', display: 'inline-block', fontSize: '0.675rem' }}>
-            OWNER & ADMIN PORTAL
+          <span className="badge-gold" style={{ marginBottom: '8px', display: 'inline-block', fontSize: '0.675rem', letterSpacing: '0.08em' }}>
+            OWNER & EXECUTIVE PORTAL
           </span>
 
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', marginBottom: '6px' }}>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.85rem', marginBottom: '8px', color: 'var(--text-main)' }}>
             73 Hills Control Panel
           </h2>
 
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-            Dashboard Analytics, Live Bookings, Prices, Video Uploads & Media Manager.
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.5 }}>
+            Secure Real-Time Management of Resort Bookings, Video Showcase, Room Tariffs & Website Content.
           </p>
 
-          <form onSubmit={handleLogin}>
-            <div className="form-group" style={{ marginBottom: '14px' }}>
-              <input 
-                type="password" 
-                placeholder="Passcode: admin73"
-                className="form-input"
-                style={{ textAlign: 'center', fontSize: '1.05rem', letterSpacing: '0.15em' }}
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            {authError && (
-              <div style={{ color: '#D9534F', fontSize: '0.8rem', marginBottom: '14px' }}>
+          {authError && (
+            <div style={{ 
+              backgroundColor: 'rgba(217, 83, 79, 0.12)', 
+              border: '1px solid rgba(217, 83, 79, 0.4)', 
+              borderRadius: 'var(--radius-sm)', 
+              padding: '12px 14px', 
+              color: '#D9534F', 
+              fontSize: '0.825rem', 
+              marginBottom: '20px',
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px'
+            }}>
+              <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: '2px' }}>Authentication Error</strong>
                 {authError}
               </div>
-            )}
+            </div>
+          )}
 
-            <button type="submit" className="btn-gold" style={{ width: '100%', padding: '12px', fontSize: '0.85rem' }}>
-              <Lock size={15} /> LOGIN TO ADMIN DASHBOARD
-            </button>
-          </form>
+          {/* Official Google Sign-In Button */}
+          <button 
+            type="button" 
+            onClick={handleGoogleLogin}
+            disabled={isAuthenticating}
+            style={{ 
+              width: '100%', 
+              padding: '13px 18px', 
+              fontSize: '0.92rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              backgroundColor: '#FFFFFF',
+              color: '#3C4043',
+              border: '1px solid #DADCE0',
+              borderRadius: 'var(--radius-md)',
+              cursor: isAuthenticating ? 'wait' : 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.15)'}
+            onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'}
+          >
+            {/* Google G Logo SVG */}
+            <svg width="20" height="20" viewBox="0 0 48 48">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+              <path fill="none" d="M0 0h48v48H0z"/>
+            </svg>
+            {isAuthenticating ? 'Authenticating with Google...' : 'Sign in with Google (Owner)'}
+          </button>
+
+          <div style={{ marginTop: '18px', padding: '10px 12px', backgroundColor: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block', lineHeight: 1.4 }}>
+              🔒 Protected by <strong>Firebase Authentication</strong>. Only designated 73 Hills Owner Google emails have administrative clearance.
+            </span>
+          </div>
 
           <button 
             onClick={onClose}
-            style={{ marginTop: '16px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.825rem' }}
+            style={{ marginTop: '18px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.825rem' }}
           >
             ← Return to Public Website
           </button>
@@ -752,6 +819,32 @@ export default function AdminPanel({
               <RefreshCw size={13} /> Sync & Refresh
             </button>
 
+            {/* Google Owner Profile Badge */}
+            {adminUser && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '4px 10px',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: 'var(--radius-full)',
+                border: '1px solid rgba(255, 255, 255, 0.2)'
+              }}>
+                {adminUser.photoURL ? (
+                  <img 
+                    src={adminUser.photoURL} 
+                    alt={adminUser.displayName || 'Owner'} 
+                    style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <UserCheck size={16} color="#75E096" />
+                )}
+                <span style={{ fontSize: '0.74rem', color: '#FFFFFF', fontWeight: '500', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {adminUser.email || adminUser.displayName || 'Owner'}
+                </span>
+              </div>
+            )}
+
             <button 
               onClick={handleLogout}
               style={{
@@ -760,14 +853,16 @@ export default function AdminPanel({
                 gap: '5px',
                 padding: '6px 12px',
                 borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                color: '#E0E0E0',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                backgroundColor: 'rgba(217, 83, 79, 0.25)',
+                color: '#FFA8A8',
+                border: '1px solid rgba(255, 107, 107, 0.4)',
                 cursor: 'pointer',
-                fontSize: '0.75rem'
+                fontSize: '0.75rem',
+                fontWeight: '600'
               }}
+              title="Sign out of Google Owner Account"
             >
-              <LogOut size={13} /> Logout
+              <LogOut size={13} /> Sign Out
             </button>
 
             <button 
