@@ -7,12 +7,13 @@ import { getFirestore } from 'firebase/firestore';
  * Paste your Firebase Project Credentials below or pass them via environment variables.
  */
 export const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyYOUR_API_KEY_HERE",
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "hills-73.firebaseapp.com",
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "hills-73",
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "hills-73.appspot.com",
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:123456789012:web:abcdef1234567890"
+  apiKey: "AIzaSyCwjcsr6NVrWWZw0NWeU9KKdA924gc24O8",
+  authDomain: "hills73-9ed52.firebaseapp.com",
+  projectId: "hills73-9ed52",
+  storageBucket: "hills73-9ed52.firebasestorage.app",
+  messagingSenderId: "340098624726",
+  appId: "1:340098624726:web:a9efdb31ec693ccf26ad77",
+  measurementId: "G-1D9N3FLF4N"
 };
 
 // Initialize Firebase safely
