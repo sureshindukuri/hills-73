@@ -26,12 +26,10 @@ export const db = getFirestore(app);
 
 /**
  * List of Authorized Owner & Admin Email Addresses.
- * Only Google accounts with these emails will be allowed into the Admin Panel.
- * Any other Google account will be automatically rejected and denied access.
+ * Only Google accounts or Firebase Auth users with these emails will be allowed into the Admin Panel.
+ * Any other Google account will be automatically rejected, signed out, and denied access.
  */
 export const AUTHORIZED_ADMIN_EMAILS = [
-  'ajayg@example.com', // Replace with your exact owner email
-  'sureshindukuri@gmail.com',
-  '73hillsresort@gmail.com',
-  'hello@73hills.com'
+  'sureshindukuri02@gmail.com'
 ];
+

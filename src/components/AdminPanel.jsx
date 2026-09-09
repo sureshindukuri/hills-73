@@ -13,7 +13,7 @@ import {
   getStoredBookings, saveStoredBookings, clearStoredBookings,
   getSiteSettings, saveSiteSettings, syncFromCloudToLocal
 } from '../utils/storage';
-import { signInWithGoogle, signInWithEmailPass, logOutAdmin, onAdminAuthStateChanged } from '../firebase/authService';
+import { signInWithGoogle, signInWithEmailPass, logOutAdmin, onAdminAuthStateChanged, isEmailAuthorized } from '../firebase/authService';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 
 export default function AdminPanel({ 
@@ -92,22 +92,39 @@ export default function AdminPanel({
   const [receiptFooterNote, setReceiptFooterNote] = useState('');
 
   useEffect(() => {
-    const authStatus = sessionStorage.getItem('73hills_admin_auth');
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
-      setAdminUser({
-        email: sessionStorage.getItem('73hills_admin_email') || 'Authorized Owner',
-        displayName: sessionStorage.getItem('73hills_admin_name') || 'Owner',
-        photoURL: sessionStorage.getItem('73hills_admin_photo') || ''
-      });
-      loadAllAdminData();
-    }
+    const checkSession = async () => {
+      const authStatus = sessionStorage.getItem('73hills_admin_auth');
+      const email = sessionStorage.getItem('73hills_admin_email');
+      if (authStatus === 'true' && email) {
+        const authorized = await isEmailAuthorized(email);
+        if (authorized) {
+          setIsAuthenticated(true);
+          setAdminUser({
+            email: email,
+            displayName: sessionStorage.getItem('73hills_admin_name') || 'Owner',
+            photoURL: sessionStorage.getItem('73hills_admin_photo') || ''
+          });
+          loadAllAdminData();
+        } else {
+          sessionStorage.clear();
+          setIsAuthenticated(false);
+          setAdminUser(null);
+        }
+      } else {
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkSession();
 
     const unsubscribe = onAdminAuthStateChanged((user) => {
       if (user) {
         setIsAuthenticated(true);
         setAdminUser(user);
         loadAllAdminData();
+      } else {
+        setIsAuthenticated(false);
+        setAdminUser(null);
       }
     });
 
