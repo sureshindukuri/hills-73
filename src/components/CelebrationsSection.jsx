@@ -102,11 +102,13 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
             }}>
               {isVideo ? (
                 <video 
+                  key={celebrationUrl}
                   src={celebrationUrl} 
                   autoPlay 
                   muted 
                   loop 
                   playsInline 
+                  preload="auto"
                   style={{
                     width: '100%',
                     height: 'clamp(280px, 44vw, 480px)',

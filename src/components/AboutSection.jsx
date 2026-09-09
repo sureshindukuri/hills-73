@@ -77,12 +77,14 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                 /* Direct Video File / MP4 / WebM / Blob */
                 <div style={{ position: 'relative', height: 'clamp(280px, 42vw, 460px)' }}>
                   <video 
+                    key={aboutUrl}
                     ref={videoRef}
                     src={aboutUrl} 
                     autoPlay 
                     muted={isMuted} 
                     loop 
                     playsInline 
+                    preload="auto"
                     style={{
                       width: '100%',
                       height: '100%',

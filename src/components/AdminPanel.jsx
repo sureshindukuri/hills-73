@@ -1609,7 +1609,17 @@ export default function AdminPanel({
               <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#0D2116' }}>
                 <div style={{ height: '220px', position: 'relative' }}>
                   {sectionMedia.hero?.mediaType === 'video' ? (
-                    <video src={sectionMedia.hero.url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <video 
+                      key={sectionMedia.hero?.url || 'default-hero-video'}
+                      src={sectionMedia.hero.url} 
+                      controls 
+                      autoPlay 
+                      muted 
+                      loop 
+                      playsInline
+                      preload="auto"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                    />
                   ) : (
                     <img 
                       src={sectionMedia.hero ? sectionMedia.hero.url : '/assets/hero_resort_villa.png'} 
@@ -1618,7 +1628,7 @@ export default function AdminPanel({
                     />
                   )}
                   <span className="badge-gold" style={{ position: 'absolute', top: '12px', left: '12px' }}>
-                    {sectionMedia.hero ? `Custom Upload (${sectionMedia.hero.mediaType.toUpperCase()})` : 'Default Resort Villa Image'}
+                    {sectionMedia.hero ? `Custom Upload (${(sectionMedia.hero.mediaType || 'media').toUpperCase()})` : 'Default Resort Villa Image'}
                   </span>
                 </div>
 
@@ -1650,8 +1660,39 @@ export default function AdminPanel({
                       onChange={(e) => setHeroFile(e.target.files[0])} 
                     />
                   </div>
+
+                  {/* Instant Selected File Preview */}
+                  {heroFile && (
+                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
+                        <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {heroFile.name} ({(heroFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
+                      </div>
+                      {heroFile.type.startsWith('video/') ? (
+                        <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
+                          <video 
+                            key={heroFile.name}
+                            src={URL.createObjectURL(heroFile)} 
+                            controls 
+                            autoPlay 
+                            muted 
+                            loop 
+                            playsInline 
+                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
+                          />
+                        </div>
+                      ) : (
+                        <img 
+                          src={URL.createObjectURL(heroFile)} 
+                          alt="Selected Preview" 
+                          style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
+                        />
+                      )}
+                    </div>
+                  )}
+
                   <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px' }}>
-                    <Upload size={16} /> {isProcessing ? 'Uploading Hero Media...' : 'Upload & Set Hero Background'}
+                    <Upload size={16} /> {isProcessing ? 'Saving Hero Media...' : 'Upload & Set Hero Background'}
                   </button>
                 </form>
               </div>
@@ -1692,12 +1733,15 @@ export default function AdminPanel({
                     />
                   ) : sectionMedia.about?.mediaType === 'video' || (!sectionMedia.about && true) ? (
                     <video 
+                      key={sectionMedia.about?.url || 'default-about-video'}
                       src={sectionMedia.about?.url || 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4'} 
                       controls 
                       autoPlay 
                       muted 
                       loop 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      playsInline
+                      preload="auto"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
                     />
                   ) : (
                     <img 
@@ -1707,7 +1751,7 @@ export default function AdminPanel({
                     />
                   )}
                   <span className="badge-gold" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 10 }}>
-                    {sectionMedia.about ? `Active Custom (${sectionMedia.about.mediaType.toUpperCase()})` : 'Default Resort Drone Video'}
+                    {sectionMedia.about ? `Active Custom (${(sectionMedia.about.mediaType || 'video').toUpperCase()})` : 'Default Resort Drone Video'}
                   </span>
                 </div>
 
@@ -1738,8 +1782,39 @@ export default function AdminPanel({
                       onChange={(e) => setAboutFile(e.target.files[0])} 
                     />
                   </div>
+
+                  {/* Instant Selected File Preview */}
+                  {aboutFile && (
+                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
+                        <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
+                      </div>
+                      {aboutFile.type.startsWith('video/') ? (
+                        <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
+                          <video 
+                            key={aboutFile.name}
+                            src={URL.createObjectURL(aboutFile)} 
+                            controls 
+                            autoPlay 
+                            muted 
+                            loop 
+                            playsInline 
+                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
+                          />
+                        </div>
+                      ) : (
+                        <img 
+                          src={URL.createObjectURL(aboutFile)} 
+                          alt="Selected Preview" 
+                          style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
+                        />
+                      )}
+                    </div>
+                  )}
+
                   <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px' }}>
-                    <Upload size={16} /> {isProcessing ? 'Uploading File...' : 'Upload & Save Resort Video File'}
+                    <Upload size={16} /> {isProcessing ? 'Saving Resort Video...' : 'Upload & Save Resort Video File'}
                   </button>
                 </form>
               </div>
@@ -1982,7 +2057,17 @@ export default function AdminPanel({
               <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
                 <div style={{ height: '220px', position: 'relative' }}>
                   {sectionMedia.celebrations?.mediaType === 'video' ? (
-                    <video src={sectionMedia.celebrations.url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <video 
+                      key={sectionMedia.celebrations?.url || 'default-celebration-video'}
+                      src={sectionMedia.celebrations.url} 
+                      controls 
+                      autoPlay 
+                      muted 
+                      loop 
+                      playsInline
+                      preload="auto"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                    />
                   ) : (
                     <img 
                       src={sectionMedia.celebrations ? sectionMedia.celebrations.url : '/assets/celebration_wedding_lawn.png'} 
@@ -1991,7 +2076,7 @@ export default function AdminPanel({
                     />
                   )}
                   <span className="badge-gold" style={{ position: 'absolute', top: '12px', left: '12px' }}>
-                    {sectionMedia.celebrations ? `Custom Media (${sectionMedia.celebrations.mediaType.toUpperCase()})` : 'Default Wedding Lawn'}
+                    {sectionMedia.celebrations ? `Custom Media (${(sectionMedia.celebrations.mediaType || 'media').toUpperCase()})` : 'Default Wedding Lawn'}
                   </span>
                 </div>
 
@@ -2023,8 +2108,39 @@ export default function AdminPanel({
                       onChange={(e) => setCelebrationFile(e.target.files[0])} 
                     />
                   </div>
+
+                  {/* Instant Selected File Preview */}
+                  {celebrationFile && (
+                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
+                        <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {celebrationFile.name} ({(celebrationFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
+                      </div>
+                      {celebrationFile.type.startsWith('video/') ? (
+                        <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
+                          <video 
+                            key={celebrationFile.name}
+                            src={URL.createObjectURL(celebrationFile)} 
+                            controls 
+                            autoPlay 
+                            muted 
+                            loop 
+                            playsInline 
+                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
+                          />
+                        </div>
+                      ) : (
+                        <img 
+                          src={URL.createObjectURL(celebrationFile)} 
+                          alt="Selected Preview" 
+                          style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
+                        />
+                      )}
+                    </div>
+                  )}
+
                   <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px' }}>
-                    <Upload size={16} /> {isProcessing ? 'Uploading...' : 'Upload & Set Celebration Media'}
+                    <Upload size={16} /> {isProcessing ? 'Saving Celebration Media...' : 'Upload & Set Celebration Media'}
                   </button>
                 </form>
               </div>
@@ -2102,6 +2218,36 @@ export default function AdminPanel({
                     </div>
                   </div>
 
+                  {/* Instant Selected File Preview */}
+                  {galleryFile && (
+                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
+                        <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {galleryFile.name} ({(galleryFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
+                      </div>
+                      {galleryFile.type.startsWith('video/') ? (
+                        <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
+                          <video 
+                            key={galleryFile.name}
+                            src={URL.createObjectURL(galleryFile)} 
+                            controls 
+                            autoPlay 
+                            muted 
+                            loop 
+                            playsInline 
+                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
+                          />
+                        </div>
+                      ) : (
+                        <img 
+                          src={URL.createObjectURL(galleryFile)} 
+                          alt="Selected Preview" 
+                          style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
+                        />
+                      )}
+                    </div>
+                  )}
+
                   <button 
                     type="submit" 
                     disabled={isProcessing}
@@ -2109,7 +2255,7 @@ export default function AdminPanel({
                     style={{ padding: '12px 28px' }}
                   >
                     <Upload size={16} />
-                    {isProcessing ? 'Saving to Database...' : 'Upload File to Gallery'}
+                    {isProcessing ? 'Saving File...' : 'Upload File to Gallery'}
                   </button>
                 </form>
               </div>
