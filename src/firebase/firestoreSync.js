@@ -1,8 +1,26 @@
-import { db } from './config';
+import { db, storage } from './config';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const RESORT_DOC_REF = 'resort_content';
 const MAIN_STATE_DOC = 'live_state';
+
+/**
+ * Upload a media file (video or image) to Firebase Storage and get a persistent public CDN URL
+ */
+export async function uploadMediaToFirebaseStorage(file, folder = 'uploads') {
+  if (!file || typeof file === 'string') return typeof file === 'string' ? file : null;
+  try {
+    const cleanName = (file.name || 'media').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storageRef = ref(storage, `${folder}/${Date.now()}_${cleanName}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+    return downloadUrl;
+  } catch (err) {
+    console.warn('[Firebase Storage] Upload skipped or failed (falling back to direct dataurl/blob):', err.message);
+    return null;
+  }
+}
 
 /**
  * Save data to Firestore and sync across all customer devices in real-time

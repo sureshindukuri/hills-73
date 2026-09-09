@@ -1,5 +1,5 @@
 import { pushCloudUpdate, fetchLatestCloudState, fileToDataUrl } from './cloudSync';
-import { saveToFirebaseCloud } from '../firebase/firestoreSync';
+import { saveToFirebaseCloud, uploadMediaToFirebaseStorage } from '../firebase/firestoreSync';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -124,14 +124,10 @@ export const DEFAULT_SECTION_MEDIA = {
 
 /**
  * Save Section-Specific Media (Logo, Hero, About, Celebrations, etc.)
- * Automatically broadcasts and syncs to all devices via Cloud Sync.
+ * Automatically uploads to Firebase Storage, IndexedDB, and syncs across all devices.
  */
 export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
   try {
-    const db = await openDB();
-    const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
-    const store = transaction.objectStore(SECTION_MEDIA_STORE);
-
     let record;
     let cloudUrl = null;
 
@@ -148,11 +144,20 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
       };
       cloudUrl = fileOrUrl;
     } else {
-      // Device file / blob: convert to dataUrl for cross-device cloud persistence
+      // 1. Try Firebase Storage CDN upload first for reliable cross-device streaming
       try {
-        cloudUrl = await fileToDataUrl(fileOrUrl);
-      } catch(e) {
-        console.warn('Could not create dataUrl:', e);
+        cloudUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey);
+      } catch (e) {
+        console.warn('[Storage] Firebase storage upload skipped:', e);
+      }
+
+      // 2. Fallback to optimized compressed data URL if image, or blob
+      if (!cloudUrl && fileOrUrl.type && fileOrUrl.type.startsWith('image/')) {
+        try {
+          cloudUrl = await fileToDataUrl(fileOrUrl);
+        } catch(e) {
+          console.warn('Could not create dataUrl:', e);
+        }
       }
 
       record = {
@@ -168,24 +173,34 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
       };
     }
 
-    const savedRecord = await new Promise((resolve, reject) => {
-      const request = store.put(record);
-      request.onsuccess = () => {
-        const url = record.customUrl || (record.fileBlob ? createBlobUrl(record.fileBlob) : null);
-        resolve({ ...record, url });
-      };
-      request.onerror = (err) => reject(err);
-    });
+    // 3. Save locally in IndexedDB
+    try {
+      const db = await openDB();
+      const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
+      const store = transaction.objectStore(SECTION_MEDIA_STORE);
+      await new Promise((resolve, reject) => {
+        const request = store.put(record);
+        request.onsuccess = () => resolve(true);
+        request.onerror = (err) => reject(err);
+      });
+    } catch (idbErr) {
+      console.warn('[Storage] IndexedDB put notice:', idbErr);
+    }
 
-    // Sync to Cloud so all devices receive the new video/image
+    const localUrl = record.customUrl || (record.fileBlob ? createBlobUrl(record.fileBlob) : null);
+    const savedRecord = { ...record, url: localUrl };
+
+    // 4. Sync to Cloud & Firebase so all customer devices update live
     try {
       const allCurrent = await getAllSectionMedia();
+      const safeCloudUrl = (record.customUrl && record.customUrl.length < 900000) ? record.customUrl : (typeof fileOrUrl === 'string' ? fileOrUrl : null);
+      
       const updatedCloudMap = {
         ...allCurrent,
         [sectionKey]: {
           sectionKey,
-          customUrl: savedRecord.customUrl || savedRecord.url,
-          url: savedRecord.customUrl || savedRecord.url,
+          customUrl: safeCloudUrl,
+          url: safeCloudUrl || savedRecord.url,
           mediaType: savedRecord.mediaType,
           fileName: savedRecord.fileName,
           title: savedRecord.title || meta.title,
@@ -193,6 +208,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
           isDefault: false
         }
       };
+
       pushCloudUpdate('sectionMedia', updatedCloudMap);
       saveToFirebaseCloud('sectionMedia', updatedCloudMap);
     } catch(e) {
@@ -202,7 +218,15 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
     return savedRecord;
   } catch (error) {
     console.error(`Error saving section media (${sectionKey}):`, error);
-    throw error;
+    // Return a working fallback instead of crashing
+    const fallbackUrl = typeof fileOrUrl === 'string' ? fileOrUrl : createBlobUrl(fileOrUrl);
+    return {
+      sectionKey,
+      mediaType: (fileOrUrl.type && fileOrUrl.type.startsWith('video/')) ? 'video' : 'image',
+      url: fallbackUrl,
+      isDefault: false,
+      ...meta
+    };
   }
 }
 
@@ -303,14 +327,21 @@ export async function deleteSectionMedia(sectionKey) {
  */
 export async function saveMediaItem(mediaMeta, file) {
   try {
-    const db = await openDB();
-    const transaction = db.transaction(GALLERY_STORE, 'readwrite');
-    const store = transaction.objectStore(GALLERY_STORE);
+    let cloudUrl = null;
     
-    let dataUrl = null;
+    // 1. Try Firebase Storage CDN upload
     try {
-      dataUrl = await fileToDataUrl(file);
-    } catch(e) {}
+      cloudUrl = await uploadMediaToFirebaseStorage(file, 'gallery');
+    } catch (e) {
+      console.warn('[Storage] Firebase storage upload skipped for gallery:', e);
+    }
+
+    // 2. Fallback to compressed data URL for images
+    if (!cloudUrl && file.type && file.type.startsWith('image/')) {
+      try {
+        cloudUrl = await fileToDataUrl(file);
+      } catch(e) {}
+    }
 
     const record = {
       id: mediaMeta.id || 'media-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
@@ -319,21 +350,29 @@ export async function saveMediaItem(mediaMeta, file) {
       type: file.type.startsWith('video/') ? 'video' : 'image',
       fileName: file.name,
       fileBlob: file,
-      customUrl: dataUrl || null,
+      customUrl: cloudUrl || null,
       uploadedAt: new Date().toISOString().split('T')[0],
       isDefault: false
     };
 
-    const saved = await new Promise((resolve, reject) => {
-      const request = store.put(record);
-      request.onsuccess = () => {
-        const url = record.customUrl || createBlobUrl(file);
-        resolve({ ...record, url });
-      };
-      request.onerror = (err) => reject(err);
-    });
+    // 3. Save to IndexedDB
+    try {
+      const db = await openDB();
+      const transaction = db.transaction(GALLERY_STORE, 'readwrite');
+      const store = transaction.objectStore(GALLERY_STORE);
+      await new Promise((resolve, reject) => {
+        const request = store.put(record);
+        request.onsuccess = () => resolve(true);
+        request.onerror = (err) => reject(err);
+      });
+    } catch (idbErr) {
+      console.warn('[Storage] IndexedDB put notice:', idbErr);
+    }
 
-    // Sync Gallery to Cloud & Firebase
+    const localUrl = record.customUrl || createBlobUrl(file);
+    const saved = { ...record, url: localUrl };
+
+    // 4. Sync Gallery to Cloud & Firebase
     try {
       const allGallery = await getAllGalleryItems();
       pushCloudUpdate('gallery', allGallery);
@@ -343,7 +382,14 @@ export async function saveMediaItem(mediaMeta, file) {
     return saved;
   } catch (error) {
     console.error('Error saving media to IndexedDB:', error);
-    throw error;
+    return {
+      id: 'media-' + Date.now(),
+      title: mediaMeta.title || file.name,
+      category: mediaMeta.category || 'General',
+      type: file.type.startsWith('video/') ? 'video' : 'image',
+      url: createBlobUrl(file),
+      isDefault: false
+    };
   }
 }
 
