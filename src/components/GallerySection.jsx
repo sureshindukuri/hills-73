@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getAllGalleryItems } from '../utils/storage';
+import { subscribeToCloudUpdates } from '../utils/cloudSync';
+import { subscribeToFirebaseLiveUpdates } from '../firebase/firestoreSync';
 import { Play, Maximize2, X } from 'lucide-react';
 
 export default function GallerySection() {
@@ -7,14 +9,35 @@ export default function GallerySection() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [lightboxItem, setLightboxItem] = useState(null);
 
-  useEffect(() => {
-    loadGallery();
-  }, []);
-
   const loadGallery = async () => {
     const list = await getAllGalleryItems();
     setItems(list);
   };
+
+  useEffect(() => {
+    loadGallery();
+
+    const unsubCloud = subscribeToCloudUpdates((state) => {
+      if (state && state.gallery) {
+        setItems(state.gallery);
+      } else {
+        loadGallery();
+      }
+    });
+
+    const unsubFb = subscribeToFirebaseLiveUpdates((fbState) => {
+      if (fbState && fbState.gallery) {
+        setItems(fbState.gallery);
+      } else {
+        loadGallery();
+      }
+    });
+
+    return () => {
+      unsubCloud();
+      if (typeof unsubFb === 'function') unsubFb();
+    };
+  }, []);
 
   const categories = ['All', 'Cottages', 'Nature', 'Celebrations', 'Videos'];
 

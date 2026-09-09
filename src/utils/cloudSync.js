@@ -127,13 +127,47 @@ export async function pushCloudUpdate(key, value) {
 }
 
 /**
- * Convert a device File object (Photo or Video) into a Data URL for instant cloud persistence
+ * Convert and compress an image/media file into an optimized Data URL for cloud persistence
  */
-export function fileToDataUrl(file) {
+export function fileToDataUrl(file, maxDimension = 1600, quality = 0.82) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = error => reject(error);
-    reader.readAsDataURL(file);
+    if (!file) return resolve(null);
+
+    // If it is an image, compress it with an off-screen canvas to stay well within Firestore & Cloud limits
+    if (file.type && file.type.startsWith('image/') && !file.type.includes('svg')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    } else {
+      // For videos, svgs or documents
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    }
   });
 }

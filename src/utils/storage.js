@@ -194,6 +194,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
         }
       };
       pushCloudUpdate('sectionMedia', updatedCloudMap);
+      saveToFirebaseCloud('sectionMedia', updatedCloudMap);
     } catch(e) {
       console.warn('[Storage] Cloud sync broadcast error:', e);
     }
@@ -287,6 +288,7 @@ export async function deleteSectionMedia(sectionKey) {
       const updated = { ...allCurrent };
       delete updated[sectionKey];
       pushCloudUpdate('sectionMedia', updated);
+      saveToFirebaseCloud('sectionMedia', updated);
     } catch(e) {}
 
     return true;
@@ -331,10 +333,11 @@ export async function saveMediaItem(mediaMeta, file) {
       request.onerror = (err) => reject(err);
     });
 
-    // Sync Gallery to Cloud
+    // Sync Gallery to Cloud & Firebase
     try {
       const allGallery = await getAllGalleryItems();
       pushCloudUpdate('gallery', allGallery);
+      saveToFirebaseCloud('gallery', allGallery);
     } catch(e) {}
 
     return saved;
@@ -393,6 +396,7 @@ export async function deleteMediaItem(id) {
     try {
       const allGallery = await getAllGalleryItems();
       pushCloudUpdate('gallery', allGallery);
+      saveToFirebaseCloud('gallery', allGallery);
     } catch(e) {}
 
     return true;
