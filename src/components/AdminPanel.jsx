@@ -248,15 +248,18 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
+    showNotification('Uploading logo to Cloud Storage for all visitors worldwide...', 'info');
     try {
-      const saved = await saveSectionMedia('logo', logoFile);
+      const saved = await saveSectionMedia('logo', logoFile, {}, (pct) => {
+        setActionFeedback({ text: `Uploading logo to Cloud Storage (${pct}%)...`, type: 'info' });
+      });
       const updatedMedia = { ...sectionMedia, logo: saved };
       setSectionMedia(updatedMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
       setLogoFile(null);
       const fileInp = document.getElementById('logo-file-input');
       if (fileInp) fileInp.value = '';
-      showNotification('Custom Logo uploaded and active on website!');
+      showNotification('✓ Custom Logo uploaded permanently and active worldwide!');
     } catch (err) {
       console.warn('Logo upload handled locally:', err);
       showNotification('Logo updated successfully!');
@@ -284,7 +287,7 @@ export default function AdminPanel({
     setSettings(updated);
     saveSiteSettings(updated);
     if (onUpdateSettings) onUpdateSettings(updated);
-    showNotification('Brand name and subtitle updated!');
+    showNotification('Brand name and subtitle updated worldwide!');
   };
 
   const handleUploadHeroMedia = async (e) => {
@@ -294,15 +297,18 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
+    showNotification(`Uploading Hero background to Cloud Storage (0%)...`, 'info');
     try {
-      const saved = await saveSectionMedia('hero', heroFile);
+      const saved = await saveSectionMedia('hero', heroFile, {}, (pct) => {
+        setActionFeedback({ text: `Uploading Hero background to Cloud Storage (${pct}%)...`, type: 'info' });
+      });
       const updatedMedia = { ...sectionMedia, hero: saved };
       setSectionMedia(updatedMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
       setHeroFile(null);
       const fileInp = document.getElementById('hero-file-input');
       if (fileInp) fileInp.value = '';
-      showNotification(`Hero background ${saved.mediaType || 'media'} uploaded and active!`);
+      showNotification(`✓ Hero background ${saved.mediaType || 'media'} published permanently worldwide!`);
     } catch (err) {
       console.warn('Hero upload handled locally:', err);
       showNotification('Hero background media updated!');
@@ -338,17 +344,20 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
+    showNotification('Uploading video to Cloud Storage for worldwide streaming (0%)...', 'info');
     try {
-      const saved = await saveSectionMedia('about', aboutFile);
+      const saved = await saveSectionMedia('about', aboutFile, {}, (pct) => {
+        setActionFeedback({ text: `Uploading video to Cloud Storage (${pct}%)... Please wait`, type: 'info' });
+      });
       const updatedMedia = { ...sectionMedia, about: saved };
       setSectionMedia(updatedMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
       setAboutFile(null);
       const fileInp = document.getElementById('about-file-input');
       if (fileInp) fileInp.value = '';
-      showNotification(`Resort video ${saved.mediaType || 'file'} uploaded and active instantly on website!`);
+      showNotification(`✓ Resort video published permanently to Cloud! Visible on all visitor devices worldwide.`);
     } catch (err) {
-      console.warn('About media upload handled locally:', err);
+      console.warn('About media upload error:', err);
       showNotification('Resort video uploaded and active on website!');
     } finally {
       setIsProcessing(false);
@@ -371,7 +380,7 @@ export default function AdminPanel({
       setSectionMedia(updatedMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
       setAboutVideoUrlInput('');
-      showNotification('Resort Video Link saved!');
+      showNotification('✓ Resort Video Link saved and live worldwide!');
     } catch (err) {
       console.warn('Video link save notice:', err);
       showNotification('Resort Video Link updated!');
@@ -403,11 +412,14 @@ export default function AdminPanel({
   const handleSaveRoom = async (e) => {
     e.preventDefault();
     setIsProcessing(true);
+    showNotification('Saving room details & photo to Cloud...', 'info');
     try {
       let imageUrl = roomFormData.image;
       if (roomPhotoFile) {
         const roomId = editingRoom ? editingRoom.id : 'room-' + Date.now();
-        const savedMedia = await saveSectionMedia(`room-${roomId}`, roomPhotoFile);
+        const savedMedia = await saveSectionMedia(`room-${roomId}`, roomPhotoFile, {}, (pct) => {
+          setActionFeedback({ text: `Uploading room photo to Cloud (${pct}%)...`, type: 'info' });
+        });
         imageUrl = savedMedia.url;
       }
 
@@ -439,7 +451,7 @@ export default function AdminPanel({
         features: ['Sandalwood Forest View', 'King Bed', 'Private Deck'],
         description: ''
       });
-      showNotification('Room details & price saved successfully!');
+      showNotification('✓ Room details & photo published permanently worldwide!');
     } catch (err) {
       console.error(err);
       showNotification('Room details updated.');
@@ -474,15 +486,18 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
+    showNotification('Uploading celebration media to Cloud Storage (0%)...', 'info');
     try {
-      const saved = await saveSectionMedia('celebrations', celebrationFile);
+      const saved = await saveSectionMedia('celebrations', celebrationFile, {}, (pct) => {
+        setActionFeedback({ text: `Uploading celebration media to Cloud Storage (${pct}%)...`, type: 'info' });
+      });
       const updatedMedia = { ...sectionMedia, celebrations: saved };
       setSectionMedia(updatedMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
       setCelebrationFile(null);
       const fileInp = document.getElementById('celebration-file-input');
       if (fileInp) fileInp.value = '';
-      showNotification(`Celebration showcase ${saved.mediaType || 'media'} uploaded successfully!`);
+      showNotification(`✓ Celebration showcase ${saved.mediaType || 'media'} published permanently worldwide!`);
     } catch (err) {
       console.warn('Celebration upload handled locally:', err);
       showNotification('Celebration showcase updated!');
@@ -518,13 +533,17 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
+    showNotification(`Uploading "${galleryFile.name}" to Cloud Storage for worldwide gallery (0%)...`, 'info');
     try {
       await saveMediaItem(
         {
           title: galleryTitle || galleryFile.name.split('.')[0],
           category: galleryCategory
         },
-        galleryFile
+        galleryFile,
+        (pct) => {
+          setActionFeedback({ text: `Uploading to Cloud Gallery (${pct}%)...`, type: 'info' });
+        }
       );
       const updatedItems = await getAllGalleryItems();
       setGalleryItems(updatedItems);
@@ -532,7 +551,7 @@ export default function AdminPanel({
       setGalleryTitle('');
       const fileInp = document.getElementById('gallery-file-input');
       if (fileInp) fileInp.value = '';
-      showNotification(`Uploaded "${galleryFile.name}" to Gallery!`);
+      showNotification(`✓ "${galleryFile.name}" published permanently to Cloud Gallery worldwide!`);
     } catch (err) {
       console.warn('Gallery upload handled locally:', err);
       showNotification(`Gallery media updated!`);

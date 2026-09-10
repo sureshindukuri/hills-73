@@ -1,6 +1,6 @@
 import { db, storage } from './config';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const RESORT_DOC_REF = 'resort_content';
 const MAIN_STATE_DOC = 'live_state';
@@ -31,26 +31,46 @@ export function sanitizeForFirestore(obj) {
 }
 
 /**
- * Upload a media file (video or image) to Firebase Storage with non-blocking fast resolution
+ * Upload a media file (video or image) to Firebase Storage permanently
+ * Supports real-time upload progress and returns a permanent public HTTPS download URL.
  */
-export async function uploadMediaToFirebaseStorage(file, folder = 'uploads', timeoutMs = 4000) {
+export async function uploadMediaToFirebaseStorage(file, folder = 'uploads', onProgress = null) {
   if (!file || typeof file === 'string') return typeof file === 'string' ? file : null;
-  try {
-    const cleanName = (file.name || 'media').replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storageRef = ref(storage, `${folder}/${Date.now()}_${cleanName}`);
-    
-    // Fast upload with timeout so UI never hangs
-    const uploadTask = uploadBytes(storageRef, file).then(snap => getDownloadURL(snap.ref));
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Storage timeout - instant local/cloud mode active')), timeoutMs)
-    );
+  
+  return new Promise((resolve, reject) => {
+    try {
+      const cleanName = (file.name || 'media').replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storageRef = ref(storage, `${folder}/${Date.now()}_${cleanName}`);
+      
+      const uploadTask = uploadBytesResumable(storageRef, file);
 
-    const downloadUrl = await Promise.race([uploadTask, timeoutPromise]);
-    return downloadUrl;
-  } catch (err) {
-    console.warn('[Firebase Storage] Fast fallback engaged:', err.message);
-    return null;
-  }
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          if (typeof onProgress === 'function') {
+            onProgress(progress);
+          }
+        }, 
+        (error) => {
+          console.error('[Firebase Storage] Upload failed:', error);
+          reject(error);
+        }, 
+        async () => {
+          try {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            console.log('[Firebase Storage] Upload completed successfully:', downloadUrl);
+            resolve(downloadUrl);
+          } catch (urlErr) {
+            console.error('[Firebase Storage] getDownloadURL error:', urlErr);
+            reject(urlErr);
+          }
+        }
+      );
+    } catch (err) {
+      console.error('[Firebase Storage] Initialization error:', err);
+      reject(err);
+    }
+  });
 }
 
 /**
@@ -70,7 +90,7 @@ export async function saveToFirebaseCloud(sectionKey, data) {
     }, { merge: true });
     return true;
   } catch (error) {
-    console.warn('[Firebase] Firestore save notice (local state remains active):', error.message);
+    console.warn('[Firebase] Firestore save notice:', error.message);
     return false;
   }
 }

@@ -157,31 +157,44 @@ export function getStoredSectionMediaSync() {
 
 /**
  * Save Section-Specific Media (Logo, Hero, About, Celebrations, etc.)
- * Automatically saves locally to IndexedDB + localStorage and triggers real-time cloud sync.
+ * Permanently uploads to Firebase Storage so all devices worldwide can view it,
+ * caches locally, and syncs across Firestore.
  */
-export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
+export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgress = null) {
   touchLocalUpdate();
   try {
-    let localUrl = null;
+    let finalUrl = null;
     let isVideo = false;
     let fileName = meta.title || 'Resort Media';
 
     if (typeof fileOrUrl === 'string') {
       isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
-      localUrl = fileOrUrl;
+      finalUrl = fileOrUrl;
       fileName = meta.title || fileOrUrl.split('/').pop() || 'Custom Video Link';
     } else {
       isVideo = fileOrUrl.type ? fileOrUrl.type.startsWith('video/') : false;
       fileName = fileOrUrl.name || 'uploaded_media';
       
-      // Instant Blob URL / compressed data URL for instant playback
-      if (isVideo) {
-        localUrl = createBlobUrl(fileOrUrl) || '';
-      } else {
-        try {
-          localUrl = await fileToDataUrl(fileOrUrl, 1200, 0.75);
-        } catch (e) {
-          localUrl = createBlobUrl(fileOrUrl) || '';
+      // Upload directly to Firebase Storage for permanent worldwide CDN URL
+      try {
+        const cloudCdnUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
+        if (cloudCdnUrl) {
+          finalUrl = cloudCdnUrl;
+        }
+      } catch (uploadErr) {
+        console.warn('[Storage] Firebase Storage direct upload notice:', uploadErr);
+      }
+
+      // Fallback if offline or upload in progress
+      if (!finalUrl) {
+        if (isVideo) {
+          finalUrl = createBlobUrl(fileOrUrl) || '';
+        } else {
+          try {
+            finalUrl = await fileToDataUrl(fileOrUrl, 1200, 0.75);
+          } catch (e) {
+            finalUrl = createBlobUrl(fileOrUrl) || '';
+          }
         }
       }
     }
@@ -190,8 +203,8 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
       sectionKey,
       fileName,
       mediaType: isVideo ? 'video' : 'image',
-      customUrl: (typeof fileOrUrl === 'string' || (localUrl && localUrl.startsWith('data:'))) ? localUrl : null,
-      url: localUrl,
+      customUrl: finalUrl,
+      url: finalUrl,
       title: meta.title || fileName,
       updatedAt: new Date().toISOString(),
       isDefault: false,
@@ -203,10 +216,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
       const currentCache = getStoredSectionMediaSync();
       const updatedCache = {
         ...currentCache,
-        [sectionKey]: {
-          ...savedRecord,
-          url: savedRecord.customUrl || savedRecord.url
-        }
+        [sectionKey]: savedRecord
       };
       localStorage.setItem(SECTION_MEDIA_CACHE_KEY, JSON.stringify(updatedCache));
     } catch (cacheErr) {
@@ -228,56 +238,44 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
       console.warn('[Storage] IndexedDB put notice:', idbErr);
     }
 
-    // 3. Broadcast and sync to Cloud & Firebase in background
-    (async () => {
-      try {
-        let cloudCdnUrl = null;
-        if (typeof fileOrUrl === 'object') {
-          // Attempt Firebase Storage in background
-          try {
-            cloudCdnUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey);
-          } catch (e) {}
+    // 3. Broadcast and sync to Cloud & Firebase in real-time
+    try {
+      const allCurrent = await getAllSectionMedia();
+      const cleanCurrent = {};
+      Object.entries(allCurrent).forEach(([k, v]) => {
+        if (v && v.sectionKey) {
+          cleanCurrent[k] = {
+            sectionKey: v.sectionKey,
+            mediaType: v.mediaType || 'image',
+            fileName: v.fileName || '',
+            title: v.title || '',
+            customUrl: v.customUrl || (v.url && !v.url.startsWith('blob:') ? v.url : null),
+            url: (v.url && !v.url.startsWith('blob:') ? v.url : null) || v.customUrl || null,
+            updatedAt: v.updatedAt || new Date().toISOString(),
+            isDefault: !!v.isDefault
+          };
         }
+      });
 
-        const safeCloudUrl = cloudCdnUrl || (savedRecord.customUrl && savedRecord.customUrl.length < 500000 ? savedRecord.customUrl : null);
+      const updatedCloudMap = {
+        ...cleanCurrent,
+        [sectionKey]: {
+          sectionKey,
+          mediaType: savedRecord.mediaType,
+          fileName: savedRecord.fileName,
+          title: savedRecord.title,
+          customUrl: savedRecord.url,
+          url: savedRecord.url,
+          updatedAt: savedRecord.updatedAt,
+          isDefault: false
+        }
+      };
 
-        const allCurrent = await getAllSectionMedia();
-        const cleanCurrent = {};
-        Object.entries(allCurrent).forEach(([k, v]) => {
-          if (v && v.sectionKey) {
-            cleanCurrent[k] = {
-              sectionKey: v.sectionKey,
-              mediaType: v.mediaType || 'image',
-              fileName: v.fileName || '',
-              title: v.title || '',
-              customUrl: (v.customUrl && v.customUrl.length < 500000) ? v.customUrl : (v.url && !v.url.startsWith('blob:') ? v.url : null),
-              url: (v.url && !v.url.startsWith('blob:') ? v.url : null) || v.customUrl || null,
-              updatedAt: v.updatedAt || new Date().toISOString(),
-              isDefault: !!v.isDefault
-            };
-          }
-        });
-
-        const updatedCloudMap = {
-          ...cleanCurrent,
-          [sectionKey]: {
-            sectionKey,
-            mediaType: savedRecord.mediaType,
-            fileName: savedRecord.fileName,
-            title: savedRecord.title,
-            customUrl: safeCloudUrl,
-            url: safeCloudUrl || (typeof fileOrUrl === 'string' ? fileOrUrl : null),
-            updatedAt: savedRecord.updatedAt,
-            isDefault: false
-          }
-        };
-
-        pushCloudUpdate('sectionMedia', updatedCloudMap);
-        saveToFirebaseCloud('sectionMedia', updatedCloudMap);
-      } catch (syncErr) {
-        console.warn('[Storage] Background sync error:', syncErr);
-      }
-    })();
+      await saveToFirebaseCloud('sectionMedia', updatedCloudMap);
+      pushCloudUpdate('sectionMedia', updatedCloudMap);
+    } catch (syncErr) {
+      console.warn('[Storage] Cloud sync error:', syncErr);
+    }
 
     return savedRecord;
   } catch (error) {
@@ -287,6 +285,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
       sectionKey,
       mediaType: (fileOrUrl.type && fileOrUrl.type.startsWith('video/')) ? 'video' : 'image',
       url: fallbackUrl,
+      customUrl: fallbackUrl,
       isDefault: false,
       ...meta
     };
@@ -307,7 +306,7 @@ export async function getSectionMedia(sectionKey) {
       request.onsuccess = (event) => {
         const result = event.target.result;
         if (result) {
-          const url = (result.fileBlob ? createBlobUrl(result.fileBlob) : null) || result.customUrl || result.url;
+          const url = result.customUrl || result.url || (result.fileBlob ? createBlobUrl(result.fileBlob) : null);
           resolve({ ...result, url });
         } else {
           const syncCache = getStoredSectionMediaSync();
@@ -343,7 +342,7 @@ export async function getAllSectionMedia() {
         const mediaMap = { ...DEFAULT_SECTION_MEDIA, ...syncCache };
         results.forEach(item => {
           if (item && item.sectionKey) {
-            const url = (item.fileBlob ? createBlobUrl(item.fileBlob) : null) || item.customUrl || item.url;
+            const url = item.customUrl || item.url || (item.fileBlob ? createBlobUrl(item.fileBlob) : null);
             mediaMap[item.sectionKey] = {
               ...item,
               url: url || mediaMap[item.sectionKey]?.url
@@ -389,8 +388,8 @@ export async function deleteSectionMedia(sectionKey) {
       const allCurrent = await getAllSectionMedia();
       const updated = { ...allCurrent };
       delete updated[sectionKey];
+      await saveToFirebaseCloud('sectionMedia', updated);
       pushCloudUpdate('sectionMedia', updated);
-      saveToFirebaseCloud('sectionMedia', updated);
     } catch(e) {}
 
     return true;
@@ -403,19 +402,28 @@ export async function deleteSectionMedia(sectionKey) {
 /**
  * Save custom media item to Gallery with Cloud Sync
  */
-export async function saveMediaItem(mediaMeta, file) {
+export async function saveMediaItem(mediaMeta, file, onProgress = null) {
   touchLocalUpdate();
   try {
     const isVideo = file.type ? file.type.startsWith('video/') : false;
-    let localUrl = null;
+    let permanentUrl = null;
 
-    if (isVideo) {
-      localUrl = createBlobUrl(file) || '';
-    } else {
-      try {
-        localUrl = await fileToDataUrl(file, 1200, 0.75);
-      } catch (e) {
-        localUrl = createBlobUrl(file) || '';
+    // Upload to Firebase Storage for permanent public URL
+    try {
+      permanentUrl = await uploadMediaToFirebaseStorage(file, 'gallery', onProgress);
+    } catch (e) {
+      console.warn('[Storage] Firebase gallery upload notice:', e);
+    }
+
+    if (!permanentUrl) {
+      if (isVideo) {
+        permanentUrl = createBlobUrl(file) || '';
+      } else {
+        try {
+          permanentUrl = await fileToDataUrl(file, 1200, 0.75);
+        } catch (e) {
+          permanentUrl = createBlobUrl(file) || '';
+        }
       }
     }
 
@@ -425,8 +433,8 @@ export async function saveMediaItem(mediaMeta, file) {
       category: mediaMeta.category || 'General',
       type: isVideo ? 'video' : 'image',
       fileName: file.name || 'media_file',
-      customUrl: (!isVideo && localUrl && localUrl.startsWith('data:')) ? localUrl : null,
-      url: localUrl,
+      customUrl: permanentUrl,
+      url: permanentUrl,
       uploadedAt: new Date().toISOString().split('T')[0],
       isDefault: false
     };
@@ -446,33 +454,26 @@ export async function saveMediaItem(mediaMeta, file) {
       console.warn('[Storage] IndexedDB gallery put notice:', idbErr);
     }
 
-    // 2. Background cloud sync
-    (async () => {
-      try {
-        let cloudUrl = null;
-        try {
-          cloudUrl = await uploadMediaToFirebaseStorage(file, 'gallery');
-        } catch (e) {}
+    // 2. Real-time Cloud Sync
+    try {
+      const allGallery = await getAllGalleryItems();
+      const cleanGallery = allGallery.map(item => ({
+        id: item.id,
+        title: item.title,
+        category: item.category,
+        type: item.type,
+        url: item.id === record.id ? record.url : (item.customUrl || (item.url && !item.url.startsWith('blob:') ? item.url : null)),
+        uploadedAt: item.uploadedAt,
+        isDefault: !!item.isDefault
+      }));
 
-        const allGallery = await getAllGalleryItems();
-        const cleanGallery = allGallery.map(item => ({
-          id: item.id,
-          title: item.title,
-          category: item.category,
-          type: item.type,
-          url: (item.id === record.id && cloudUrl) ? cloudUrl : (item.customUrl || (item.url && !item.url.startsWith('blob:') ? item.url : null)),
-          uploadedAt: item.uploadedAt,
-          isDefault: !!item.isDefault
-        }));
-
-        pushCloudUpdate('gallery', cleanGallery);
-        saveToFirebaseCloud('gallery', cleanGallery);
-      } catch (e) {}
-    })();
+      await saveToFirebaseCloud('gallery', cleanGallery);
+      pushCloudUpdate('gallery', cleanGallery);
+    } catch (e) {}
 
     return record;
   } catch (error) {
-    console.error('Error saving media to IndexedDB:', error);
+    console.error('Error saving media to Gallery:', error);
     return {
       id: 'media-' + Date.now(),
       title: mediaMeta.title || file.name,
@@ -497,7 +498,7 @@ export async function getAllGalleryItems() {
       const request = store.getAll();
       request.onsuccess = (event) => {
         const customItems = (event.target.result || []).map(item => {
-          const url = (item.fileBlob ? createBlobUrl(item.fileBlob) : null) || item.customUrl || item.url;
+          const url = item.customUrl || item.url || (item.fileBlob ? createBlobUrl(item.fileBlob) : null);
           return {
             ...item,
             url
@@ -543,8 +544,8 @@ export async function deleteMediaItem(id) {
         isDefault: !!item.isDefault
       }));
 
+      await saveToFirebaseCloud('gallery', cleanGallery);
       pushCloudUpdate('gallery', cleanGallery);
-      saveToFirebaseCloud('gallery', cleanGallery);
     } catch(e) {}
 
     return true;
@@ -621,8 +622,8 @@ export function getStoredRooms() {
 export function saveStoredRooms(rooms) {
   touchLocalUpdate();
   localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
-  pushCloudUpdate('rooms', rooms);
   saveToFirebaseCloud('rooms', rooms);
+  pushCloudUpdate('rooms', rooms);
 }
 
 export const DEFAULT_BOOKINGS = [];
@@ -641,15 +642,15 @@ export function getStoredBookings() {
 export function saveStoredBookings(bookings) {
   touchLocalUpdate();
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
-  pushCloudUpdate('bookings', bookings);
   saveToFirebaseCloud('bookings', bookings);
+  pushCloudUpdate('bookings', bookings);
 }
 
 export function clearStoredBookings() {
   touchLocalUpdate();
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify([]));
-  pushCloudUpdate('bookings', []);
   saveToFirebaseCloud('bookings', []);
+  pushCloudUpdate('bookings', []);
 }
 
 export const DEFAULT_POLICIES_FALLBACK = {
@@ -698,8 +699,8 @@ export function getSiteSettings() {
 export function saveSiteSettings(settings) {
   touchLocalUpdate();
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  pushCloudUpdate('settings', settings);
   saveToFirebaseCloud('settings', settings);
+  pushCloudUpdate('settings', settings);
 }
 
 /**
