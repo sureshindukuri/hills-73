@@ -14,9 +14,8 @@ import AdminPanel from './components/AdminPanel';
 import { 
   getStoredRooms, 
   getSiteSettings, 
-  getStoredSectionMediaSync,
-  getAllSectionMedia,
-  getLocalUpdateTimestamp,
+  getStoredSectionMediaSync, 
+  getAllSectionMedia, 
   syncFromCloudToLocal 
 } from './utils/storage';
 import { subscribeToCloudUpdates } from './utils/cloudSync';
@@ -70,28 +69,30 @@ export default function App() {
     // 2. Fetch live state from Cloud / Firestore to sync all devices safely
     const syncCloud = async () => {
       try {
-        const localTimestamp = getLocalUpdateTimestamp();
-
-        // First check Firebase Firestore
+        // First check Firebase Firestore (Authoritative cloud source)
         const fbState = await getFirebaseLiveState();
         if (fbState) {
-          const fbTimestamp = Number(fbState.lastUpdated) || 0;
-          if (fbTimestamp >= localTimestamp) {
-            if (fbState.settings) setSettings(prev => ({ ...prev, ...fbState.settings }));
-            if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) setRooms(fbState.rooms);
-            if (fbState.sectionMedia) {
-              setSectionMedia(prev => {
-                const merged = { ...prev };
-                Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
-                  if (v && (v.url || v.customUrl)) {
-                    merged[k] = { ...merged[k], ...v };
-                  }
-                });
-                return merged;
-              });
-            }
-            return;
+          if (fbState.settings) {
+            setSettings(prev => ({ ...prev, ...fbState.settings }));
+            try { localStorage.setItem('73hills_settings_v1', JSON.stringify(fbState.settings)); } catch(e){}
           }
+          if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) {
+            setRooms(fbState.rooms);
+            try { localStorage.setItem('73hills_rooms_v1', JSON.stringify(fbState.rooms)); } catch(e){}
+          }
+          if (fbState.sectionMedia) {
+            setSectionMedia(prev => {
+              const merged = { ...prev };
+              Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
+                if (v && (v.url || v.customUrl)) {
+                  merged[k] = { ...merged[k], ...v };
+                }
+              });
+              return merged;
+            });
+            try { localStorage.setItem('73hills_section_media_cache_v2', JSON.stringify(fbState.sectionMedia)); } catch(e){}
+          }
+          return;
         }
 
         // Cloud sync fallback
@@ -132,22 +133,25 @@ export default function App() {
     // 4. Subscribe to real-time Firebase Firestore updates
     const unsubscribeFirebase = subscribeToFirebaseLiveUpdates((fbState) => {
       if (fbState) {
-        const localTimestamp = getLocalUpdateTimestamp();
-        const fbTimestamp = Number(fbState.lastUpdated) || 0;
-        if (fbTimestamp >= localTimestamp) {
-          if (fbState.settings) setSettings(prev => ({ ...prev, ...fbState.settings }));
-          if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) setRooms(fbState.rooms);
-          if (fbState.sectionMedia) {
-            setSectionMedia(prev => {
-              const merged = { ...prev };
-              Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
-                if (v && (v.url || v.customUrl)) {
-                  merged[k] = { ...merged[k], ...v };
-                }
-              });
-              return merged;
+        if (fbState.settings) {
+          setSettings(prev => ({ ...prev, ...fbState.settings }));
+          try { localStorage.setItem('73hills_settings_v1', JSON.stringify(fbState.settings)); } catch(e){}
+        }
+        if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) {
+          setRooms(fbState.rooms);
+          try { localStorage.setItem('73hills_rooms_v1', JSON.stringify(fbState.rooms)); } catch(e){}
+        }
+        if (fbState.sectionMedia) {
+          setSectionMedia(prev => {
+            const merged = { ...prev };
+            Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
+              if (v && (v.url || v.customUrl)) {
+                merged[k] = { ...merged[k], ...v };
+              }
             });
-          }
+            return merged;
+          });
+          try { localStorage.setItem('73hills_section_media_cache_v2', JSON.stringify(fbState.sectionMedia)); } catch(e){}
         }
       }
     });

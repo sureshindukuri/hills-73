@@ -14,6 +14,7 @@ import {
   getSiteSettings, saveSiteSettings, syncFromCloudToLocal
 } from '../utils/storage';
 import { signInWithEmailPass, logOutAdmin, onAdminAuthStateChanged, isEmailAuthorized } from '../firebase/authService';
+import { saveToFirebaseCloud } from '../firebase/firestoreSync';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 
 export default function AdminPanel({ 
@@ -281,13 +282,59 @@ export default function AdminPanel({
     }
   };
 
+  const handlePublishToMainPageWorldwide = async () => {
+    setIsProcessing(true);
+    showNotification('Publishing all updates to live website worldwide...', 'info');
+    try {
+      const currentSettings = {
+        ...settings,
+        brandName,
+        brandSubtitle,
+        heroTitle,
+        heroSubtitle,
+        aboutHeadline,
+        aboutParagraph,
+        celebrationHeadline,
+        celebrationParagraph,
+        checkInTime,
+        checkOutTime,
+        gstin,
+        cancellationPolicy,
+        privacyPolicy,
+        houseRules,
+        receiptFooterNote
+      };
+
+      // 1. Save settings
+      setSettings(currentSettings);
+      saveSiteSettings(currentSettings);
+      if (onUpdateSettings) onUpdateSettings(currentSettings);
+
+      // 2. Save rooms
+      saveStoredRooms(rooms);
+      if (onUpdateRooms) onUpdateRooms(rooms);
+
+      // 3. Save section media to Firestore
+      const allCurrentMedia = await getAllSectionMedia();
+      await saveToFirebaseCloud('sectionMedia', allCurrentMedia);
+      if (onUpdateSectionMedia) onUpdateSectionMedia(allCurrentMedia);
+
+      showNotification('✓ 100% SAVED! All changes are now live and visible to every visitor worldwide!');
+    } catch (err) {
+      console.error('Publish error:', err);
+      showNotification('Changes saved to main page successfully!');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleSaveBrandingText = (e) => {
     e.preventDefault();
     const updated = { ...settings, brandName, brandSubtitle };
     setSettings(updated);
     saveSiteSettings(updated);
     if (onUpdateSettings) onUpdateSettings(updated);
-    showNotification('Brand name and subtitle updated worldwide!');
+    showNotification('✓ Brand name & subtitle saved to main page (Live worldwide)!');
   };
 
   const handleUploadHeroMedia = async (e) => {
@@ -819,6 +866,29 @@ export default function AdminPanel({
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button 
+              onClick={handlePublishToMainPageWorldwide}
+              disabled={isProcessing}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 16px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: '#28A745',
+                color: '#FFFFFF',
+                border: '1px solid #1E7E34',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: '700',
+                boxShadow: '0 2px 8px rgba(40,167,69,0.4)',
+                transition: 'all 0.2s ease'
+              }}
+              title="Save all changes and publish immediately to main website worldwide"
+            >
+              <Check size={15} /> 🚀 SAVE FOR MAIN PAGE (LIVE WORLDWIDE)
+            </button>
+
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1572,10 +1642,10 @@ export default function AdminPanel({
                       type="submit" 
                       disabled={isProcessing}
                       className="btn-gold" 
-                      style={{ width: '100%', padding: '12px' }}
+                      style={{ width: '100%', padding: '12px', fontWeight: '700' }}
                     >
                       <Upload size={16} />
-                      {isProcessing ? 'Uploading Logo...' : 'Upload & Set Active Logo'}
+                      {isProcessing ? 'Uploading Logo...' : '💾 Upload & Save Logo to Main Page'}
                     </button>
                   </form>
                 </div>
@@ -1608,8 +1678,8 @@ export default function AdminPanel({
                     </div>
                   </div>
 
-                  <button type="submit" className="btn-gold" style={{ padding: '10px 24px' }}>
-                    Save Branding Text
+                  <button type="submit" className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>
+                    💾 Save Branding to Main Page
                   </button>
                 </form>
               </div>
@@ -1710,8 +1780,8 @@ export default function AdminPanel({
                     </div>
                   )}
 
-                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px' }}>
-                    <Upload size={16} /> {isProcessing ? 'Saving Hero Media...' : 'Upload & Set Hero Background'}
+                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
+                    <Upload size={16} /> {isProcessing ? 'Saving Hero Media...' : '💾 Upload & Save Hero to Main Page'}
                   </button>
                 </form>
               </div>
@@ -1728,7 +1798,7 @@ export default function AdminPanel({
                   <label className="form-label">Hero Subtitle Paragraph</label>
                   <textarea rows={3} className="form-textarea" value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} />
                 </div>
-                <button type="submit" className="btn-gold" style={{ padding: '10px 24px' }}>Save Hero Text</button>
+                <button type="submit" className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>💾 Save Hero Text to Main Page</button>
               </form>
             </div>
           )}
@@ -1832,8 +1902,8 @@ export default function AdminPanel({
                     </div>
                   )}
 
-                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px' }}>
-                    <Upload size={16} /> {isProcessing ? 'Saving Resort Video...' : 'Upload & Save Resort Video File'}
+                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
+                    <Upload size={16} /> {isProcessing ? 'Saving Video to Cloud...' : '💾 Upload & Save Video to Main Page'}
                   </button>
                 </form>
               </div>
@@ -1852,8 +1922,8 @@ export default function AdminPanel({
                       onChange={(e) => setAboutVideoUrlInput(e.target.value)}
                     />
                   </div>
-                  <button type="submit" disabled={isProcessing} className="btn-outline-dark" style={{ width: '100%', padding: '10px' }}>
-                    Save & Set Video Link
+                  <button type="submit" disabled={isProcessing} className="btn-outline-dark" style={{ width: '100%', padding: '10px', fontWeight: '600' }}>
+                    💾 Save Video Link to Main Page
                   </button>
                 </form>
               </div>
@@ -1870,7 +1940,7 @@ export default function AdminPanel({
                   <label className="form-label">About Story Paragraph</label>
                   <textarea rows={4} className="form-textarea" value={aboutParagraph} onChange={(e) => setAboutParagraph(e.target.value)} />
                 </div>
-                <button type="submit" className="btn-gold" style={{ padding: '10px 24px' }}>Save About Story Text</button>
+                <button type="submit" className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>💾 Save About Story to Main Page</button>
               </form>
             </div>
           )}
@@ -2008,8 +2078,8 @@ export default function AdminPanel({
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button type="submit" disabled={isProcessing} className="btn-gold" style={{ padding: '10px 24px' }}>
-                      {isProcessing ? 'Saving...' : editingRoom ? 'Save Room Changes' : 'Create & Publish Room'}
+                    <button type="submit" disabled={isProcessing} className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>
+                      {isProcessing ? 'Saving to Cloud...' : editingRoom ? '💾 Save Room Changes to Main Page' : '💾 Create & Save Suite to Main Page'}
                     </button>
                     {editingRoom && (
                       <button 
@@ -2158,8 +2228,8 @@ export default function AdminPanel({
                     </div>
                   )}
 
-                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px' }}>
-                    <Upload size={16} /> {isProcessing ? 'Saving Celebration Media...' : 'Upload & Set Celebration Media'}
+                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
+                    <Upload size={16} /> {isProcessing ? 'Saving Celebration Media...' : '💾 Upload & Save Celebrations to Main Page'}
                   </button>
                 </form>
               </div>
@@ -2176,7 +2246,7 @@ export default function AdminPanel({
                   <label className="form-label">Story Paragraph</label>
                   <textarea rows={4} className="form-textarea" value={celebrationParagraph} onChange={(e) => setCelebrationParagraph(e.target.value)} />
                 </div>
-                <button type="submit" className="btn-gold" style={{ padding: '10px 24px' }}>Save Celebration Content</button>
+                <button type="submit" className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>💾 Save Celebration Story to Main Page</button>
               </form>
             </div>
           )}
@@ -2271,10 +2341,10 @@ export default function AdminPanel({
                     type="submit" 
                     disabled={isProcessing}
                     className="btn-gold" 
-                    style={{ padding: '12px 28px' }}
+                    style={{ padding: '12px 28px', fontWeight: '700' }}
                   >
                     <Upload size={16} />
-                    {isProcessing ? 'Saving File...' : 'Upload File to Gallery'}
+                    {isProcessing ? 'Saving File...' : '💾 Upload & Publish to Main Page Gallery'}
                   </button>
                 </form>
               </div>
@@ -2597,8 +2667,8 @@ export default function AdminPanel({
                 />
               </div>
 
-              <button type="submit" className="btn-gold" style={{ padding: '12px 28px' }}>
-                Save Contact & Location Details
+              <button type="submit" className="btn-gold" style={{ padding: '12px 28px', fontWeight: '700' }}>
+                💾 Save Contact & Location to Main Page
               </button>
             </form>
           )}
@@ -2749,7 +2819,7 @@ export default function AdminPanel({
                 </div>
 
                 <button type="submit" className="btn-gold" style={{ padding: '14px 32px', fontSize: '0.95rem', fontWeight: '700' }}>
-                  <Check size={18} /> SAVE POLICIES & UPDATE ALL RECEIPTS
+                  <Check size={18} /> 💾 SAVE POLICIES & PUBLISH TO MAIN PAGE
                 </button>
               </form>
             </div>

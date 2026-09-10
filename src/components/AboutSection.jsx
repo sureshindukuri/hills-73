@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Play, CheckCircle2, Trees, X, Volume2, VolumeX, Maximize, Film } from 'lucide-react';
+import { CheckCircle2, Trees, X, Maximize, Film } from 'lucide-react';
 import { SandalwoodBotanicalArt } from './SandalwoodGraphics';
 
 function getEmbedUrl(url) {
@@ -19,23 +19,12 @@ function getEmbedUrl(url) {
 
 export default function AboutSection({ settings, sectionMedia = {} }) {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef(null);
 
   const aboutMedia = sectionMedia?.about;
   const isVideo = aboutMedia ? (aboutMedia.mediaType === 'video' || !!aboutMedia.customUrl) : true;
   const aboutUrl = aboutMedia?.customUrl || aboutMedia?.url || 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
   const embedUrl = getEmbedUrl(aboutUrl);
-
-  const toggleSound = (e) => {
-    e.stopPropagation();
-    if (videoRef.current) {
-      videoRef.current.muted = !videoRef.current.muted;
-      setIsMuted(videoRef.current.muted);
-    } else {
-      setIsMuted(!isMuted);
-    }
-  };
 
   return (
     <section id="about" style={{ padding: '80px 0', position: 'relative', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>
@@ -48,7 +37,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
           alignItems: 'center'
         }}>
           
-          {/* Left Column: Resort Full View Video with Sound & Modal Playback */}
+          {/* Left Column: Resort Full View Video with Seamless Autoplay & Modal Playback */}
           <div style={{ position: 'relative' }}>
             <div 
               style={{
@@ -74,17 +63,23 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                   />
                 </div>
               ) : isVideo ? (
-                /* Direct Video File / MP4 / WebM / Blob */
+                /* Direct Video File / MP4 / WebM / Cloud URL */
                 <div style={{ position: 'relative', height: 'clamp(280px, 42vw, 460px)' }}>
                   <video 
                     key={aboutUrl}
                     ref={videoRef}
                     src={aboutUrl} 
                     autoPlay 
-                    muted={isMuted} 
+                    muted 
                     loop 
                     playsInline 
                     preload="auto"
+                    onLoadedMetadata={(e) => {
+                      e.target.play().catch(() => {});
+                    }}
+                    onCanPlay={(e) => {
+                      e.target.play().catch(() => {});
+                    }}
                     style={{
                       width: '100%',
                       height: '100%',
@@ -92,33 +87,6 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                       display: 'block'
                     }} 
                   />
-                  
-                  {/* Audio Toggle Button */}
-                  <button
-                    onClick={toggleSound}
-                    style={{
-                      position: 'absolute',
-                      top: '14px',
-                      right: '14px',
-                      zIndex: 10,
-                      backgroundColor: 'rgba(13, 33, 22, 0.85)',
-                      backdropFilter: 'blur(8px)',
-                      color: '#FFFFFF',
-                      border: '1px solid var(--color-gold)',
-                      borderRadius: 'var(--radius-full)',
-                      padding: '6px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: 'pointer',
-                      fontSize: '0.725rem',
-                      fontWeight: '600'
-                    }}
-                    title={isMuted ? 'Click to Unmute Video Audio' : 'Mute Audio'}
-                  >
-                    {isMuted ? <VolumeX size={15} color="#B38B59" /> : <Volume2 size={15} color="#28A745" />}
-                    <span>{isMuted ? 'SOUND OFF' : 'SOUND ON'}</span>
-                  </button>
                 </div>
               ) : (
                 /* Fallback Image */
@@ -139,33 +107,9 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
               <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'linear-gradient(180deg, rgba(13, 33, 22, 0.15) 0%, rgba(13, 33, 22, 0) 40%, rgba(13, 33, 22, 0.85) 100%)',
+                background: 'linear-gradient(180deg, rgba(13, 33, 22, 0.15) 0%, rgba(13, 33, 22, 0) 40%, rgba(13, 33, 22, 0.75) 100%)',
                 pointerEvents: 'none'
               }} />
-
-              {/* Center Play / Expand Button Icon */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '70px',
-                  height: '70px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(253, 251, 247, 0.95)',
-                  border: '2px solid var(--color-gold)',
-                  color: 'var(--color-emerald)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 10px 35px rgba(0,0,0,0.4)',
-                  transition: 'all 0.3s ease',
-                  zIndex: 5
-                }}
-              >
-                <Play size={28} style={{ marginLeft: '4px' }} fill="currentColor" />
-              </div>
 
               {/* Top-Left Live Video Tag */}
               <div style={{
