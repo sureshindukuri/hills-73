@@ -284,8 +284,66 @@ export default function AdminPanel({
 
   const handlePublishToMainPageWorldwide = async () => {
     setIsProcessing(true);
-    showNotification('Saving and publishing all content to main page worldwide...', 'info');
+    showNotification('Saving & publishing all content to main page worldwide...', 'info');
     try {
+      // 1. Process pending file uploads if any
+      let currentSectionMedia = { ...sectionMedia };
+
+      if (aboutFile) {
+        setActionFeedback({ text: 'Uploading Resort Video to Cloud (0%)...', type: 'info' });
+        const savedAbout = await saveSectionMedia('about', aboutFile, {}, (pct) => {
+          setActionFeedback({ text: `Uploading Resort Video to Cloud (${pct}%)...`, type: 'info' });
+        });
+        currentSectionMedia.about = savedAbout;
+        setAboutFile(null);
+        const fileInp = document.getElementById('about-file-input');
+        if (fileInp) fileInp.value = '';
+      }
+
+      if (heroFile) {
+        setActionFeedback({ text: 'Uploading Hero Media to Cloud (0%)...', type: 'info' });
+        const savedHero = await saveSectionMedia('hero', heroFile, {}, (pct) => {
+          setActionFeedback({ text: `Uploading Hero Media to Cloud (${pct}%)...`, type: 'info' });
+        });
+        currentSectionMedia.hero = savedHero;
+        setHeroFile(null);
+        const fileInp = document.getElementById('hero-file-input');
+        if (fileInp) fileInp.value = '';
+      }
+
+      if (celebrationFile) {
+        setActionFeedback({ text: 'Uploading Celebration Media (0%)...', type: 'info' });
+        const savedCeleb = await saveSectionMedia('celebrations', celebrationFile, {}, (pct) => {
+          setActionFeedback({ text: `Uploading Celebration Media (${pct}%)...`, type: 'info' });
+        });
+        currentSectionMedia.celebrations = savedCeleb;
+        setCelebrationFile(null);
+        const fileInp = document.getElementById('celebration-file-input');
+        if (fileInp) fileInp.value = '';
+      }
+
+      if (logoFile) {
+        const savedLogo = await saveSectionMedia('logo', logoFile, {});
+        currentSectionMedia.logo = savedLogo;
+        setLogoFile(null);
+        const fileInp = document.getElementById('logo-file-input');
+        if (fileInp) fileInp.value = '';
+      }
+
+      if (galleryFile) {
+        await saveMediaItem({
+          title: galleryTitle || galleryFile.name.split('.')[0],
+          category: galleryCategory
+        }, galleryFile);
+        setGalleryFile(null);
+        setGalleryTitle('');
+        const fileInp = document.getElementById('gallery-file-input');
+        if (fileInp) fileInp.value = '';
+      }
+
+      setSectionMedia(currentSectionMedia);
+      if (onUpdateSectionMedia) onUpdateSectionMedia(currentSectionMedia);
+
       const currentSettings = {
         ...settings,
         brandName,
@@ -305,32 +363,29 @@ export default function AdminPanel({
         receiptFooterNote
       };
 
-      // 1. Save settings locally and locally sync
+      // 2. Save settings locally and locally sync
       setSettings(currentSettings);
       saveSiteSettings(currentSettings);
       if (onUpdateSettings) onUpdateSettings(currentSettings);
 
-      // 2. Save rooms
+      // 3. Save rooms
       saveStoredRooms(rooms);
       if (onUpdateRooms) onUpdateRooms(rooms);
 
-      // 3. Save section media
-      const allCurrentMedia = await getAllSectionMedia();
-      if (onUpdateSectionMedia) onUpdateSectionMedia(allCurrentMedia);
-
       // 4. Save gallery
       const allGallery = await getAllGalleryItems();
+      setGalleryItems(allGallery);
 
       // 5. Atomically push entire state to Firebase Firestore live_state
       await saveEntireLiveStateToFirebase({
         settings: currentSettings,
         rooms: rooms,
-        sectionMedia: allCurrentMedia,
+        sectionMedia: currentSectionMedia,
         gallery: allGallery,
         bookings: bookings
       });
 
-      showNotification('✓ 100% SAVED TO MAIN PAGE! Visible to each and every user worldwide.');
+      showNotification('✓ 100% SAVED TO MAIN PAGE! All changes & videos are live worldwide.');
     } catch (err) {
       console.error('Publish error:', err);
       showNotification('Changes saved to main page successfully!');
@@ -366,6 +421,15 @@ export default function AdminPanel({
       setHeroFile(null);
       const fileInp = document.getElementById('hero-file-input');
       if (fileInp) fileInp.value = '';
+      
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms,
+        sectionMedia: updatedMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
       showNotification(`✓ Hero background ${saved.mediaType || 'media'} published permanently worldwide!`);
     } catch (err) {
       console.warn('Hero upload handled locally:', err);
@@ -402,10 +466,10 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
-    showNotification('Uploading video to Cloud Storage for worldwide streaming (0%)...', 'info');
+    showNotification('Uploading video to Cloud CDN for worldwide streaming (0%)...', 'info');
     try {
       const saved = await saveSectionMedia('about', aboutFile, {}, (pct) => {
-        setActionFeedback({ text: `Uploading video to Cloud Storage (${pct}%)... Please wait`, type: 'info' });
+        setActionFeedback({ text: `Uploading video to Cloud CDN (${pct}%)... Please wait`, type: 'info' });
       });
       const updatedMedia = { ...sectionMedia, about: saved };
       setSectionMedia(updatedMedia);
@@ -413,6 +477,15 @@ export default function AdminPanel({
       setAboutFile(null);
       const fileInp = document.getElementById('about-file-input');
       if (fileInp) fileInp.value = '';
+
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms,
+        sectionMedia: updatedMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
       showNotification(`✓ Resort video published permanently to Cloud! Visible on all visitor devices worldwide.`);
     } catch (err) {
       console.warn('About media upload error:', err);
@@ -438,6 +511,15 @@ export default function AdminPanel({
       setSectionMedia(updatedMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
       setAboutVideoUrlInput('');
+
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms,
+        sectionMedia: updatedMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
       showNotification('✓ Resort Video Link saved and live worldwide!');
     } catch (err) {
       console.warn('Video link save notice:', err);
@@ -1832,20 +1914,29 @@ export default function AdminPanel({
                       style={{ width: '100%', height: '100%', border: 'none' }} 
                     />
                   ) : sectionMedia.about?.mediaType === 'video' || (!sectionMedia.about && true) ? (
-                    <video 
-                      key={sectionMedia.about?.url || 'default-about-video'}
-                      src={sectionMedia.about?.url || 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4'} 
-                      controls 
-                      autoPlay 
-                      muted 
-                      loop 
-                      playsInline
-                      preload="auto"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
-                    />
+                    (() => {
+                      const videoSrc = (sectionMedia.about?.url && !sectionMedia.about.url.startsWith('blob:')) 
+                        ? sectionMedia.about.url 
+                        : (sectionMedia.about?.customUrl && !sectionMedia.about.customUrl.startsWith('blob:'))
+                        ? sectionMedia.about.customUrl
+                        : (sectionMedia.about?.fileBlob ? URL.createObjectURL(sectionMedia.about.fileBlob) : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4');
+                      return (
+                        <video 
+                          key={videoSrc}
+                          src={videoSrc} 
+                          controls 
+                          autoPlay 
+                          muted 
+                          loop 
+                          playsInline
+                          preload="auto"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                        />
+                      );
+                    })()
                   ) : (
                     <img 
-                      src={sectionMedia.about ? sectionMedia.about.url : '/assets/about_sandalwood_path.png'} 
+                      src={sectionMedia.about ? (sectionMedia.about.url || sectionMedia.about.customUrl) : '/assets/about_sandalwood_path.png'} 
                       alt="About Showcase" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                     />
@@ -1857,7 +1948,7 @@ export default function AdminPanel({
 
                 <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#132E1F', color: '#FFF' }}>
                   <span style={{ fontSize: '0.85rem' }}>
-                    {sectionMedia.about ? `Active Source: ${sectionMedia.about.fileName || sectionMedia.about.customUrl || 'Uploaded File'}` : 'Default 73 Hills 73-Acres Drone Video Tour'}
+                    {sectionMedia.about ? `Active Source: ${sectionMedia.about.fileName || sectionMedia.about.customUrl || sectionMedia.about.url || 'Uploaded File'}` : 'Default 73 Hills 73-Acres Drone Video Tour'}
                   </span>
                   {sectionMedia.about && (
                     <button onClick={handleResetAboutMedia} style={{ padding: '6px 14px', backgroundColor: 'transparent', color: '#FF6B6B', border: '1px solid #FF6B6B', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>

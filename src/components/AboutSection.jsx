@@ -23,7 +23,10 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
 
   const aboutMedia = sectionMedia?.about;
   const isVideo = aboutMedia ? (aboutMedia.mediaType === 'video' || !!aboutMedia.customUrl) : true;
-  const aboutUrl = aboutMedia?.customUrl || aboutMedia?.url || 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+  const rawAboutUrl = aboutMedia?.customUrl || aboutMedia?.url;
+  const aboutUrl = (rawAboutUrl && !rawAboutUrl.startsWith('blob:')) 
+    ? rawAboutUrl 
+    : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
   const embedUrl = getEmbedUrl(aboutUrl);
 
   return (
