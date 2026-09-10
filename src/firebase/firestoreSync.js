@@ -172,19 +172,19 @@ export async function uploadMediaToFirebaseStorage(file, folder = 'uploads', onP
     console.warn('[Media Cloud] Secondary video upload notice:', cdnErr.message);
   }
 
-  // 4. If video is small (< 5MB) or fallback: Base64 data URL
-  if (file.size && file.size < 6 * 1024 * 1024) {
-    try {
-      const base64Url = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+  // 4. Base64 video Data URL conversion (permanent, self-contained, 100% cross-device compatibility)
+  try {
+    const base64Url = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    if (base64Url && base64Url.startsWith('data:')) {
       return base64Url;
-    } catch (b64Err) {
-      console.warn('[Media Cloud] Base64 video fallback notice:', b64Err);
     }
+  } catch (b64Err) {
+    console.warn('[Media Cloud] Base64 video conversion notice:', b64Err);
   }
 
   return null;

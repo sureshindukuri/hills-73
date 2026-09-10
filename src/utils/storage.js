@@ -185,18 +185,31 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
         console.warn('[Storage] Firebase Storage direct upload notice:', uploadErr);
       }
 
-      // Fallback if offline or upload in progress
+      // Convert to permanent Data URL or Cloud CDN URL
       if (!finalUrl) {
         if (isVideo) {
-          finalUrl = createBlobUrl(fileOrUrl) || '';
+          try {
+            finalUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve(e.target.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(fileOrUrl);
+            });
+          } catch (e) {
+            console.warn('[Storage] Video data conversion fallback notice:', e);
+          }
         } else {
           try {
-            finalUrl = await fileToDataUrl(fileOrUrl, 1200, 0.75);
+            finalUrl = await fileToDataUrl(fileOrUrl, 1280, 0.82);
           } catch (e) {
-            finalUrl = createBlobUrl(fileOrUrl) || '';
+            console.warn('[Storage] Image conversion error:', e);
           }
         }
       }
+    }
+
+    if (!finalUrl || finalUrl.startsWith('blob:')) {
+      throw new Error('Failed to create a permanent media URL. Please provide a video URL link or choose a supported file.');
     }
 
     const savedRecord = {

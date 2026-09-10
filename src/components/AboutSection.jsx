@@ -22,9 +22,9 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
   const videoRef = useRef(null);
 
   const aboutMedia = sectionMedia?.about;
-  const isVideo = aboutMedia ? (aboutMedia.mediaType === 'video' || !!aboutMedia.customUrl) : true;
+  const isVideo = aboutMedia ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customUrl || !!aboutMedia.url))) : true;
   const rawAboutUrl = aboutMedia?.customUrl || aboutMedia?.url;
-  const aboutUrl = (rawAboutUrl && !rawAboutUrl.startsWith('blob:')) 
+  const aboutUrl = (rawAboutUrl && typeof rawAboutUrl === 'string' && !rawAboutUrl.startsWith('blob:')) 
     ? rawAboutUrl 
     : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
   const embedUrl = getEmbedUrl(aboutUrl);
@@ -66,12 +66,13 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                   />
                 </div>
               ) : isVideo ? (
-                /* Direct Video File / MP4 / WebM / Cloud URL */
-                <div style={{ position: 'relative', height: 'clamp(280px, 42vw, 460px)' }}>
+                /* Direct Video File / MP4 / WebM / Cloud URL / Data URL */
+                <div style={{ position: 'relative', height: 'clamp(280px, 42vw, 460px)', backgroundColor: '#0D2116' }}>
                   <video 
                     key={aboutUrl}
                     ref={videoRef}
                     src={aboutUrl} 
+                    poster="/assets/hero_aerial_73hills.jpg"
                     autoPlay 
                     muted 
                     loop 
@@ -82,6 +83,12 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                     }}
                     onCanPlay={(e) => {
                       e.target.play().catch(() => {});
+                    }}
+                    onError={(e) => {
+                      if (e.target.src !== 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4') {
+                        e.target.src = 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+                        e.target.play().catch(() => {});
+                      }
                     }}
                     style={{
                       width: '100%',
