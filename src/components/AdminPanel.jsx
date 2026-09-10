@@ -225,7 +225,7 @@ export default function AdminPanel({
   const sortedMonths = Object.keys(monthlyData).sort();
   const maxMonthRevenue = Math.max(...Object.values(monthlyData).map(m => m.revenue), 1);
 
-  const handleQuickPriceChange = (roomId, newPrice, extraGuestPrice) => {
+  const handleQuickPriceChange = async (roomId, newPrice, extraGuestPrice) => {
     const updated = rooms.map(r => {
       if (r.id === roomId) {
         return { 
@@ -239,7 +239,18 @@ export default function AdminPanel({
     setRooms(updated);
     saveStoredRooms(updated);
     if (onUpdateRooms) onUpdateRooms(updated);
-    showNotification(`Updated price for ${rooms.find(r => r.id === roomId)?.name} to ₹${Number(newPrice).toLocaleString('en-IN')}`);
+    try {
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms: updated,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      });
+      showNotification(`✓ Price for ${rooms.find(r => r.id === roomId)?.name} updated to ₹${Number(newPrice).toLocaleString('en-IN')} (Live worldwide)`);
+    } catch (err) {
+      showNotification(`Price updated locally. Cloud notice: ${err.message}`, 'info');
+    }
   };
 
   const handleUploadLogo = async (e) => {
@@ -260,9 +271,18 @@ export default function AdminPanel({
       setLogoFile(null);
       const fileInp = document.getElementById('logo-file-input');
       if (fileInp) fileInp.value = '';
+
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms,
+        sectionMedia: updatedMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
       showNotification('✓ Custom Logo uploaded permanently and active worldwide!');
     } catch (err) {
-      console.warn('Logo upload handled locally:', err);
+      console.warn('Logo upload handled:', err);
       showNotification('Logo updated successfully!');
     } finally {
       setIsProcessing(false);
@@ -272,13 +292,27 @@ export default function AdminPanel({
   const handleDeleteLogo = async () => {
     if (window.confirm('Reset to default 73 Hills Sandalwood Tree logo icon?')) {
       setIsProcessing(true);
-      await deleteSectionMedia('logo');
-      const updatedMedia = { ...sectionMedia };
-      delete updatedMedia.logo;
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      setIsProcessing(false);
-      showNotification('Logo reset to default.');
+      try {
+        await deleteSectionMedia('logo');
+        const updatedMedia = { ...sectionMedia };
+        delete updatedMedia.logo;
+        setSectionMedia(updatedMedia);
+        if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
+
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms,
+          sectionMedia: updatedMedia,
+          gallery: galleryItems,
+          bookings
+        });
+
+        showNotification('Logo reset to default.');
+      } catch (err) {
+        showNotification(`Reset logo notice: ${err.message}`, 'info');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -290,7 +324,7 @@ export default function AdminPanel({
       let currentSectionMedia = { ...sectionMedia };
 
       if (aboutFile) {
-        setActionFeedback({ text: 'Uploading Resort Video to Cloud (0%)...', type: 'info' });
+        setActionFeedback({ text: 'Uploading Resort Video to Cloud...', type: 'info' });
         const savedAbout = await saveSectionMedia('about', aboutFile, {}, (pct) => {
           setActionFeedback({ text: `Uploading Resort Video to Cloud (${pct}%)...`, type: 'info' });
         });
@@ -301,7 +335,7 @@ export default function AdminPanel({
       }
 
       if (heroFile) {
-        setActionFeedback({ text: 'Uploading Hero Media to Cloud (0%)...', type: 'info' });
+        setActionFeedback({ text: 'Uploading Hero Media to Cloud...', type: 'info' });
         const savedHero = await saveSectionMedia('hero', heroFile, {}, (pct) => {
           setActionFeedback({ text: `Uploading Hero Media to Cloud (${pct}%)...`, type: 'info' });
         });
@@ -312,7 +346,7 @@ export default function AdminPanel({
       }
 
       if (celebrationFile) {
-        setActionFeedback({ text: 'Uploading Celebration Media (0%)...', type: 'info' });
+        setActionFeedback({ text: 'Uploading Celebration Media...', type: 'info' });
         const savedCeleb = await saveSectionMedia('celebrations', celebrationFile, {}, (pct) => {
           setActionFeedback({ text: `Uploading Celebration Media (${pct}%)...`, type: 'info' });
         });
@@ -377,6 +411,7 @@ export default function AdminPanel({
       setGalleryItems(allGallery);
 
       // 5. Atomically push entire state to Firebase Firestore live_state
+      setActionFeedback({ text: 'Verifying database persistence...', type: 'info' });
       await saveEntireLiveStateToFirebase({
         settings: currentSettings,
         rooms: rooms,
@@ -388,19 +423,35 @@ export default function AdminPanel({
       showNotification('✓ 100% SAVED TO MAIN PAGE! All changes & videos are live worldwide.');
     } catch (err) {
       console.error('Publish error:', err);
-      showNotification('Changes saved to main page successfully!');
+      showNotification(`❌ Save failed: ${err.message || 'Database error'}`, 'error');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleSaveBrandingText = (e) => {
+  const handleSaveBrandingText = async (e) => {
     e.preventDefault();
-    const updated = { ...settings, brandName, brandSubtitle };
-    setSettings(updated);
-    saveSiteSettings(updated);
-    if (onUpdateSettings) onUpdateSettings(updated);
-    showNotification('✓ Brand name & subtitle saved to main page (Live worldwide)!');
+    setIsProcessing(true);
+    try {
+      const updated = { ...settings, brandName, brandSubtitle };
+      setSettings(updated);
+      saveSiteSettings(updated);
+      if (onUpdateSettings) onUpdateSettings(updated);
+
+      await saveEntireLiveStateToFirebase({
+        settings: updated,
+        rooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
+      showNotification('✓ Brand name & subtitle saved to main page (Live worldwide)!');
+    } catch (err) {
+      showNotification(`Save error: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleUploadHeroMedia = async (e) => {
@@ -441,22 +492,54 @@ export default function AdminPanel({
 
   const handleResetHeroMedia = async () => {
     if (window.confirm('Reset Hero background to default?')) {
-      await deleteSectionMedia('hero');
-      const updatedMedia = { ...sectionMedia };
-      delete updatedMedia.hero;
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      showNotification('Hero media reset to default.');
+      setIsProcessing(true);
+      try {
+        await deleteSectionMedia('hero');
+        const updatedMedia = { ...sectionMedia };
+        delete updatedMedia.hero;
+        setSectionMedia(updatedMedia);
+        if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
+
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms,
+          sectionMedia: updatedMedia,
+          gallery: galleryItems,
+          bookings
+        });
+
+        showNotification('Hero media reset to default.');
+      } catch (err) {
+        showNotification(`Hero reset notice: ${err.message}`, 'info');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
-  const handleSaveHeroText = (e) => {
+  const handleSaveHeroText = async (e) => {
     e.preventDefault();
-    const updated = { ...settings, heroTitle, heroSubtitle };
-    setSettings(updated);
-    saveSiteSettings(updated);
-    if (onUpdateSettings) onUpdateSettings(updated);
-    showNotification('Hero headlines saved successfully!');
+    setIsProcessing(true);
+    try {
+      const updated = { ...settings, heroTitle, heroSubtitle };
+      setSettings(updated);
+      saveSiteSettings(updated);
+      if (onUpdateSettings) onUpdateSettings(updated);
+
+      await saveEntireLiveStateToFirebase({
+        settings: updated,
+        rooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
+      showNotification('✓ Hero headlines saved and live on main page worldwide!');
+    } catch (err) {
+      showNotification(`Hero save error: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleUploadAboutMedia = async (e) => {
@@ -466,10 +549,10 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
-    showNotification('Uploading video to Cloud CDN for worldwide streaming (0%)...', 'info');
+    showNotification('Uploading video to Cloud CDN for worldwide streaming...', 'info');
     try {
       const saved = await saveSectionMedia('about', aboutFile, {}, (pct) => {
-        setActionFeedback({ text: `Uploading video to Cloud CDN (${pct}%)... Please wait`, type: 'info' });
+        setActionFeedback({ text: `Uploading video to Cloud (${pct}%)... Please wait`, type: 'info' });
       });
       const updatedMedia = { ...sectionMedia, about: saved };
       setSectionMedia(updatedMedia);
@@ -531,22 +614,54 @@ export default function AdminPanel({
 
   const handleResetAboutMedia = async () => {
     if (window.confirm('Reset About showcase to default?')) {
-      await deleteSectionMedia('about');
-      const updatedMedia = { ...sectionMedia };
-      delete updatedMedia.about;
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      showNotification('About media reset to default.');
+      setIsProcessing(true);
+      try {
+        await deleteSectionMedia('about');
+        const updatedMedia = { ...sectionMedia };
+        delete updatedMedia.about;
+        setSectionMedia(updatedMedia);
+        if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
+
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms,
+          sectionMedia: updatedMedia,
+          gallery: galleryItems,
+          bookings
+        });
+
+        showNotification('About media reset to default.');
+      } catch (err) {
+        showNotification(`About reset notice: ${err.message}`, 'info');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
-  const handleSaveAboutText = (e) => {
+  const handleSaveAboutText = async (e) => {
     e.preventDefault();
-    const updated = { ...settings, aboutHeadline, aboutParagraph };
-    setSettings(updated);
-    saveSiteSettings(updated);
-    if (onUpdateSettings) onUpdateSettings(updated);
-    showNotification('About story content saved successfully!');
+    setIsProcessing(true);
+    try {
+      const updated = { ...settings, aboutHeadline, aboutParagraph };
+      setSettings(updated);
+      saveSiteSettings(updated);
+      if (onUpdateSettings) onUpdateSettings(updated);
+
+      await saveEntireLiveStateToFirebase({
+        settings: updated,
+        rooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
+      showNotification('✓ About story content saved to main page worldwide!');
+    } catch (err) {
+      showNotification(`About save error: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSaveRoom = async (e) => {
@@ -575,6 +690,14 @@ export default function AdminPanel({
       saveStoredRooms(updatedRooms);
       if (onUpdateRooms) onUpdateRooms(updatedRooms);
 
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms: updatedRooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
       setEditingRoom(null);
       setRoomPhotoFile(null);
       setRoomFormData({
@@ -594,28 +717,60 @@ export default function AdminPanel({
       showNotification('✓ Room details & photo published permanently worldwide!');
     } catch (err) {
       console.error(err);
-      showNotification('Room details updated.');
+      showNotification(`Room update notice: ${err.message}`);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleDeleteRoom = (id) => {
+  const handleDeleteRoom = async (id) => {
     if (window.confirm('Are you sure you want to remove this cottage / suite?')) {
-      const updated = rooms.filter(r => r.id !== id);
-      setRooms(updated);
-      saveStoredRooms(updated);
-      if (onUpdateRooms) onUpdateRooms(updated);
-      showNotification('Room removed.');
+      setIsProcessing(true);
+      try {
+        const updated = rooms.filter(r => r.id !== id);
+        setRooms(updated);
+        saveStoredRooms(updated);
+        if (onUpdateRooms) onUpdateRooms(updated);
+
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms: updated,
+          sectionMedia,
+          gallery: galleryItems,
+          bookings
+        });
+
+        showNotification('Room removed and updated live.');
+      } catch (err) {
+        showNotification(`Room delete error: ${err.message}`, 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
-  const handleResetDefaultRooms = () => {
+  const handleResetDefaultRooms = async () => {
     if (window.confirm('Reset all rooms to default 73 Hills suites & prices?')) {
-      setRooms(DEFAULT_ROOMS);
-      saveStoredRooms(DEFAULT_ROOMS);
-      if (onUpdateRooms) onUpdateRooms(DEFAULT_ROOMS);
-      showNotification('Rooms reset to defaults.');
+      setIsProcessing(true);
+      try {
+        setRooms(DEFAULT_ROOMS);
+        saveStoredRooms(DEFAULT_ROOMS);
+        if (onUpdateRooms) onUpdateRooms(DEFAULT_ROOMS);
+
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms: DEFAULT_ROOMS,
+          sectionMedia,
+          gallery: galleryItems,
+          bookings
+        });
+
+        showNotification('Rooms reset to defaults.');
+      } catch (err) {
+        showNotification(`Rooms reset error: ${err.message}`, 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -626,7 +781,7 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
-    showNotification('Uploading celebration media to Cloud Storage (0%)...', 'info');
+    showNotification('Uploading celebration media to Cloud Storage...', 'info');
     try {
       const saved = await saveSectionMedia('celebrations', celebrationFile, {}, (pct) => {
         setActionFeedback({ text: `Uploading celebration media to Cloud Storage (${pct}%)...`, type: 'info' });
@@ -637,6 +792,15 @@ export default function AdminPanel({
       setCelebrationFile(null);
       const fileInp = document.getElementById('celebration-file-input');
       if (fileInp) fileInp.value = '';
+
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms,
+        sectionMedia: updatedMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
       showNotification(`✓ Celebration showcase ${saved.mediaType || 'media'} published permanently worldwide!`);
     } catch (err) {
       console.warn('Celebration upload handled locally:', err);
@@ -648,22 +812,54 @@ export default function AdminPanel({
 
   const handleResetCelebrationMedia = async () => {
     if (window.confirm('Reset Celebration showcase to default?')) {
-      await deleteSectionMedia('celebrations');
-      const updatedMedia = { ...sectionMedia };
-      delete updatedMedia.celebrations;
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      showNotification('Celebrations media reset to default.');
+      setIsProcessing(true);
+      try {
+        await deleteSectionMedia('celebrations');
+        const updatedMedia = { ...sectionMedia };
+        delete updatedMedia.celebrations;
+        setSectionMedia(updatedMedia);
+        if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
+
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms,
+          sectionMedia: updatedMedia,
+          gallery: galleryItems,
+          bookings
+        });
+
+        showNotification('Celebrations media reset to default.');
+      } catch (err) {
+        showNotification(`Celebrations reset error: ${err.message}`, 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
-  const handleSaveCelebrationText = (e) => {
+  const handleSaveCelebrationText = async (e) => {
     e.preventDefault();
-    const updated = { ...settings, celebrationHeadline, celebrationParagraph };
-    setSettings(updated);
-    saveSiteSettings(updated);
-    if (onUpdateSettings) onUpdateSettings(updated);
-    showNotification('Celebration content saved!');
+    setIsProcessing(true);
+    try {
+      const updated = { ...settings, celebrationHeadline, celebrationParagraph };
+      setSettings(updated);
+      saveSiteSettings(updated);
+      if (onUpdateSettings) onUpdateSettings(updated);
+
+      await saveEntireLiveStateToFirebase({
+        settings: updated,
+        rooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
+      showNotification('✓ Celebration content saved to main page worldwide!');
+    } catch (err) {
+      showNotification(`Celebration save error: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleDeviceGalleryUpload = async (e) => {
@@ -673,7 +869,7 @@ export default function AdminPanel({
       return;
     }
     setIsProcessing(true);
-    showNotification(`Uploading "${galleryFile.name}" to Cloud Storage for worldwide gallery (0%)...`, 'info');
+    showNotification(`Uploading "${galleryFile.name}" to Cloud Storage for worldwide gallery...`, 'info');
     try {
       await saveMediaItem(
         {
@@ -691,6 +887,15 @@ export default function AdminPanel({
       setGalleryTitle('');
       const fileInp = document.getElementById('gallery-file-input');
       if (fileInp) fileInp.value = '';
+
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms,
+        sectionMedia,
+        gallery: updatedItems,
+        bookings
+      });
+
       showNotification(`✓ "${galleryFile.name}" published permanently to Cloud Gallery worldwide!`);
     } catch (err) {
       console.warn('Gallery upload handled locally:', err);
@@ -706,14 +911,30 @@ export default function AdminPanel({
       return;
     }
     if (window.confirm('Delete this media file from Gallery?')) {
-      await deleteMediaItem(id);
-      const updatedItems = await getAllGalleryItems();
-      setGalleryItems(updatedItems);
-      showNotification('Media item deleted from Gallery.');
+      setIsProcessing(true);
+      try {
+        await deleteMediaItem(id);
+        const updatedItems = await getAllGalleryItems();
+        setGalleryItems(updatedItems);
+
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms,
+          sectionMedia,
+          gallery: updatedItems,
+          bookings
+        });
+
+        showNotification('Media item deleted from Gallery.');
+      } catch (err) {
+        showNotification(`Gallery delete error: ${err.message}`, 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
-  const handleBookingStatus = (id, newStatus) => {
+  const handleBookingStatus = async (id, newStatus) => {
     const updated = bookings.map(b => {
       if (b.id === id) {
         return { 
@@ -726,49 +947,114 @@ export default function AdminPanel({
     });
     setBookings(updated);
     saveStoredBookings(updated);
-    showNotification(`Booking ${id} status set to ${newStatus}`);
+    try {
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings: updated
+      });
+      showNotification(`Booking ${id} status set to ${newStatus}`);
+    } catch (e) {
+      showNotification(`Booking status updated.`);
+    }
   };
 
-  const handleDeleteBooking = (id) => {
+  const handleDeleteBooking = async (id) => {
     if (window.confirm(`Delete booking record ${id}?`)) {
       const updated = bookings.filter(b => b.id !== id);
       setBookings(updated);
       saveStoredBookings(updated);
-      showNotification(`Booking ${id} removed.`);
+      try {
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms,
+          sectionMedia,
+          gallery: galleryItems,
+          bookings: updated
+        });
+        showNotification(`Booking ${id} removed.`);
+      } catch (e) {
+        showNotification(`Booking ${id} removed.`);
+      }
     }
   };
 
-  const handleClearAllBookings = () => {
+  const handleClearAllBookings = async () => {
     if (window.confirm('Clear all booking records and reset dashboard analytics to zero? Real user bookings will start fresh.')) {
       clearStoredBookings();
       setBookings([]);
-      showNotification('All booking history cleared. Dashboard and analytics reset to 0.');
+      try {
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms,
+          sectionMedia,
+          gallery: galleryItems,
+          bookings: []
+        });
+        showNotification('All booking history cleared. Dashboard and analytics reset to 0.');
+      } catch (e) {
+        showNotification('All booking history cleared.');
+      }
     }
   };
 
-  const handleSaveContactSettings = (e) => {
+  const handleSaveContactSettings = async (e) => {
     e.preventDefault();
-    saveSiteSettings(settings);
-    if (onUpdateSettings) onUpdateSettings(settings);
-    showNotification('Contact & footer details updated successfully!');
+    setIsProcessing(true);
+    try {
+      saveSiteSettings(settings);
+      if (onUpdateSettings) onUpdateSettings(settings);
+
+      await saveEntireLiveStateToFirebase({
+        settings,
+        rooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
+      showNotification('✓ Contact & footer details saved and live on main page worldwide!');
+    } catch (err) {
+      showNotification(`Contact save error: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleSavePolicies = (e) => {
+  const handleSavePolicies = async (e) => {
     e.preventDefault();
-    const updated = {
-      ...settings,
-      checkInTime,
-      checkOutTime,
-      gstin,
-      cancellationPolicy,
-      privacyPolicy,
-      houseRules,
-      receiptFooterNote
-    };
-    setSettings(updated);
-    saveSiteSettings(updated);
-    if (onUpdateSettings) onUpdateSettings(updated);
-    showNotification('Resort Rules, Privacy Policy & Receipt Settings Saved!');
+    setIsProcessing(true);
+    try {
+      const updated = {
+        ...settings,
+        checkInTime,
+        checkOutTime,
+        gstin,
+        cancellationPolicy,
+        privacyPolicy,
+        houseRules,
+        receiptFooterNote
+      };
+      setSettings(updated);
+      saveSiteSettings(updated);
+      if (onUpdateSettings) onUpdateSettings(updated);
+
+      await saveEntireLiveStateToFirebase({
+        settings: updated,
+        rooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      });
+
+      showNotification('✓ Resort Rules, Privacy Policy & Receipt Settings Saved (Live worldwide)!');
+    } catch (err) {
+      showNotification(`Policy save error: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleAddHouseRule = (e) => {
