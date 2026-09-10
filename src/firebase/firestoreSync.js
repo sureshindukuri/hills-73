@@ -96,6 +96,26 @@ export async function saveToFirebaseCloud(sectionKey, data) {
 }
 
 /**
+ * Atomically save the entire live state to Firestore
+ */
+export async function saveEntireLiveStateToFirebase(fullState) {
+  try {
+    const cleanData = sanitizeForFirestore(fullState);
+    if (!cleanData) return false;
+
+    const docRef = doc(db, RESORT_DOC_REF, MAIN_STATE_DOC);
+    await setDoc(docRef, {
+      ...cleanData,
+      lastUpdated: Date.now()
+    }, { merge: true });
+    return true;
+  } catch (error) {
+    console.warn('[Firebase] Firestore batch save notice:', error.message);
+    return false;
+  }
+}
+
+/**
  * Fetch initial live state from Firestore
  */
 export async function getFirebaseLiveState() {

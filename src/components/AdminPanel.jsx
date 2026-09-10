@@ -14,7 +14,7 @@ import {
   getSiteSettings, saveSiteSettings, syncFromCloudToLocal
 } from '../utils/storage';
 import { signInWithEmailPass, logOutAdmin, onAdminAuthStateChanged, isEmailAuthorized } from '../firebase/authService';
-import { saveToFirebaseCloud } from '../firebase/firestoreSync';
+import { saveEntireLiveStateToFirebase } from '../firebase/firestoreSync';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 
 export default function AdminPanel({ 
@@ -284,7 +284,7 @@ export default function AdminPanel({
 
   const handlePublishToMainPageWorldwide = async () => {
     setIsProcessing(true);
-    showNotification('Publishing all updates to live website worldwide...', 'info');
+    showNotification('Saving and publishing all content to main page worldwide...', 'info');
     try {
       const currentSettings = {
         ...settings,
@@ -305,7 +305,7 @@ export default function AdminPanel({
         receiptFooterNote
       };
 
-      // 1. Save settings
+      // 1. Save settings locally and locally sync
       setSettings(currentSettings);
       saveSiteSettings(currentSettings);
       if (onUpdateSettings) onUpdateSettings(currentSettings);
@@ -314,12 +314,23 @@ export default function AdminPanel({
       saveStoredRooms(rooms);
       if (onUpdateRooms) onUpdateRooms(rooms);
 
-      // 3. Save section media to Firestore
+      // 3. Save section media
       const allCurrentMedia = await getAllSectionMedia();
-      await saveToFirebaseCloud('sectionMedia', allCurrentMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(allCurrentMedia);
 
-      showNotification('✓ 100% SAVED! All changes are now live and visible to every visitor worldwide!');
+      // 4. Save gallery
+      const allGallery = await getAllGalleryItems();
+
+      // 5. Atomically push entire state to Firebase Firestore live_state
+      await saveEntireLiveStateToFirebase({
+        settings: currentSettings,
+        rooms: rooms,
+        sectionMedia: allCurrentMedia,
+        gallery: allGallery,
+        bookings: bookings
+      });
+
+      showNotification('✓ 100% SAVED TO MAIN PAGE! Visible to each and every user worldwide.');
     } catch (err) {
       console.error('Publish error:', err);
       showNotification('Changes saved to main page successfully!');
@@ -2825,6 +2836,47 @@ export default function AdminPanel({
             </div>
           )}
 
+        </div>
+
+        {/* Persistent Bottom Global Save Bar */}
+        <div style={{
+          padding: '14px 24px',
+          backgroundColor: '#0D2116',
+          borderTop: '1px solid var(--border-light)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#28A745', display: 'inline-block', boxShadow: '0 0 8px #28A745' }} />
+            <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.8)' }}>
+              All changes in any tab become live for everyone worldwide when you click Save.
+            </span>
+          </div>
+
+          <button
+            onClick={handlePublishToMainPageWorldwide}
+            disabled={isProcessing}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 22px',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: '#28A745',
+              color: '#FFFFFF',
+              border: '1px solid #1E7E34',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: '700',
+              boxShadow: '0 4px 14px rgba(40,167,69,0.45)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Check size={18} /> {isProcessing ? 'Saving to Main Page...' : '🚀 SAVE TO MAIN PAGE (VISIBLE TO EVERYONE)'}
+          </button>
         </div>
 
       </div>
