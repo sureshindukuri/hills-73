@@ -17,20 +17,12 @@ export default function GallerySection() {
   useEffect(() => {
     loadGallery();
 
-    const unsubCloud = subscribeToCloudUpdates((state) => {
-      if (state && state.gallery) {
-        setItems(state.gallery);
-      } else {
-        loadGallery();
-      }
+    const unsubCloud = subscribeToCloudUpdates(() => {
+      loadGallery();
     });
 
-    const unsubFb = subscribeToFirebaseLiveUpdates((fbState) => {
-      if (fbState && fbState.gallery) {
-        setItems(fbState.gallery);
-      } else {
-        loadGallery();
-      }
+    const unsubFb = subscribeToFirebaseLiveUpdates(() => {
+      loadGallery();
     });
 
     return () => {

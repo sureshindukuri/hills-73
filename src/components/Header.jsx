@@ -65,9 +65,9 @@ export default function Header({
               minWidth: 0
             }}
           >
-            {logoMedia?.url ? (
+            {(logoMedia?.customUrl || logoMedia?.url) ? (
               <img 
-                src={logoMedia.url} 
+                src={logoMedia.customUrl || logoMedia.url} 
                 alt={brandTitle} 
                 style={{ 
                   height: scrolled ? '34px' : '42px', 

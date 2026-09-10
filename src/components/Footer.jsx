@@ -100,9 +100,9 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
           {/* Col 1: Logo & Mission */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              {logoMedia?.url ? (
+              {(logoMedia?.customUrl || logoMedia?.url) ? (
                 <img 
-                  src={logoMedia.url} 
+                  src={logoMedia.customUrl || logoMedia.url} 
                   alt={brandTitle} 
                   style={{ maxHeight: '40px', maxWidth: '140px', objectFit: 'contain' }} 
                 />

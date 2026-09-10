@@ -5,7 +5,7 @@ export default function CelebrationsSection({ onOpenBooking, settings = {}, sect
 
   const celebrationMedia = sectionMedia?.celebrations;
   const isVideo = celebrationMedia?.mediaType === 'video';
-  const celebrationUrl = celebrationMedia?.url || '/assets/celebration_estate_aerial.jpg';
+  const celebrationUrl = celebrationMedia?.customUrl || celebrationMedia?.url || '/assets/celebration_estate_aerial.jpg';
 
   const eventTypes = [
     { icon: <Heart size={20} color="#B38B59" />, label: 'Weddings' },

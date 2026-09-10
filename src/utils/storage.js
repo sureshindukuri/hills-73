@@ -10,6 +10,22 @@ const DB_NAME = '73HillsResortDB';
 const DB_VERSION = 2;
 const GALLERY_STORE = 'gallery_media';
 const SECTION_MEDIA_STORE = 'section_media';
+const SECTION_MEDIA_CACHE_KEY = '73hills_section_media_cache_v2';
+const LAST_LOCAL_UPDATE_KEY = '73hills_last_local_update';
+
+export function touchLocalUpdate() {
+  try {
+    localStorage.setItem(LAST_LOCAL_UPDATE_KEY, Date.now().toString());
+  } catch (e) {}
+}
+
+export function getLocalUpdateTimestamp() {
+  try {
+    return Number(localStorage.getItem(LAST_LOCAL_UPDATE_KEY)) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
 
 // 4K Enhanced Sanctuary & Cultural Moments Gallery
 export const DEFAULT_GALLERY_ITEMS = [
@@ -123,10 +139,28 @@ export const DEFAULT_SECTION_MEDIA = {
 };
 
 /**
+ * Synchronously get stored section media from localStorage cache with default fallback
+ */
+export function getStoredSectionMediaSync() {
+  try {
+    const cached = localStorage.getItem(SECTION_MEDIA_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return {
+        ...DEFAULT_SECTION_MEDIA,
+        ...parsed
+      };
+    }
+  } catch (e) {}
+  return DEFAULT_SECTION_MEDIA;
+}
+
+/**
  * Save Section-Specific Media (Logo, Hero, About, Celebrations, etc.)
- * Automatically saves locally to IndexedDB and triggers real-time cloud sync.
+ * Automatically saves locally to IndexedDB + localStorage and triggers real-time cloud sync.
  */
 export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
+  touchLocalUpdate();
   try {
     let localUrl = null;
     let isVideo = false;
@@ -145,7 +179,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
         localUrl = createBlobUrl(fileOrUrl) || '';
       } else {
         try {
-          localUrl = await fileToDataUrl(fileOrUrl);
+          localUrl = await fileToDataUrl(fileOrUrl, 1200, 0.75);
         } catch (e) {
           localUrl = createBlobUrl(fileOrUrl) || '';
         }
@@ -164,7 +198,22 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
       ...meta
     };
 
-    // 1. Save locally in IndexedDB with raw blob if present
+    // 1. Save synchronously to localStorage cache for instant zero-latency UI rendering
+    try {
+      const currentCache = getStoredSectionMediaSync();
+      const updatedCache = {
+        ...currentCache,
+        [sectionKey]: {
+          ...savedRecord,
+          url: savedRecord.customUrl || savedRecord.url
+        }
+      };
+      localStorage.setItem(SECTION_MEDIA_CACHE_KEY, JSON.stringify(updatedCache));
+    } catch (cacheErr) {
+      console.warn('[Storage] Local storage cache notice:', cacheErr);
+    }
+
+    // 2. Save locally in IndexedDB with raw blob if present
     try {
       const db = await openDB();
       const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
@@ -179,13 +228,15 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}) {
       console.warn('[Storage] IndexedDB put notice:', idbErr);
     }
 
-    // 2. Broadcast and sync to Cloud & Firebase in background
+    // 3. Broadcast and sync to Cloud & Firebase in background
     (async () => {
       try {
         let cloudCdnUrl = null;
         if (typeof fileOrUrl === 'object') {
           // Attempt Firebase Storage in background
-          cloudCdnUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey);
+          try {
+            cloudCdnUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey);
+          } catch (e) {}
         }
 
         const safeCloudUrl = cloudCdnUrl || (savedRecord.customUrl && savedRecord.customUrl.length < 500000 ? savedRecord.customUrl : null);
@@ -259,14 +310,19 @@ export async function getSectionMedia(sectionKey) {
           const url = (result.fileBlob ? createBlobUrl(result.fileBlob) : null) || result.customUrl || result.url;
           resolve({ ...result, url });
         } else {
-          resolve(DEFAULT_SECTION_MEDIA[sectionKey] || null);
+          const syncCache = getStoredSectionMediaSync();
+          resolve(syncCache[sectionKey] || DEFAULT_SECTION_MEDIA[sectionKey] || null);
         }
       };
-      request.onerror = () => resolve(DEFAULT_SECTION_MEDIA[sectionKey] || null);
+      request.onerror = () => {
+        const syncCache = getStoredSectionMediaSync();
+        resolve(syncCache[sectionKey] || DEFAULT_SECTION_MEDIA[sectionKey] || null);
+      };
     });
   } catch (e) {
     console.warn(`Error getting section media (${sectionKey}):`, e);
-    return DEFAULT_SECTION_MEDIA[sectionKey] || null;
+    const syncCache = getStoredSectionMediaSync();
+    return syncCache[sectionKey] || DEFAULT_SECTION_MEDIA[sectionKey] || null;
   }
 }
 
@@ -274,6 +330,7 @@ export async function getSectionMedia(sectionKey) {
  * Get all Section Media items as a key-value dictionary
  */
 export async function getAllSectionMedia() {
+  const syncCache = getStoredSectionMediaSync();
   try {
     const db = await openDB();
     const transaction = db.transaction(SECTION_MEDIA_STORE, 'readonly');
@@ -283,23 +340,23 @@ export async function getAllSectionMedia() {
       const request = store.getAll();
       request.onsuccess = (event) => {
         const results = event.target.result || [];
-        const mediaMap = { ...DEFAULT_SECTION_MEDIA };
+        const mediaMap = { ...DEFAULT_SECTION_MEDIA, ...syncCache };
         results.forEach(item => {
           if (item && item.sectionKey) {
             const url = (item.fileBlob ? createBlobUrl(item.fileBlob) : null) || item.customUrl || item.url;
             mediaMap[item.sectionKey] = {
               ...item,
-              url
+              url: url || mediaMap[item.sectionKey]?.url
             };
           }
         });
         resolve(mediaMap);
       };
-      request.onerror = () => resolve(DEFAULT_SECTION_MEDIA);
+      request.onerror = () => resolve(syncCache);
     });
   } catch (e) {
     console.warn('Error fetching all section media:', e);
-    return DEFAULT_SECTION_MEDIA;
+    return syncCache;
   }
 }
 
@@ -307,7 +364,16 @@ export async function getAllSectionMedia() {
  * Delete a Section-Specific Media record (Resets section to default asset)
  */
 export async function deleteSectionMedia(sectionKey) {
+  touchLocalUpdate();
   try {
+    // 1. Remove from localStorage cache
+    try {
+      const currentCache = getStoredSectionMediaSync();
+      delete currentCache[sectionKey];
+      localStorage.setItem(SECTION_MEDIA_CACHE_KEY, JSON.stringify(currentCache));
+    } catch (e) {}
+
+    // 2. Remove from IndexedDB
     const db = await openDB();
     const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
     const store = transaction.objectStore(SECTION_MEDIA_STORE);
@@ -318,7 +384,7 @@ export async function deleteSectionMedia(sectionKey) {
       request.onerror = () => resolve(false);
     });
 
-    // Cloud Sync deletion
+    // 3. Cloud Sync deletion
     try {
       const allCurrent = await getAllSectionMedia();
       const updated = { ...allCurrent };
@@ -338,6 +404,7 @@ export async function deleteSectionMedia(sectionKey) {
  * Save custom media item to Gallery with Cloud Sync
  */
 export async function saveMediaItem(mediaMeta, file) {
+  touchLocalUpdate();
   try {
     const isVideo = file.type ? file.type.startsWith('video/') : false;
     let localUrl = null;
@@ -346,7 +413,7 @@ export async function saveMediaItem(mediaMeta, file) {
       localUrl = createBlobUrl(file) || '';
     } else {
       try {
-        localUrl = await fileToDataUrl(file);
+        localUrl = await fileToDataUrl(file, 1200, 0.75);
       } catch (e) {
         localUrl = createBlobUrl(file) || '';
       }
@@ -452,6 +519,7 @@ export async function getAllGalleryItems() {
  * Delete a gallery media item by ID
  */
 export async function deleteMediaItem(id) {
+  touchLocalUpdate();
   try {
     const db = await openDB();
     const transaction = db.transaction(GALLERY_STORE, 'readwrite');
@@ -542,12 +610,16 @@ export const DEFAULT_ROOMS = [
 export function getStoredRooms() {
   const stored = localStorage.getItem(ROOMS_KEY);
   if (stored) {
-    try { return JSON.parse(stored); } catch(e) {}
+    try { 
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch(e) {}
   }
   return DEFAULT_ROOMS;
 }
 
 export function saveStoredRooms(rooms) {
+  touchLocalUpdate();
   localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
   pushCloudUpdate('rooms', rooms);
   saveToFirebaseCloud('rooms', rooms);
@@ -567,12 +639,14 @@ export function getStoredBookings() {
 }
 
 export function saveStoredBookings(bookings) {
+  touchLocalUpdate();
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
   pushCloudUpdate('bookings', bookings);
   saveToFirebaseCloud('bookings', bookings);
 }
 
 export function clearStoredBookings() {
+  touchLocalUpdate();
   localStorage.setItem(BOOKINGS_KEY, JSON.stringify([]));
   pushCloudUpdate('bookings', []);
   saveToFirebaseCloud('bookings', []);
@@ -622,6 +696,7 @@ export function getSiteSettings() {
 }
 
 export function saveSiteSettings(settings) {
+  touchLocalUpdate();
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   pushCloudUpdate('settings', settings);
   saveToFirebaseCloud('settings', settings);
@@ -636,13 +711,21 @@ export async function syncFromCloudToLocal() {
     const cloudState = await fetchLatestCloudState();
     if (!cloudState) return null;
 
+    const localTimestamp = getLocalUpdateTimestamp();
+    const cloudTimestamp = Number(cloudState.lastUpdated) || 0;
+
+    // If local update is newer than cloud, do not blindly overwrite!
+    if (localTimestamp > cloudTimestamp) {
+      return null;
+    }
+
     if (cloudState.settings) {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudState.settings));
     }
-    if (cloudState.rooms) {
+    if (cloudState.rooms && Array.isArray(cloudState.rooms) && cloudState.rooms.length > 0) {
       localStorage.setItem(ROOMS_KEY, JSON.stringify(cloudState.rooms));
     }
-    if (cloudState.bookings) {
+    if (cloudState.bookings && Array.isArray(cloudState.bookings)) {
       localStorage.setItem(BOOKINGS_KEY, JSON.stringify(cloudState.bookings));
     }
     if (cloudState.sectionMedia) {
@@ -651,7 +734,7 @@ export async function syncFromCloudToLocal() {
         const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
         const store = transaction.objectStore(SECTION_MEDIA_STORE);
         Object.entries(cloudState.sectionMedia).forEach(([key, record]) => {
-          if (record && record.sectionKey) {
+          if (record && record.sectionKey && (record.url || record.customUrl)) {
             store.put(record);
           }
         });
@@ -664,6 +747,3 @@ export async function syncFromCloudToLocal() {
     return null;
   }
 }
-
-
-

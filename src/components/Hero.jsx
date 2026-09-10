@@ -4,7 +4,7 @@ import { Calendar, Compass, Trees, Star, MapPin, ArrowRight, Shield } from 'luci
 export default function Hero({ settings, sectionMedia = {}, onOpenBooking }) {
   const heroMedia = sectionMedia?.hero;
   const isVideo = heroMedia?.mediaType === 'video';
-  const heroBgUrl = heroMedia?.url || '/assets/hero_aerial_73hills.jpg';
+  const heroBgUrl = heroMedia?.customUrl || heroMedia?.url || '/assets/hero_aerial_73hills.jpg';
 
   return (
     <section 

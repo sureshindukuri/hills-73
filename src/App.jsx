@@ -14,7 +14,9 @@ import AdminPanel from './components/AdminPanel';
 import { 
   getStoredRooms, 
   getSiteSettings, 
+  getStoredSectionMediaSync,
   getAllSectionMedia,
+  getLocalUpdateTimestamp,
   syncFromCloudToLocal 
 } from './utils/storage';
 import { subscribeToCloudUpdates } from './utils/cloudSync';
@@ -38,7 +40,7 @@ export default function App() {
 
   const [rooms, setRooms] = useState(getStoredRooms());
   const [settings, setSettings] = useState(getSiteSettings());
-  const [sectionMedia, setSectionMedia] = useState({});
+  const [sectionMedia, setSectionMedia] = useState(() => getStoredSectionMediaSync());
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -54,37 +56,52 @@ export default function App() {
   };
 
   useEffect(() => {
-    // 1. Initial local load
+    // 1. Initial local load from IndexedDB (refreshes Blob URLs for videos)
     const loadInitialLocal = async () => {
       try {
         const mediaMap = await getAllSectionMedia();
-        setSectionMedia(mediaMap);
+        setSectionMedia(prev => ({ ...prev, ...mediaMap }));
       } catch (e) {
         console.warn('Failed to load local section media:', e);
       }
     };
     loadInitialLocal();
 
-    // 2. Fetch live state from Cloud / Firestore to sync all devices
+    // 2. Fetch live state from Cloud / Firestore to sync all devices safely
     const syncCloud = async () => {
       try {
+        const localTimestamp = getLocalUpdateTimestamp();
+
         // First check Firebase Firestore
         const fbState = await getFirebaseLiveState();
         if (fbState) {
-          if (fbState.settings) setSettings(fbState.settings);
-          if (fbState.rooms) setRooms(fbState.rooms);
-          if (fbState.sectionMedia) setSectionMedia(fbState.sectionMedia);
-          return;
+          const fbTimestamp = Number(fbState.lastUpdated) || 0;
+          if (fbTimestamp >= localTimestamp) {
+            if (fbState.settings) setSettings(prev => ({ ...prev, ...fbState.settings }));
+            if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) setRooms(fbState.rooms);
+            if (fbState.sectionMedia) {
+              setSectionMedia(prev => {
+                const merged = { ...prev };
+                Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
+                  if (v && (v.url || v.customUrl)) {
+                    merged[k] = { ...merged[k], ...v };
+                  }
+                });
+                return merged;
+              });
+            }
+            return;
+          }
         }
 
         // Cloud sync fallback
         const cloudState = await syncFromCloudToLocal();
         if (cloudState) {
-          if (cloudState.settings) setSettings(cloudState.settings);
-          if (cloudState.rooms) setRooms(cloudState.rooms);
+          if (cloudState.settings) setSettings(prev => ({ ...prev, ...cloudState.settings }));
+          if (cloudState.rooms && Array.isArray(cloudState.rooms) && cloudState.rooms.length > 0) setRooms(cloudState.rooms);
           if (cloudState.sectionMedia) {
             const freshMedia = await getAllSectionMedia();
-            setSectionMedia(freshMedia);
+            setSectionMedia(prev => ({ ...prev, ...freshMedia }));
           }
         }
       } catch (e) {
@@ -95,22 +112,48 @@ export default function App() {
 
     // 3. Subscribe to real-time broadcasts
     const unsubscribeCloud = subscribeToCloudUpdates((newState) => {
-      if (newState.settings) setSettings(newState.settings);
-      if (newState.rooms) setRooms(newState.rooms);
-      if (newState.sectionMedia) setSectionMedia(newState.sectionMedia);
+      if (newState) {
+        if (newState.settings) setSettings(prev => ({ ...prev, ...newState.settings }));
+        if (newState.rooms && Array.isArray(newState.rooms) && newState.rooms.length > 0) setRooms(newState.rooms);
+        if (newState.sectionMedia) {
+          setSectionMedia(prev => {
+            const merged = { ...prev };
+            Object.entries(newState.sectionMedia).forEach(([k, v]) => {
+              if (v && (v.url || v.customUrl)) {
+                merged[k] = { ...merged[k], ...v };
+              }
+            });
+            return merged;
+          });
+        }
+      }
     });
 
     // 4. Subscribe to real-time Firebase Firestore updates
     const unsubscribeFirebase = subscribeToFirebaseLiveUpdates((fbState) => {
       if (fbState) {
-        if (fbState.settings) setSettings(fbState.settings);
-        if (fbState.rooms) setRooms(fbState.rooms);
-        if (fbState.sectionMedia) setSectionMedia(fbState.sectionMedia);
+        const localTimestamp = getLocalUpdateTimestamp();
+        const fbTimestamp = Number(fbState.lastUpdated) || 0;
+        if (fbTimestamp >= localTimestamp) {
+          if (fbState.settings) setSettings(prev => ({ ...prev, ...fbState.settings }));
+          if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) setRooms(fbState.rooms);
+          if (fbState.sectionMedia) {
+            setSectionMedia(prev => {
+              const merged = { ...prev };
+              Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
+                if (v && (v.url || v.customUrl)) {
+                  merged[k] = { ...merged[k], ...v };
+                }
+              });
+              return merged;
+            });
+          }
+        }
       }
     });
 
-    // 5. Periodic background sync for active visitor devices (every 12 seconds)
-    const syncInterval = setInterval(syncCloud, 12000);
+    // 5. Periodic background sync for active visitor devices (every 15 seconds)
+    const syncInterval = setInterval(syncCloud, 15000);
 
     const checkAdminRoute = () => {
       const isRoute = window.location.pathname.toLowerCase().includes('/admin') || 
