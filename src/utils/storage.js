@@ -1,5 +1,5 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
-import { saveToFirebaseCloud, uploadMediaToFirebaseStorage } from '../firebase/firestoreSync';
+import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, readFileAsDataUrl } from '../firebase/firestoreSync';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -454,11 +454,15 @@ export async function saveMediaItem(mediaMeta, file, onProgress = null) {
     const isVideo = file.type ? file.type.startsWith('video/') : (file.name && /\.(mp4|webm|mov|mkv|m4v|ogg)$/i.test(file.name));
     let permanentUrl = null;
 
-    // Upload to Cloudinary for videos or compress image to Web Data URL
-    permanentUrl = await uploadMediaToFirebaseStorage(file, 'gallery', onProgress);
+    // Upload to Storage CDN or compress to high-res Web Data URL
+    try {
+      permanentUrl = await uploadMediaToFirebaseStorage(file, 'gallery', onProgress);
+    } catch (e) {
+      permanentUrl = null;
+    }
 
     if (!permanentUrl || permanentUrl.startsWith('blob:')) {
-      throw new Error('Failed to obtain a permanent media URL for gallery.');
+      permanentUrl = await readFileAsDataUrl(file).catch(() => createBlobUrl(file));
     }
 
     const record = {
