@@ -32,6 +32,8 @@ export const storage = getStorage(app);
  * Any other Google account will be automatically rejected, signed out, and denied access.
  */
 export const AUTHORIZED_ADMIN_EMAILS = [
-  'sureshindukuri02@gmail.com'
+  'sureshindukuri02@gmail.com',
+  'subrhamanyeswaravarmaindukuri@gmail.com'
 ];
+
 

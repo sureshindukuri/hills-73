@@ -4,7 +4,7 @@ import {
   signOut as fbSignOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
-import { auth, googleProvider } from './config';
+import { auth, googleProvider, AUTHORIZED_ADMIN_EMAILS } from './config';
 
 export const OWNER_EMAIL = 'sureshindukuri02@gmail.com';
 
@@ -15,6 +15,10 @@ export const OWNER_EMAIL = 'sureshindukuri02@gmail.com';
  */
 export function isEmailAuthorized(email) {
   if (!email || typeof email !== 'string') return false;
+  const clean = email.toLowerCase().trim();
+  if (clean === OWNER_EMAIL.toLowerCase().trim() || AUTHORIZED_ADMIN_EMAILS.map(e => e.toLowerCase().trim()).includes(clean)) {
+    return true;
+  }
   return true;
 }
 
