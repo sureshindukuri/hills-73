@@ -16,6 +16,7 @@ import {
 import { signInWithEmailPass, logOutAdmin, onAdminAuthStateChanged, isEmailAuthorized } from '../firebase/authService';
 import { saveEntireLiveStateToFirebase } from '../firebase/firestoreSync';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
+import { getEmbedUrl } from './AboutSection';
 
 export default function AdminPanel({ 
   onClose, 
@@ -1618,7 +1619,7 @@ export default function AdminPanel({
                     About Section Resort Full View Video & Story
                   </h4>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    Provide a YouTube/Vimeo/MP4 video URL or attach a video file directly. Click the single <strong>🚀 SAVE ALL CHANGES</strong> button to publish.
+                    Paste a YouTube / Google Drive / MP4 video link or pick from the curated 4K resort drone videos below. Click <strong>🚀 SAVE ALL CHANGES</strong> to publish live.
                   </p>
                 </div>
               </div>
@@ -1626,42 +1627,42 @@ export default function AdminPanel({
               {/* Current Active Video Card */}
               <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#0D2116', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
                 <div style={{ height: '280px', position: 'relative' }}>
-                  {sectionMedia.about?.customUrl && (sectionMedia.about.customUrl.includes('youtube.com') || sectionMedia.about.customUrl.includes('youtu.be')) ? (
-                    <iframe 
-                      src={sectionMedia.about.customUrl.replace('watch?v=', 'embed/')} 
-                      title="About Video Preview" 
-                      style={{ width: '100%', height: '100%', border: 'none' }} 
-                    />
-                  ) : sectionMedia.about?.mediaType === 'video' || (!sectionMedia.about && true) ? (
-                    (() => {
-                      const videoSrc = (sectionMedia.about?.customVideoUrl && !sectionMedia.about.customVideoUrl.startsWith('blob:'))
-                        ? sectionMedia.about.customVideoUrl
-                        : (sectionMedia.about?.url && !sectionMedia.about.url.startsWith('blob:')) 
-                        ? sectionMedia.about.url 
-                        : (sectionMedia.about?.customUrl && !sectionMedia.about.customUrl.startsWith('blob:'))
-                        ? sectionMedia.about.customUrl
-                        : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+                  {(() => {
+                    const activeUrl = aboutVideoUrlInput.trim() || sectionMedia.about?.customVideoUrl || sectionMedia.about?.customUrl || sectionMedia.about?.url || '';
+                    const embed = getEmbedUrl(activeUrl);
+
+                    if (embed) {
                       return (
-                        <video 
-                          key={videoSrc}
-                          src={videoSrc} 
-                          controls 
-                          autoPlay 
-                          muted 
-                          loop 
-                          playsInline
-                          preload="auto"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                        <iframe 
+                          src={embed} 
+                          title="About Video Preview" 
+                          style={{ width: '100%', height: '100%', border: 'none' }} 
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         />
                       );
-                    })()
-                  ) : (
-                    <img 
-                      src={sectionMedia.about ? (sectionMedia.about.url || sectionMedia.about.customUrl) : '/assets/about_sandalwood_path.png'} 
-                      alt="About Showcase" 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
-                  )}
+                    }
+
+                    const videoSrc = (typeof activeUrl === 'string' && (activeUrl.startsWith('http://') || activeUrl.startsWith('https://') || activeUrl.startsWith('data:') || activeUrl.startsWith('blob:') || activeUrl.startsWith('/')))
+                      ? activeUrl
+                      : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+
+                    return (
+                      <video 
+                        key={videoSrc}
+                        src={videoSrc} 
+                        controls 
+                        autoPlay 
+                        muted 
+                        loop 
+                        playsInline
+                        preload="auto"
+                        onError={(e) => {
+                          e.target.src = 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+                        }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
+                      />
+                    );
+                  })()}
                   
                   <div style={{ position: 'absolute', top: '14px', left: '14px', zIndex: 10, display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span style={{
@@ -1686,10 +1687,10 @@ export default function AdminPanel({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
                       <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#FFF' }}>
-                        {sectionMedia.about?.fileName || 'Default 73 Hills Resort Aerial Showcase'}
+                        {sectionMedia.about?.fileName || '73 Hills Resort Aerial Showcase'}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-gold)', marginTop: '3px', wordBreak: 'break-all' }}>
-                        {sectionMedia.about?.customVideoUrl || sectionMedia.about?.url || 'https://assets.mixkit.co/...'}
+                        {aboutVideoUrlInput || sectionMedia.about?.customVideoUrl || sectionMedia.about?.url || 'https://assets.mixkit.co/...'}
                       </div>
                     </div>
                     {sectionMedia.about && (
@@ -1701,19 +1702,60 @@ export default function AdminPanel({
                 </div>
               </div>
 
+              {/* Curated 4K Video Presets */}
+              <div style={{ backgroundColor: 'var(--bg-cream)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', marginBottom: '24px' }}>
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', color: 'var(--color-emerald)', marginBottom: '6px' }}>
+                  ✨ 1-Click 4K Resort Drone Video Presets
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                  Tap any preset to apply high-definition resort footage instantly:
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                  {[
+                    { title: '🌴 73 Acres Aerial Sanctuary', url: 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4' },
+                    { title: '🌅 Sunset Forest Villa Tour', url: 'https://assets.mixkit.co/videos/preview/mixkit-flying-over-a-dense-green-forest-42408-large.mp4' },
+                    { title: '🏊 Luxury Pool & Deck View', url: 'https://assets.mixkit.co/videos/preview/mixkit-luxury-villa-with-a-pool-and-palm-trees-42409-large.mp4' },
+                    { title: '🌺 Grand Event & Celebration Lawn', url: 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-beautiful-resort-and-gardens-42410-large.mp4' }
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setAboutVideoUrlInput(preset.url);
+                        setAboutFile(null);
+                        showNotification(`Selected: ${preset.title}. Click "Save All Changes" to publish!`);
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        backgroundColor: aboutVideoUrlInput === preset.url ? 'var(--color-gold)' : '#FFFFFF',
+                        color: aboutVideoUrlInput === preset.url ? '#FFFFFF' : 'var(--color-emerald)',
+                        border: '1px solid var(--color-gold)',
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        fontSize: '0.78rem',
+                        fontWeight: '700',
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {preset.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Video Selector */}
               <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px solid var(--color-gold)', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
-                  Choose Resort Tour Video Source
+                  Or Paste Custom Video Link (YouTube / Google Drive / MP4)
                 </h5>
                 <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Enter a YouTube/Vimeo/MP4 video link, or select a video file from your device.
+                  Paste any YouTube link (e.g. upload to YouTube as Unlisted/Public), Google Drive link, Vimeo, or direct MP4 URL.
                 </p>
 
-                {/* Option 1 */}
-                <div style={{ marginBottom: '18px' }}>
+                <div className="form-group" style={{ marginBottom: '16px' }}>
                   <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>
-                    Option 1: Video Streaming Link (YouTube, Vimeo, MP4 URL)
+                    Video URL (YouTube, Vimeo, Google Drive, MP4)
                   </label>
                   <input 
                     type="url"
@@ -1725,27 +1767,9 @@ export default function AdminPanel({
                       if (e.target.value) setAboutFile(null);
                     }}
                   />
-                </div>
-
-                {/* Option 2 */}
-                <div style={{ marginBottom: '10px' }}>
-                  <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>
-                    Option 2: Or Select Video File From Device
-                  </label>
-                  <input 
-                    id="about-file-input"
-                    type="file" 
-                    accept="video/*,video/mp4,video/webm,video/quicktime"
-                    className="form-input" 
-                    onChange={(e) => {
-                      const selected = e.target.files[0];
-                      setAboutFile(selected);
-                      if (selected) setAboutVideoUrlInput('');
-                    }} 
-                  />
-                  {aboutFile && (
-                    <div style={{ marginTop: '8px', padding: '10px 14px', backgroundColor: 'var(--bg-cream)', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--color-emerald)', fontWeight: '600' }}>
-                      📁 Selected: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB) — Ready to save!
+                  {aboutVideoUrlInput && (
+                    <div style={{ marginTop: '6px', fontSize: '0.8rem', color: '#28A745', fontWeight: '600' }}>
+                      ✓ Video link ready! Click <strong>🚀 SAVE ALL CHANGES TO MAIN PAGE</strong> to make it live for all visitors worldwide.
                     </div>
                   )}
                 </div>

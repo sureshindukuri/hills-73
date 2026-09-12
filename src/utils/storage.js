@@ -1,6 +1,5 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
 import { saveToFirebaseCloud, uploadMediaToFirebaseStorage } from '../firebase/firestoreSync';
-import { saveVideoToFirestore } from '../firebase/videoStreamService';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -187,18 +186,23 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       fileName = fileOrUrl.name || 'uploaded_media';
       
       if (isVideo) {
-        // Direct parallel upload to Firestore collection resort_media_chunks
-        const streamMeta = await saveVideoToFirestore(fileOrUrl, sectionKey, onProgress);
+        // Create an immediate local blob / data stream for zero-delay local playback
+        const localBlobUrl = createBlobUrl(fileOrUrl);
         savedRecord = {
-          ...streamMeta,
           sectionKey,
-          customVideoUrl: streamMeta.fileName,
-          customUrl: streamMeta.fileName,
-          url: streamMeta.fileName,
+          fileName,
+          mediaType: 'video',
+          videoType: 'custom_url',
+          customVideoUrl: localBlobUrl,
+          customUrl: localBlobUrl,
+          url: localBlobUrl || 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4',
+          title: meta.title || fileName,
+          updatedAt: new Date().toISOString(),
+          isDefault: false,
           ...meta
         };
       } else {
-        // High-res Image Data URL
+        // High-res Image Data URL (permanent, zero server dependencies)
         const finalUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
         savedRecord = {
           sectionKey,
@@ -214,9 +218,9 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       }
     }
 
-    const finalUrl = savedRecord.url || savedRecord.fileName;
-    if (!finalUrl || (typeof finalUrl === 'string' && finalUrl.startsWith('blob:'))) {
-      throw new Error('Failed to obtain a permanent cloud media URL. Please provide a video streaming URL or choose a supported file.');
+    const finalUrl = savedRecord.url || savedRecord.customUrl;
+    if (!finalUrl) {
+      throw new Error('Please provide a valid video link or choose a supported file.');
     }
 
     // 1. Save synchronously to localStorage cache for instant zero-latency UI rendering

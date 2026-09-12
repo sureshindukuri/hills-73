@@ -1,27 +1,38 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { CheckCircle2, Trees, X, Maximize, Film } from 'lucide-react';
 import { SandalwoodBotanicalArt } from './SandalwoodGraphics';
-import { loadVideoFromFirestore } from '../firebase/videoStreamService';
 
-function getEmbedUrl(url) {
+export function getEmbedUrl(url) {
   if (!url || typeof url !== 'string') return null;
-  // YouTube watch, embed, shorts, or youtu.be link
-  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  const trimmed = url.trim();
+  // YouTube watch, embed, shorts, youtu.be, mobile youtube
+  const ytMatch = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/)|youtu\.be\/|m\.youtube\.com\/(?:watch\?v=|shorts\/))([a-zA-Z0-9_-]{11})/i);
   if (ytMatch) {
-    return `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}&playsinline=1&controls=1`;
+    return `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}&playsinline=1&controls=1&rel=0`;
+  }
+  // Google Drive share link: https://drive.google.com/file/d/ID/view -> preview
+  const gDriveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/i);
+  if (gDriveMatch) {
+    return `https://drive.google.com/file/d/${gDriveMatch[1]}/preview`;
   }
   // Vimeo link
-  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(\d+)/i);
   if (vimeoMatch) {
     return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=1&loop=1&playsinline=1`;
   }
   return null;
 }
 
+const DEFAULT_DRONE_VIDEO = 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+
+function isValidHttpUrl(string) {
+  if (!string || typeof string !== 'string') return false;
+  return string.startsWith('http://') || string.startsWith('https://') || string.startsWith('data:') || string.startsWith('/');
+}
+
 export default function AboutSection({ settings, sectionMedia = {} }) {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
-  const [streamedVideoUrl, setStreamedVideoUrl] = useState(null);
   const videoRef = useRef(null);
 
   const aboutMedia = sectionMedia?.about;
@@ -29,21 +40,13 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
     ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customVideoUrl || !!aboutMedia.customUrl || !!aboutMedia.url))) 
     : true;
 
-  useEffect(() => {
-    if (aboutMedia && aboutMedia.videoType === 'firestore_stream') {
-      loadVideoFromFirestore(aboutMedia).then((url) => {
-        if (url) setStreamedVideoUrl(url);
-      });
-    } else {
-      setStreamedVideoUrl(null);
-    }
-  }, [aboutMedia]);
-  
-  const rawAboutUrl = streamedVideoUrl || (aboutMedia?.videoType !== 'firestore_stream' ? (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url) : null) || settings?.aboutVideoUrl;
-  const aboutUrl = (rawAboutUrl && typeof rawAboutUrl === 'string' && !rawAboutUrl.startsWith('blob:') && !hasVideoError) 
-    ? rawAboutUrl 
-    : (streamedVideoUrl || 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4');
-  const embedUrl = getEmbedUrl(rawAboutUrl && !rawAboutUrl.startsWith('blob:') ? rawAboutUrl : '');
+  const rawCandidate = (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl || '');
+  const candidateUrl = (typeof rawCandidate === 'string' && isValidHttpUrl(rawCandidate) && !rawCandidate.startsWith('blob:'))
+    ? rawCandidate.trim()
+    : DEFAULT_DRONE_VIDEO;
+
+  const embedUrl = getEmbedUrl(candidateUrl);
+  const aboutUrl = (hasVideoError || !isValidHttpUrl(candidateUrl)) ? DEFAULT_DRONE_VIDEO : candidateUrl;
 
   return (
     <section id="about" style={{ padding: '80px 0', position: 'relative', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>
