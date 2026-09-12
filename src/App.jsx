@@ -17,10 +17,25 @@ import {
   getStoredSectionMediaSync, 
   getAllSectionMedia, 
   getStoredGallerySync,
-  syncFromCloudToLocal 
+  syncFromCloudToLocal,
+  DEFAULT_ROOMS
 } from './utils/storage';
 import { subscribeToCloudUpdates } from './utils/cloudSync';
 import { subscribeToFirebaseLiveUpdates, getFirebaseLiveState } from './firebase/firestoreSync';
+
+const ensureThreeRooms = (incomingRooms) => {
+  if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) return DEFAULT_ROOMS;
+  const mergedMap = new Map();
+  DEFAULT_ROOMS.forEach(r => mergedMap.set(r.id, r));
+  incomingRooms.forEach(r => {
+    if (r && r.id) {
+      const def = mergedMap.get(r.id) || {};
+      mergedMap.set(r.id, { ...def, ...r });
+    }
+  });
+  const result = Array.from(mergedMap.values());
+  return result.length >= 3 ? result : DEFAULT_ROOMS;
+};
 
 export default function App() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -79,8 +94,9 @@ export default function App() {
             try { localStorage.setItem('73hills_settings_v1', JSON.stringify(fbState.settings)); } catch(e){}
           }
           if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) {
-            setRooms(fbState.rooms);
-            try { localStorage.setItem('73hills_rooms_v1', JSON.stringify(fbState.rooms)); } catch(e){}
+            const guaranteedRooms = ensureThreeRooms(fbState.rooms);
+            setRooms(guaranteedRooms);
+            try { localStorage.setItem('73hills_rooms_v1', JSON.stringify(guaranteedRooms)); } catch(e){}
           }
           if (fbState.gallery && Array.isArray(fbState.gallery) && fbState.gallery.length > 0) {
             setGalleryItems(fbState.gallery);
@@ -105,7 +121,7 @@ export default function App() {
         const cloudState = await syncFromCloudToLocal();
         if (cloudState) {
           if (cloudState.settings) setSettings(prev => ({ ...prev, ...cloudState.settings }));
-          if (cloudState.rooms && Array.isArray(cloudState.rooms) && cloudState.rooms.length > 0) setRooms(cloudState.rooms);
+          if (cloudState.rooms && Array.isArray(cloudState.rooms) && cloudState.rooms.length > 0) setRooms(ensureThreeRooms(cloudState.rooms));
           if (cloudState.gallery && Array.isArray(cloudState.gallery) && cloudState.gallery.length > 0) setGalleryItems(cloudState.gallery);
           if (cloudState.sectionMedia) {
             const freshMedia = await getAllSectionMedia();
@@ -122,7 +138,7 @@ export default function App() {
     const unsubscribeCloud = subscribeToCloudUpdates((newState) => {
       if (newState) {
         if (newState.settings) setSettings(prev => ({ ...prev, ...newState.settings }));
-        if (newState.rooms && Array.isArray(newState.rooms) && newState.rooms.length > 0) setRooms(newState.rooms);
+        if (newState.rooms && Array.isArray(newState.rooms) && newState.rooms.length > 0) setRooms(ensureThreeRooms(newState.rooms));
         if (newState.gallery && Array.isArray(newState.gallery) && newState.gallery.length > 0) setGalleryItems(newState.gallery);
         if (newState.sectionMedia) {
           setSectionMedia(prev => {
@@ -146,8 +162,9 @@ export default function App() {
           try { localStorage.setItem('73hills_settings_v1', JSON.stringify(fbState.settings)); } catch(e){}
         }
         if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) {
-          setRooms(fbState.rooms);
-          try { localStorage.setItem('73hills_rooms_v1', JSON.stringify(fbState.rooms)); } catch(e){}
+          const guaranteedRooms = ensureThreeRooms(fbState.rooms);
+          setRooms(guaranteedRooms);
+          try { localStorage.setItem('73hills_rooms_v1', JSON.stringify(guaranteedRooms)); } catch(e){}
         }
         if (fbState.gallery && Array.isArray(fbState.gallery) && fbState.gallery.length > 0) {
           setGalleryItems(fbState.gallery);

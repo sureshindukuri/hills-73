@@ -9,7 +9,7 @@ import {
 import { 
   saveMediaItem, getAllGalleryItems, deleteMediaItem,
   saveSectionMedia, getAllSectionMedia, deleteSectionMedia,
-  getStoredRooms, saveStoredRooms, DEFAULT_ROOMS,
+  getStoredRooms, saveStoredRooms, DEFAULT_ROOMS, ensureThreeRooms,
   getStoredBookings, saveStoredBookings, clearStoredBookings,
   getSiteSettings, saveSiteSettings, syncFromCloudToLocal
 } from '../utils/storage';
@@ -262,7 +262,7 @@ export default function AdminPanel({
       }
 
       // 6. Process pending Room form if name is filled
-      let currentRooms = [...rooms];
+      let currentRooms = ensureThreeRooms(rooms);
       if (roomFormData.name && roomFormData.name.trim()) {
         let imageUrl = roomFormData.image || '/assets/hero_resort_villa.png';
         if (roomPhotoFile) {
@@ -276,6 +276,7 @@ export default function AdminPanel({
         } else {
           currentRooms.push({ ...roomFormData, id: 'room-' + Date.now(), image: imageUrl });
         }
+        currentRooms = ensureThreeRooms(currentRooms);
         setRooms(currentRooms);
         setEditingRoom(null);
         setRoomPhotoFile(null);

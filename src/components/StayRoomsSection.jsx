@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Users, Maximize, Star, Check, ArrowRight, X } from 'lucide-react';
 import { DEFAULT_ROOMS } from '../utils/storage';
 
 export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking }) {
   const [selectedRoomModal, setSelectedRoomModal] = useState(null);
-  const displayRooms = (Array.isArray(rooms) && rooms.length >= 3) ? rooms : DEFAULT_ROOMS;
+
+  const displayRooms = useMemo(() => {
+    if (!Array.isArray(rooms) || rooms.length === 0) return DEFAULT_ROOMS;
+    const mergedMap = new Map();
+    DEFAULT_ROOMS.forEach(r => mergedMap.set(r.id, r));
+    rooms.forEach(r => {
+      if (r && r.id) {
+        const def = mergedMap.get(r.id) || {};
+        mergedMap.set(r.id, { ...def, ...r });
+      }
+    });
+    const result = Array.from(mergedMap.values());
+    return result.length >= 3 ? result : DEFAULT_ROOMS;
+  }, [rooms]);
 
   return (
     <section id="stay-rooms" style={{ padding: '80px 0', backgroundColor: 'var(--bg-main)' }}>

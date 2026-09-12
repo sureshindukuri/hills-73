@@ -672,12 +672,28 @@ export const DEFAULT_ROOMS = [
   }
 ];
 
+export function ensureThreeRooms(incomingRooms) {
+  if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) return DEFAULT_ROOMS;
+  const mergedMap = new Map();
+  DEFAULT_ROOMS.forEach(r => mergedMap.set(r.id, r));
+  incomingRooms.forEach(r => {
+    if (r && r.id) {
+      const def = mergedMap.get(r.id) || {};
+      mergedMap.set(r.id, { ...def, ...r });
+    }
+  });
+  const result = Array.from(mergedMap.values());
+  return result.length >= 3 ? result : DEFAULT_ROOMS;
+}
+
 export function getStoredRooms() {
   const stored = localStorage.getItem(ROOMS_KEY);
   if (stored) {
     try { 
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length >= 3) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return ensureThreeRooms(parsed);
+      }
     } catch(e) {}
   }
   return DEFAULT_ROOMS;
@@ -685,9 +701,10 @@ export function getStoredRooms() {
 
 export function saveStoredRooms(rooms) {
   touchLocalUpdate();
-  localStorage.setItem(ROOMS_KEY, JSON.stringify(rooms));
-  saveToFirebaseCloud('rooms', rooms);
-  pushCloudUpdate('rooms', rooms);
+  const safeRooms = ensureThreeRooms(rooms);
+  localStorage.setItem(ROOMS_KEY, JSON.stringify(safeRooms));
+  saveToFirebaseCloud('rooms', safeRooms);
+  pushCloudUpdate('rooms', safeRooms);
 }
 
 export const DEFAULT_BOOKINGS = [];
