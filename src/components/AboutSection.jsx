@@ -3,16 +3,16 @@ import { CheckCircle2, Trees, X, Maximize, Film } from 'lucide-react';
 import { SandalwoodBotanicalArt } from './SandalwoodGraphics';
 
 function getEmbedUrl(url) {
-  if (!url) return null;
-  // YouTube watch link
-  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (!url || typeof url !== 'string') return null;
+  // YouTube watch, embed, shorts, or youtu.be link
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) {
-    return `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&mute=0&rel=0&loop=1&playlist=${ytMatch[1]}`;
+    return `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?autoplay=1&mute=1&loop=1&playlist=${ytMatch[1]}&playsinline=1&controls=1`;
   }
   // Vimeo link
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) {
-    return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=0&loop=1`;
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=1&loop=1&playsinline=1`;
   }
   return null;
 }

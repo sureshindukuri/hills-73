@@ -2295,18 +2295,47 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              {/* Upload Option A */}
-              <div style={{ backgroundColor: 'var(--bg-cream)', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px dashed var(--color-gold)', marginBottom: '24px' }}>
+              {/* Option A: Fast Video Link (YouTube / Vimeo / MP4 / Cloudinary) */}
+              <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px solid var(--color-gold)', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', margin: 0 }}>
-                    Option A: Upload Video Directly From Device
+                    ⭐ Recommended: Enter Video Streaming Link (YouTube, Vimeo, MP4)
+                  </h5>
+                  <span style={{ fontSize: '0.75rem', backgroundColor: '#E8F5E9', color: '#2E7D32', fontWeight: '700', padding: '3px 8px', borderRadius: '4px' }}>
+                    ⚡ Instant (0s Upload)
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                  Paste any YouTube link (e.g. <code>https://youtube.com/watch?v=...</code> or <code>https://youtu.be/...</code>), Vimeo, or direct MP4 URL. Saves in 0.1s to Firestore and streams smoothly on all mobile devices worldwide.
+                </p>
+                <form onSubmit={handleSaveAboutVideoUrl}>
+                  <div className="form-group" style={{ marginBottom: '14px' }}>
+                    <input 
+                      type="url"
+                      placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ or https://youtu.be/..."
+                      className="form-input"
+                      value={aboutVideoUrlInput}
+                      onChange={(e) => setAboutVideoUrlInput(e.target.value)}
+                    />
+                  </div>
+                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
+                    💾 Save Video Link to Main Page (Live Worldwide)
+                  </button>
+                </form>
+              </div>
+
+              {/* Option B: Direct Video File Upload to Cloudinary */}
+              <div style={{ backgroundColor: 'var(--bg-cream)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-light)', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', margin: 0 }}>
+                    Option B: Upload Video File From Device (Cloudinary CDN)
                   </h5>
                   <span style={{ fontSize: '0.75rem', backgroundColor: '#E9ECEF', padding: '3px 8px', borderRadius: '4px', color: '#495057' }}>
-                    MP4, WebM, MOV • Max 100 MB
+                    MP4, WebM, MOV
                   </span>
                 </div>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Uploaded videos are permanently stored on Cloudinary CDN and synchronized worldwide across all customer devices through Firestore.
+                  Select an MP4/WebM video file from your phone or PC. Uploads directly to Cloudinary permanent CDN.
                 </p>
 
                 <form onSubmit={handleUploadAboutMedia}>
@@ -2315,7 +2344,6 @@ export default function AdminPanel({
                       id="about-file-input"
                       type="file" 
                       accept="video/*,video/mp4,video/webm,video/quicktime"
-                      required 
                       className="form-input" 
                       onChange={(e) => {
                         const selected = e.target.files[0];
@@ -2369,32 +2397,8 @@ export default function AdminPanel({
                     </div>
                   )}
 
-                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
-                    <Upload size={16} /> {isProcessing ? `Uploading Video (${aboutUploadPct}%)...` : '💾 Upload & Save Video to Main Page'}
-                  </button>
-                </form>
-              </div>
-
-              {/* Option B: Video Link */}
-              <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', marginBottom: '28px', boxShadow: 'var(--shadow-sm)' }}>
-                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '8px', color: 'var(--color-emerald)' }}>
-                  Option B: Or Enter Video Streaming Link (YouTube, Vimeo, MP4 URL)
-                </h5>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-                  If you host your video on YouTube or a video streaming server, enter the link below.
-                </p>
-                <form onSubmit={handleSaveAboutVideoUrl}>
-                  <div className="form-group">
-                    <input 
-                      type="url"
-                      placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ or https://res.cloudinary.com/.../video.mp4"
-                      className="form-input"
-                      value={aboutVideoUrlInput}
-                      onChange={(e) => setAboutVideoUrlInput(e.target.value)}
-                    />
-                  </div>
-                  <button type="submit" disabled={isProcessing} className="btn-outline-dark" style={{ width: '100%', padding: '10px', fontWeight: '600' }}>
-                    💾 Save Video Link to Main Page
+                  <button type="submit" disabled={isProcessing || !aboutFile} className="btn-outline-dark" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
+                    <Upload size={16} /> {isProcessing ? `Uploading Video (${aboutUploadPct}%)...` : '💾 Upload Video File to Cloudinary'}
                   </button>
                 </form>
               </div>
