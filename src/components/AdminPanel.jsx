@@ -1616,10 +1616,10 @@ export default function AdminPanel({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <div>
                   <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', marginBottom: '4px' }}>
-                    About Section Resort Full View Video & Story
+                    About Section Resort Video & Story
                   </h4>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    Paste a YouTube / Google Drive / MP4 video link or pick from the curated 4K resort drone videos below. Click <strong>🚀 SAVE ALL CHANGES</strong> to publish live.
+                    Choose a photo or video directly from your device gallery or files. Click <strong>🚀 SAVE ALL CHANGES</strong> to publish live.
                   </p>
                 </div>
               </div>
@@ -1628,7 +1628,7 @@ export default function AdminPanel({
               <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#0D2116', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
                 <div style={{ height: '280px', position: 'relative' }}>
                   {(() => {
-                    const activeUrl = aboutVideoUrlInput.trim() || sectionMedia.about?.customVideoUrl || sectionMedia.about?.customUrl || sectionMedia.about?.url || '';
+                    const activeUrl = aboutFile ? URL.createObjectURL(aboutFile) : (sectionMedia.about?.customVideoUrl || sectionMedia.about?.customUrl || sectionMedia.about?.url || '');
                     const embed = getEmbedUrl(activeUrl);
 
                     if (embed) {
@@ -1666,7 +1666,7 @@ export default function AdminPanel({
                   
                   <div style={{ position: 'absolute', top: '14px', left: '14px', zIndex: 10, display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span style={{
-                      backgroundColor: sectionMedia.about ? '#1B4D3E' : '#132E1F',
+                      backgroundColor: (aboutFile || sectionMedia.about) ? '#1B4D3E' : '#132E1F',
                       color: '#FFFFFF',
                       border: '1px solid var(--color-gold)',
                       padding: '5px 12px',
@@ -1678,7 +1678,7 @@ export default function AdminPanel({
                       gap: '6px'
                     }}>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#4EBA6F', boxShadow: '0 0 6px #4EBA6F' }} />
-                      {sectionMedia.about ? 'STATUS: ACTIVE ON MAIN PAGE' : 'STATUS: DEFAULT DRONE VIDEO'}
+                      {aboutFile ? 'NEW FILE SELECTED (READY TO SAVE)' : sectionMedia.about ? 'ACTIVE ON MAIN PAGE' : 'DEFAULT SHOWCASE'}
                     </span>
                   </div>
                 </div>
@@ -1687,92 +1687,55 @@ export default function AdminPanel({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
                       <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#FFF' }}>
-                        {sectionMedia.about?.fileName || '73 Hills Resort Aerial Showcase'}
+                        {aboutFile ? `📁 Selected File: ${aboutFile.name}` : sectionMedia.about?.fileName || '73 Hills Resort Aerial Showcase'}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-gold)', marginTop: '3px', wordBreak: 'break-all' }}>
-                        {aboutVideoUrlInput || sectionMedia.about?.customVideoUrl || sectionMedia.about?.url || 'https://assets.mixkit.co/...'}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-gold)', marginTop: '3px' }}>
+                        {aboutFile ? `${(aboutFile.size / (1024 * 1024)).toFixed(2)} MB — Click Save to publish` : 'Live on public website'}
                       </div>
                     </div>
                     {sectionMedia.about && (
                       <button onClick={handleResetAboutMedia} style={{ padding: '6px 14px', backgroundColor: 'transparent', color: '#FF6B6B', border: '1px solid #FF6B6B', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center' }}>
-                        <RotateCcw size={12} style={{ marginRight: '4px' }} /> Reset to Default Video
+                        <RotateCcw size={12} style={{ marginRight: '4px' }} /> Reset to Default
                       </button>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Curated 4K Video Presets */}
-              <div style={{ backgroundColor: 'var(--bg-cream)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', marginBottom: '24px' }}>
-                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', color: 'var(--color-emerald)', marginBottom: '6px' }}>
-                  ✨ 1-Click 4K Resort Drone Video Presets
+              {/* Upload from Device Gallery or Files */}
+              <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px dashed var(--color-gold)', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--color-emerald)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Upload size={20} color="var(--color-gold)" /> Upload From Device Gallery or Files
                 </h5>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-                  Tap any preset to apply high-definition resort footage instantly:
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                  {[
-                    { title: '🌴 73 Acres Aerial Sanctuary', url: 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4' },
-                    { title: '🌅 Sunset Forest Villa Tour', url: 'https://assets.mixkit.co/videos/preview/mixkit-flying-over-a-dense-green-forest-42408-large.mp4' },
-                    { title: '🏊 Luxury Pool & Deck View', url: 'https://assets.mixkit.co/videos/preview/mixkit-luxury-villa-with-a-pool-and-palm-trees-42409-large.mp4' },
-                    { title: '🌺 Grand Event & Celebration Lawn', url: 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-beautiful-resort-and-gardens-42410-large.mp4' }
-                  ].map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setAboutVideoUrlInput(preset.url);
-                        setAboutFile(null);
-                        showNotification(`Selected: ${preset.title}. Click "Save All Changes" to publish!`);
-                      }}
-                      style={{
-                        padding: '10px 12px',
-                        backgroundColor: aboutVideoUrlInput === preset.url ? 'var(--color-gold)' : '#FFFFFF',
-                        color: aboutVideoUrlInput === preset.url ? '#FFFFFF' : 'var(--color-emerald)',
-                        border: '1px solid var(--color-gold)',
-                        borderRadius: 'var(--radius-sm)',
-                        cursor: 'pointer',
-                        fontSize: '0.78rem',
-                        fontWeight: '700',
-                        textAlign: 'left',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      {preset.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Video Selector */}
-              <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px solid var(--color-gold)', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
-                  Or Paste Custom Video Link (YouTube / Google Drive / MP4)
-                </h5>
-                <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Paste any YouTube link (e.g. upload to YouTube as Unlisted/Public), Google Drive link, Vimeo, or direct MP4 URL.
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Tap below to choose any video (MP4, MOV, WebM) or photo from your phone's gallery, camera roll, or file browser:
                 </p>
 
-                <div className="form-group" style={{ marginBottom: '16px' }}>
-                  <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>
-                    Video URL (YouTube, Vimeo, Google Drive, MP4)
+                <div className="form-group" style={{ marginBottom: '14px' }}>
+                  <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)', fontSize: '0.9rem' }}>
+                    Select Video or Photo File
                   </label>
                   <input 
-                    type="url"
-                    placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                    className="form-input"
-                    value={aboutVideoUrlInput}
+                    id="about-file-input"
+                    type="file" 
+                    accept="video/*,image/*" 
+                    className="form-input" 
+                    style={{ padding: '12px', fontSize: '0.9rem', cursor: 'pointer' }}
                     onChange={(e) => {
-                      setAboutVideoUrlInput(e.target.value);
-                      if (e.target.value) setAboutFile(null);
-                    }}
+                      const selected = e.target.files[0];
+                      if (selected) {
+                        setAboutFile(selected);
+                        setAboutVideoUrlInput('');
+                      }
+                    }} 
                   />
-                  {aboutVideoUrlInput && (
-                    <div style={{ marginTop: '6px', fontSize: '0.8rem', color: '#28A745', fontWeight: '600' }}>
-                      ✓ Video link ready! Click <strong>🚀 SAVE ALL CHANGES TO MAIN PAGE</strong> to make it live for all visitors worldwide.
-                    </div>
-                  )}
                 </div>
+
+                {aboutFile && (
+                  <div style={{ padding: '12px 16px', backgroundColor: '#D4EDDA', borderRadius: 'var(--radius-sm)', border: '1px solid #C3E6CB', color: '#155724', fontSize: '0.85rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    ✓ Attached: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB) — Ready to save!
+                  </div>
+                )}
               </div>
 
               {/* Story Content */}
