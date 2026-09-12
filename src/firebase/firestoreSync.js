@@ -1,6 +1,6 @@
-import { db, storage } from './config';
+import { db } from './config';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { uploadVideoToCloudinary, validateVideoFile } from '../cloudinary/cloudinaryService';
 
 const RESORT_DOC_REF = 'resort_content';
 const MAIN_STATE_DOC = 'live_state';
@@ -65,130 +65,43 @@ export async function compressImageToDataUrl(file, maxWidth = 1280, quality = 0.
 }
 
 /**
- * Multi-layer permanent Cloud Media Uploader.
- * Handles both images (via fast compression/storage) and video files (via permanent cloud endpoints & direct streaming).
- * Guaranteed progress reporting, zero freeze, strict timeouts, and clean error handling.
+ * Permanent Cloud Media Uploader.
+ * - Photos & Logos: Compressed to high-resolution web Data URLs (fast, zero cloud dependency).
+ * - Videos: Uploaded directly to permanent Cloudinary CDN video storage with unsigned preset.
+ * - Direct URLs: Preserved and verified.
+ * 
+ * NEVER uses Firebase Storage or temporary file hosts.
+ * NEVER stores large video binary Base64 inside Firestore.
  */
-export async function uploadMediaToFirebaseStorage(file, folder = 'uploads', onProgress = null) {
+export async function uploadMediaToCloud(file, folder = 'uploads', onProgress = null) {
   if (!file || typeof file === 'string') return typeof file === 'string' ? file : null;
 
   const isImage = file.type ? file.type.startsWith('image/') : false;
+  const isVideo = file.type ? file.type.startsWith('video/') : (file.name && /\.(mp4|webm|mov|mkv|m4v|ogg)$/i.test(file.name));
 
-  // 1. For images: Use ultra-fast, permanent, zero-failure Web-Optimized Data URL
+  // 1. For images: Use fast, permanent, zero-failure Web-Optimized Data URL
   if (isImage) {
-    try {
-      if (typeof onProgress === 'function') onProgress(30);
-      const compressedDataUrl = await compressImageToDataUrl(file, 1280, 0.82);
-      if (typeof onProgress === 'function') onProgress(100);
-      return compressedDataUrl;
-    } catch (imgErr) {
-      console.warn('[Media Cloud] Direct image compression notice:', imgErr);
+    if (typeof onProgress === 'function') onProgress(30);
+    const compressedDataUrl = await compressImageToDataUrl(file, 1280, 0.82);
+    if (typeof onProgress === 'function') onProgress(100);
+    return compressedDataUrl;
+  }
+
+  // 2. For videos: Upload directly to permanent Cloudinary CDN
+  if (isVideo) {
+    validateVideoFile(file);
+    const cloudinaryUrl = await uploadVideoToCloudinary(file, onProgress);
+    if (cloudinaryUrl && cloudinaryUrl.startsWith('http')) {
+      return cloudinaryUrl;
     }
+    throw new Error('Cloudinary did not return a valid video URL.');
   }
 
-  // 2. For videos: Try Firebase Storage if bucket is configured
-  try {
-    const cleanName = (file.name || 'media').replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storageRef = ref(storage, `${folder}/${Date.now()}_${cleanName}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    const fbUrl = await new Promise((resolve, reject) => {
-      const timeoutTimer = setTimeout(() => {
-        uploadTask.cancel();
-        reject(new Error('Firebase Storage timeout after 6s'));
-      }, 6000);
-
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          if (snapshot.totalBytes > 0) {
-            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            if (typeof onProgress === 'function') onProgress(progress);
-          }
-        },
-        (error) => {
-          clearTimeout(timeoutTimer);
-          reject(error);
-        },
-        async () => {
-          clearTimeout(timeoutTimer);
-          try {
-            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadUrl);
-          } catch (e) {
-            reject(e);
-          }
-        }
-      );
-    });
-
-    if (fbUrl) return fbUrl;
-  } catch (fbErr) {
-    console.warn('[Media Cloud] Firebase Storage fallback:', fbErr.message);
-  }
-
-  // 3. Fallback for videos: Cloud upload endpoint with strict 30s timeout
-  try {
-    const cdnUrl = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', 'https://tmpfiles.org/api/v1/upload', true);
-
-      if (xhr.upload && typeof onProgress === 'function') {
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 90);
-            onProgress(pct);
-          }
-        };
-      }
-
-      xhr.onload = () => {
-        try {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            const resp = JSON.parse(xhr.responseText);
-            if (resp.status === 'success' && resp.data && resp.data.url) {
-              const directUrl = resp.data.url.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
-              if (typeof onProgress === 'function') onProgress(100);
-              resolve(directUrl);
-              return;
-            }
-          }
-          reject(new Error(`Upload returned status ${xhr.status}`));
-        } catch (e) {
-          reject(e);
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('Network error during video upload'));
-      xhr.ontimeout = () => reject(new Error('Video upload timed out'));
-      xhr.timeout = 45000; // 45 seconds max
-
-      const formData = new FormData();
-      formData.append('file', file, file.name || 'resort_video.mp4');
-      xhr.send(formData);
-    });
-
-    if (cdnUrl) return cdnUrl;
-  } catch (cdnErr) {
-    console.warn('[Media Cloud] Secondary video upload notice:', cdnErr.message);
-  }
-
-  // 4. Base64 video Data URL conversion (permanent, self-contained, 100% cross-device compatibility)
-  try {
-    const base64Url = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    if (base64Url && base64Url.startsWith('data:')) {
-      return base64Url;
-    }
-  } catch (b64Err) {
-    console.warn('[Media Cloud] Base64 video conversion notice:', b64Err);
-  }
-
-  return null;
+  throw new Error('Unsupported media format. Please upload an image or video file.');
 }
+
+// Backward-compatible alias for existing imports
+export const uploadMediaToFirebaseStorage = uploadMediaToCloud;
 
 /**
  * Save section data to Firestore and sync across all customer devices in real-time

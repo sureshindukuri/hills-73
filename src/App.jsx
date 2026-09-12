@@ -84,7 +84,7 @@ export default function App() {
             setSectionMedia(prev => {
               const merged = { ...prev };
               Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
-                if (v && (v.url || v.customUrl)) {
+                if (v && (v.url || v.customUrl || v.customVideoUrl)) {
                   merged[k] = { ...merged[k], ...v };
                 }
               });
@@ -120,7 +120,7 @@ export default function App() {
           setSectionMedia(prev => {
             const merged = { ...prev };
             Object.entries(newState.sectionMedia).forEach(([k, v]) => {
-              if (v && (v.url || v.customUrl)) {
+              if (v && (v.url || v.customUrl || v.customVideoUrl)) {
                 merged[k] = { ...merged[k], ...v };
               }
             });
@@ -145,7 +145,7 @@ export default function App() {
           setSectionMedia(prev => {
             const merged = { ...prev };
             Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
-              if (v && (v.url || v.customUrl)) {
+              if (v && (v.url || v.customUrl || v.customVideoUrl)) {
                 merged[k] = { ...merged[k], ...v };
               }
             });

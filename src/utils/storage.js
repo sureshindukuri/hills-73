@@ -1,4 +1,4 @@
-import { pushCloudUpdate, fetchLatestCloudState, fileToDataUrl } from './cloudSync';
+import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
 import { saveToFirebaseCloud, uploadMediaToFirebaseStorage } from '../firebase/firestoreSync';
 
 /**
@@ -168,54 +168,27 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
     let fileName = meta.title || 'Resort Media';
 
     if (typeof fileOrUrl === 'string') {
-      isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
+      isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.includes('cloudinary.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
       finalUrl = fileOrUrl;
       fileName = meta.title || fileOrUrl.split('/').pop() || 'Custom Video Link';
     } else {
-      isVideo = fileOrUrl.type ? fileOrUrl.type.startsWith('video/') : false;
+      isVideo = fileOrUrl.type ? fileOrUrl.type.startsWith('video/') : (fileOrUrl.name && /\.(mp4|webm|mov|mkv|m4v|ogg)$/i.test(fileOrUrl.name));
       fileName = fileOrUrl.name || 'uploaded_media';
       
-      // Upload directly to Firebase Storage for permanent worldwide CDN URL
-      try {
-        const cloudCdnUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
-        if (cloudCdnUrl) {
-          finalUrl = cloudCdnUrl;
-        }
-      } catch (uploadErr) {
-        console.warn('[Storage] Firebase Storage direct upload notice:', uploadErr);
-      }
-
-      // Convert to permanent Data URL or Cloud CDN URL
-      if (!finalUrl) {
-        if (isVideo) {
-          try {
-            finalUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve(e.target.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(fileOrUrl);
-            });
-          } catch (e) {
-            console.warn('[Storage] Video data conversion fallback notice:', e);
-          }
-        } else {
-          try {
-            finalUrl = await fileToDataUrl(fileOrUrl, 1280, 0.82);
-          } catch (e) {
-            console.warn('[Storage] Image conversion error:', e);
-          }
-        }
-      }
+      // Upload video to Cloudinary or compress image to Web Data URL
+      finalUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
     }
 
     if (!finalUrl || finalUrl.startsWith('blob:')) {
-      throw new Error('Failed to create a permanent media URL. Please provide a video URL link or choose a supported file.');
+      throw new Error('Failed to obtain a permanent cloud media URL. Please provide a video streaming URL or choose a supported file.');
     }
 
     const savedRecord = {
       sectionKey,
       fileName,
       mediaType: isVideo ? 'video' : 'image',
+      videoType: isVideo ? (finalUrl.includes('cloudinary') ? 'cloudinary' : 'custom') : undefined,
+      customVideoUrl: isVideo ? finalUrl : null,
       customUrl: finalUrl,
       url: finalUrl,
       title: meta.title || fileName,
@@ -260,6 +233,8 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
           cleanCurrent[k] = {
             sectionKey: v.sectionKey,
             mediaType: v.mediaType || 'image',
+            videoType: v.videoType || (v.mediaType === 'video' ? 'cloudinary' : undefined),
+            customVideoUrl: v.customVideoUrl || (v.mediaType === 'video' ? (v.url || v.customUrl) : null),
             fileName: v.fileName || '',
             title: v.title || '',
             customUrl: v.customUrl || (v.url && !v.url.startsWith('blob:') ? v.url : null),
@@ -275,6 +250,8 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
         [sectionKey]: {
           sectionKey,
           mediaType: savedRecord.mediaType,
+          videoType: savedRecord.videoType,
+          customVideoUrl: savedRecord.customVideoUrl,
           fileName: savedRecord.fileName,
           title: savedRecord.title,
           customUrl: savedRecord.url,
@@ -418,26 +395,14 @@ export async function deleteSectionMedia(sectionKey) {
 export async function saveMediaItem(mediaMeta, file, onProgress = null) {
   touchLocalUpdate();
   try {
-    const isVideo = file.type ? file.type.startsWith('video/') : false;
+    const isVideo = file.type ? file.type.startsWith('video/') : (file.name && /\.(mp4|webm|mov|mkv|m4v|ogg)$/i.test(file.name));
     let permanentUrl = null;
 
-    // Upload to Firebase Storage for permanent public URL
-    try {
-      permanentUrl = await uploadMediaToFirebaseStorage(file, 'gallery', onProgress);
-    } catch (e) {
-      console.warn('[Storage] Firebase gallery upload notice:', e);
-    }
+    // Upload to Cloudinary for videos or compress image to Web Data URL
+    permanentUrl = await uploadMediaToFirebaseStorage(file, 'gallery', onProgress);
 
-    if (!permanentUrl) {
-      if (isVideo) {
-        permanentUrl = createBlobUrl(file) || '';
-      } else {
-        try {
-          permanentUrl = await fileToDataUrl(file, 1200, 0.75);
-        } catch (e) {
-          permanentUrl = createBlobUrl(file) || '';
-        }
-      }
+    if (!permanentUrl || permanentUrl.startsWith('blob:')) {
+      throw new Error('Failed to obtain a permanent media URL for gallery.');
     }
 
     const record = {
@@ -445,6 +410,7 @@ export async function saveMediaItem(mediaMeta, file, onProgress = null) {
       title: mediaMeta.title || file.name || 'Gallery Item',
       category: mediaMeta.category || 'General',
       type: isVideo ? 'video' : 'image',
+      videoType: isVideo ? (permanentUrl.includes('cloudinary') ? 'cloudinary' : 'custom') : undefined,
       fileName: file.name || 'media_file',
       customUrl: permanentUrl,
       url: permanentUrl,

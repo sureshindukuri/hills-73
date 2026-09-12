@@ -542,25 +542,35 @@ export default function AdminPanel({
     }
   };
 
+  const [aboutUploadPct, setAboutUploadPct] = useState(0);
+  const [aboutUploadStatus, setAboutUploadStatus] = useState(''); // '' | 'uploading' | 'saving_firestore' | 'active' | 'error'
+
   const handleUploadAboutMedia = async (e) => {
     e.preventDefault();
     if (!aboutFile) {
-      alert('Please select a photo or video for About section.');
+      alert('Please select a video or photo for the About section.');
       return;
     }
     setIsProcessing(true);
-    showNotification('Uploading video to Cloud CDN for worldwide streaming...', 'info');
+    setAboutUploadPct(0);
+    setAboutUploadStatus('uploading');
+    showNotification('Uploading video to Cloudinary CDN for worldwide streaming...', 'info');
+    
     try {
+      // 1. Upload to Cloudinary with real-time percentage progress
       const saved = await saveSectionMedia('about', aboutFile, {}, (pct) => {
-        setActionFeedback({ text: `Uploading video to Cloud (${pct}%)... Please wait`, type: 'info' });
+        setAboutUploadPct(pct);
+        setActionFeedback({ text: `Uploading video to Cloudinary (${pct}%)... Please wait`, type: 'info' });
       });
+
+      setAboutUploadStatus('saving_firestore');
+      setActionFeedback({ text: 'Saving video URL into Firestore live state...', type: 'info' });
+
       const updatedMedia = { ...sectionMedia, about: saved };
       setSectionMedia(updatedMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      setAboutFile(null);
-      const fileInp = document.getElementById('about-file-input');
-      if (fileInp) fileInp.value = '';
 
+      // 2. Persist to Firestore and verify persistence
       await saveEntireLiveStateToFirebase({
         settings,
         rooms,
@@ -569,10 +579,16 @@ export default function AdminPanel({
         bookings
       });
 
-      showNotification(`✓ Resort video published permanently to Cloud! Visible on all visitor devices worldwide.`);
+      setAboutUploadStatus('active');
+      setAboutFile(null);
+      const fileInp = document.getElementById('about-file-input');
+      if (fileInp) fileInp.value = '';
+
+      showNotification(`✓ Resort video published permanently to Cloudinary & Firestore! Visible to all visitors worldwide.`);
     } catch (err) {
-      console.warn('About media upload error:', err);
-      showNotification('Resort video uploaded and active on website!');
+      console.error('[Admin] About video upload failed:', err);
+      setAboutUploadStatus('error');
+      showNotification(`❌ Video upload failed: ${err.message || 'Network error'}`, 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -2184,15 +2200,20 @@ export default function AdminPanel({
 
           {activeTab === 'about' && (
             <div style={{ maxWidth: '840px' }}>
-              <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
-                About Section Resort Full View Video & Story
-              </h4>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
-                Add or change the 73 Hills Resort full view video tour. Upload an MP4/WebM video file from your device OR paste a YouTube / Video link.
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                <div>
+                  <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', marginBottom: '4px' }}>
+                    About Section Resort Full View Video & Story
+                  </h4>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                    Add or change the 73 Hills Resort video tour. Upload an MP4/WebM/MOV video file from your device (permanently hosted on Cloudinary CDN) OR paste a YouTube / Video link.
+                  </p>
+                </div>
+              </div>
 
-              <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#0D2116' }}>
-                <div style={{ height: '260px', position: 'relative' }}>
+              {/* Current Active Video Card */}
+              <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#0D2116', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+                <div style={{ height: '280px', position: 'relative' }}>
                   {sectionMedia.about?.customUrl && (sectionMedia.about.customUrl.includes('youtube.com') || sectionMedia.about.customUrl.includes('youtu.be')) ? (
                     <iframe 
                       src={sectionMedia.about.customUrl.replace('watch?v=', 'embed/')} 
@@ -2201,11 +2222,13 @@ export default function AdminPanel({
                     />
                   ) : sectionMedia.about?.mediaType === 'video' || (!sectionMedia.about && true) ? (
                     (() => {
-                      const videoSrc = (sectionMedia.about?.url && !sectionMedia.about.url.startsWith('blob:')) 
+                      const videoSrc = (sectionMedia.about?.customVideoUrl && !sectionMedia.about.customVideoUrl.startsWith('blob:'))
+                        ? sectionMedia.about.customVideoUrl
+                        : (sectionMedia.about?.url && !sectionMedia.about.url.startsWith('blob:')) 
                         ? sectionMedia.about.url 
                         : (sectionMedia.about?.customUrl && !sectionMedia.about.customUrl.startsWith('blob:'))
                         ? sectionMedia.about.customUrl
-                        : (sectionMedia.about?.fileBlob ? URL.createObjectURL(sectionMedia.about.fileBlob) : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4');
+                        : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
                       return (
                         <video 
                           key={videoSrc}
@@ -2227,47 +2250,90 @@ export default function AdminPanel({
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                     />
                   )}
-                  <span className="badge-gold" style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 10 }}>
-                    {sectionMedia.about ? `Active Custom (${(sectionMedia.about.mediaType || 'video').toUpperCase()})` : 'Default Resort Drone Video'}
-                  </span>
+                  
+                  {/* Status Badge */}
+                  <div style={{ position: 'absolute', top: '14px', left: '14px', zIndex: 10, display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{
+                      backgroundColor: sectionMedia.about ? '#1B4D3E' : '#132E1F',
+                      color: '#FFFFFF',
+                      border: '1px solid var(--color-gold)',
+                      padding: '5px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.75rem',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#4EBA6F', boxShadow: '0 0 6px #4EBA6F' }} />
+                      {sectionMedia.about ? 'STATUS: ACTIVE' : 'STATUS: DEFAULT DRONE VIDEO'}
+                    </span>
+                    {sectionMedia.about?.videoType === 'cloudinary' && (
+                      <span style={{ backgroundColor: 'rgba(0,113,227,0.85)', color: '#FFF', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', fontWeight: '600' }}>
+                        ☁ Cloudinary CDN
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#132E1F', color: '#FFF' }}>
-                  <span style={{ fontSize: '0.85rem' }}>
-                    {sectionMedia.about ? `Active Source: ${sectionMedia.about.fileName || sectionMedia.about.customUrl || sectionMedia.about.url || 'Uploaded File'}` : 'Default 73 Hills 73-Acres Drone Video Tour'}
-                  </span>
-                  {sectionMedia.about && (
-                    <button onClick={handleResetAboutMedia} style={{ padding: '6px 14px', backgroundColor: 'transparent', color: '#FF6B6B', border: '1px solid #FF6B6B', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
-                      <RotateCcw size={12} style={{ marginRight: '4px' }} /> Reset to Default Video
-                    </button>
-                  )}
+                <div style={{ padding: '16px 20px', backgroundColor: '#132E1F', color: '#FFF' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#FFF' }}>
+                        {sectionMedia.about?.fileName || 'Default 73 Hills Resort Aerial Showcase'}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-gold)', marginTop: '3px', wordBreak: 'break-all' }}>
+                        {sectionMedia.about?.customVideoUrl || sectionMedia.about?.url || 'https://assets.mixkit.co/...'}
+                      </div>
+                    </div>
+                    {sectionMedia.about && (
+                      <button onClick={handleResetAboutMedia} style={{ padding: '6px 14px', backgroundColor: 'transparent', color: '#FF6B6B', border: '1px solid #FF6B6B', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center' }}>
+                        <RotateCcw size={12} style={{ marginRight: '4px' }} /> Reset to Default Video
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
+              {/* Upload Option A */}
               <div style={{ backgroundColor: 'var(--bg-cream)', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px dashed var(--color-gold)', marginBottom: '24px' }}>
-                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '8px', color: 'var(--color-emerald)' }}>
-                  Option A: Upload Resort Video or Photo from Device
-                </h5>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', margin: 0 }}>
+                    Option A: Upload Video Directly From Device
+                  </h5>
+                  <span style={{ fontSize: '0.75rem', backgroundColor: '#E9ECEF', padding: '3px 8px', borderRadius: '4px', color: '#495057' }}>
+                    MP4, WebM, MOV • Max 100 MB
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Uploaded videos are permanently stored on Cloudinary CDN and synchronized worldwide across all customer devices through Firestore.
+                </p>
+
                 <form onSubmit={handleUploadAboutMedia}>
-                  <div className="form-group">
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
                     <input 
                       id="about-file-input"
                       type="file" 
-                      accept="video/*,image/*"
+                      accept="video/mp4,video/webm,video/quicktime,video/*,image/*"
                       required 
                       className="form-input" 
-                      onChange={(e) => setAboutFile(e.target.files[0])} 
+                      onChange={(e) => {
+                        const selected = e.target.files[0];
+                        setAboutFile(selected);
+                        setAboutUploadStatus('');
+                        setAboutUploadPct(0);
+                      }} 
                     />
                   </div>
 
                   {/* Instant Selected File Preview */}
                   {aboutFile && (
-                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
+                    <div style={{ marginBottom: '16px', padding: '14px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.825rem' }}>
                         <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
-                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
+                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Valid File</span>
                       </div>
-                      {aboutFile.type.startsWith('video/') ? (
+                      {aboutFile.type.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(aboutFile.name) ? (
                         <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
                           <video 
                             key={aboutFile.name}
@@ -2290,21 +2356,38 @@ export default function AdminPanel({
                     </div>
                   )}
 
+                  {/* Upload Progress Bar */}
+                  {isProcessing && aboutUploadPct > 0 && (
+                    <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-gold)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-emerald)' }}>
+                        <span>{aboutUploadStatus === 'saving_firestore' ? 'Saving to Firestore Live State...' : `Uploading to Cloudinary CDN: ${aboutUploadPct}%`}</span>
+                        <span>{aboutUploadPct}%</span>
+                      </div>
+                      <div style={{ width: '100%', height: '8px', backgroundColor: '#E9ECEF', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${aboutUploadPct}%`, height: '100%', backgroundColor: '#B38B59', transition: 'width 0.3s ease' }} />
+                      </div>
+                    </div>
+                  )}
+
                   <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
-                    <Upload size={16} /> {isProcessing ? 'Saving Video to Cloud...' : '💾 Upload & Save Video to Main Page'}
+                    <Upload size={16} /> {isProcessing ? `Uploading Video (${aboutUploadPct}%)...` : '💾 Upload & Save Video to Main Page'}
                   </button>
                 </form>
               </div>
 
+              {/* Option B: Video Link */}
               <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', marginBottom: '28px', boxShadow: 'var(--shadow-sm)' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '8px', color: 'var(--color-emerald)' }}>
-                  Option B: Or Enter Video Link (YouTube, Vimeo, MP4 URL)
+                  Option B: Or Enter Video Streaming Link (YouTube, Vimeo, MP4 URL)
                 </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                  If you host your video on YouTube or a video streaming server, enter the link below.
+                </p>
                 <form onSubmit={handleSaveAboutVideoUrl}>
                   <div className="form-group">
                     <input 
                       type="url"
-                      placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                      placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ or https://res.cloudinary.com/.../video.mp4"
                       className="form-input"
                       value={aboutVideoUrlInput}
                       onChange={(e) => setAboutVideoUrlInput(e.target.value)}
@@ -2316,6 +2399,7 @@ export default function AdminPanel({
                 </form>
               </div>
 
+              {/* Story Content Form */}
               <form onSubmit={handleSaveAboutText} style={{ backgroundColor: '#FFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '16px' }}>
                   About Headline & Paragraph Content

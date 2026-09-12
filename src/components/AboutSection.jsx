@@ -19,15 +19,19 @@ function getEmbedUrl(url) {
 
 export default function AboutSection({ settings, sectionMedia = {} }) {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [hasVideoError, setHasVideoError] = useState(false);
   const videoRef = useRef(null);
 
   const aboutMedia = sectionMedia?.about;
-  const isVideo = aboutMedia ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customUrl || !!aboutMedia.url))) : true;
-  const rawAboutUrl = aboutMedia?.customUrl || aboutMedia?.url;
-  const aboutUrl = (rawAboutUrl && typeof rawAboutUrl === 'string' && !rawAboutUrl.startsWith('blob:')) 
+  const isVideo = aboutMedia 
+    ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customVideoUrl || !!aboutMedia.customUrl || !!aboutMedia.url))) 
+    : true;
+  
+  const rawAboutUrl = aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl;
+  const aboutUrl = (rawAboutUrl && typeof rawAboutUrl === 'string' && !rawAboutUrl.startsWith('blob:') && !hasVideoError) 
     ? rawAboutUrl 
     : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
-  const embedUrl = getEmbedUrl(aboutUrl);
+  const embedUrl = getEmbedUrl(rawAboutUrl && !rawAboutUrl.startsWith('blob:') ? rawAboutUrl : '');
 
   return (
     <section id="about" style={{ padding: '80px 0', position: 'relative', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>
@@ -84,11 +88,8 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                     onCanPlay={(e) => {
                       e.target.play().catch(() => {});
                     }}
-                    onError={(e) => {
-                      if (e.target.src !== 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4') {
-                        e.target.src = 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
-                        e.target.play().catch(() => {});
-                      }
+                    onError={() => {
+                      setHasVideoError(true);
                     }}
                     style={{
                       width: '100%',
