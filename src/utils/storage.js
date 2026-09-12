@@ -266,32 +266,34 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       const cleanCurrent = {};
       Object.entries(allCurrent).forEach(([k, v]) => {
         if (v && v.sectionKey) {
+          const finalUrl = v.customUrl || v.url || v.customVideoUrl || null;
           cleanCurrent[k] = {
             sectionKey: v.sectionKey,
             mediaType: v.mediaType || 'image',
             videoType: v.videoType || (v.mediaType === 'video' ? 'custom_url' : undefined),
-            customVideoUrl: v.customVideoUrl || (v.mediaType === 'video' ? (v.url || v.customUrl) : null),
+            customVideoUrl: v.customVideoUrl || (v.mediaType === 'video' ? finalUrl : null),
             fileName: v.fileName || '',
             title: v.title || '',
-            customUrl: v.customUrl || (v.url && !v.url.startsWith('blob:') ? v.url : null),
-            url: (v.url && !v.url.startsWith('blob:') ? v.url : null) || v.customUrl || null,
+            customUrl: finalUrl,
+            url: finalUrl,
             updatedAt: v.updatedAt || new Date().toISOString(),
             isDefault: !!v.isDefault
           };
         }
       });
 
+      const activeRecordUrl = savedRecord.url || savedRecord.customUrl || savedRecord.customVideoUrl;
       const updatedCloudMap = {
         ...cleanCurrent,
         [sectionKey]: {
           sectionKey,
-          mediaType: savedRecord.mediaType,
-          videoType: savedRecord.videoType,
-          customVideoUrl: savedRecord.customVideoUrl,
+          mediaType: savedRecord.mediaType || (isVideo ? 'video' : 'image'),
+          videoType: savedRecord.videoType || (isVideo ? 'custom_url' : undefined),
+          customVideoUrl: savedRecord.customVideoUrl || activeRecordUrl,
           fileName: savedRecord.fileName,
           title: savedRecord.title,
-          customUrl: savedRecord.url,
-          url: savedRecord.url,
+          customUrl: activeRecordUrl,
+          url: activeRecordUrl,
           updatedAt: savedRecord.updatedAt,
           isDefault: false
         }

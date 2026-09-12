@@ -96,7 +96,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                     key={aboutUrl}
                     ref={videoRef}
                     src={aboutUrl} 
-                    poster="/assets/hero_aerial_73hills.jpg"
+                    poster={rawCandidate ? undefined : "/assets/hero_aerial_73hills.jpg"}
                     autoPlay 
                     muted 
                     loop 
@@ -109,7 +109,9 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                       e.target.play().catch(() => {});
                     }}
                     onError={() => {
-                      setHasVideoError(true);
+                      if (aboutUrl !== DEFAULT_DRONE_VIDEO) {
+                        setHasVideoError(true);
+                      }
                     }}
                     style={{
                       width: '100%',

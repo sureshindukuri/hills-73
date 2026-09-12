@@ -212,7 +212,10 @@ export default function AdminPanel({
         currentSectionMedia.about = savedAbout;
         setAboutVideoUrlInput('');
       } else if (aboutFile) {
-        const savedAbout = await saveSectionMedia('about', aboutFile, {});
+        const savedAbout = await saveSectionMedia('about', aboutFile, {
+          mediaType: 'video',
+          title: aboutFile.name
+        });
         currentSectionMedia.about = savedAbout;
         setAboutFile(null);
         const fileInp = document.getElementById('about-file-input');
@@ -1756,16 +1759,30 @@ export default function AdminPanel({
                       onClick={async () => {
                         setIsProcessing(true);
                         try {
-                          const saved = await saveSectionMedia('about', aboutFile, {});
+                          const saved = await saveSectionMedia('about', aboutFile, {
+                            mediaType: 'video',
+                            title: aboutFile.name
+                          });
                           const updated = { ...sectionMedia, about: saved };
                           setSectionMedia(updated);
                           if (onUpdateSectionMedia) onUpdateSectionMedia(updated);
+
+                          // Atomically save to Firebase live_state so all users see it immediately
+                          await saveEntireLiveStateToFirebase({
+                            settings,
+                            rooms,
+                            sectionMedia: updated,
+                            gallery: galleryItems,
+                            bookings
+                          });
+
                           setAboutFile(null);
                           const fileInp = document.getElementById('about-file-input');
                           if (fileInp) fileInp.value = '';
-                          showNotification('✓ Video uploaded and active instantly on main page!');
+                          showNotification('✓ Video uploaded and published live to main website!');
                         } catch (e) {
-                          showNotification('Failed to upload video.', 'error');
+                          console.error('Failed to upload video:', e);
+                          showNotification('Failed to upload video: ' + e.message, 'error');
                         } finally {
                           setIsProcessing(false);
                         }
@@ -1773,7 +1790,7 @@ export default function AdminPanel({
                       className="btn-gold"
                       style={{ width: '100%', padding: '12px', fontSize: '0.9rem', fontWeight: '700' }}
                     >
-                      <Upload size={16} /> {isProcessing ? 'Uploading & Publishing Video...' : '⚡ Save & Publish This Video to Main Page Now'}
+                      <Upload size={16} /> {isProcessing ? 'Saving & Publishing Video...' : '⚡ Save & Publish This Video to Main Page Now'}
                     </button>
                   </div>
                 )}
