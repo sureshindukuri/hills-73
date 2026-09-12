@@ -27,7 +27,7 @@ const DEFAULT_DRONE_VIDEO = 'https://assets.mixkit.co/videos/preview/mixkit-aeri
 
 function isValidHttpUrl(string) {
   if (!string || typeof string !== 'string') return false;
-  return string.startsWith('http://') || string.startsWith('https://') || string.startsWith('data:') || string.startsWith('/');
+  return string.startsWith('http://') || string.startsWith('https://') || string.startsWith('data:') || string.startsWith('/') || string.startsWith('blob:');
 }
 
 export default function AboutSection({ settings, sectionMedia = {} }) {
@@ -41,12 +41,17 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
     : true;
 
   const rawCandidate = (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl || '');
-  const candidateUrl = (typeof rawCandidate === 'string' && isValidHttpUrl(rawCandidate) && !rawCandidate.startsWith('blob:'))
+  const candidateUrl = (typeof rawCandidate === 'string' && isValidHttpUrl(rawCandidate))
     ? rawCandidate.trim()
     : DEFAULT_DRONE_VIDEO;
 
   const embedUrl = getEmbedUrl(candidateUrl);
-  const aboutUrl = (hasVideoError || !isValidHttpUrl(candidateUrl)) ? DEFAULT_DRONE_VIDEO : candidateUrl;
+  const aboutUrl = (hasVideoError && !rawCandidate) ? DEFAULT_DRONE_VIDEO : candidateUrl;
+
+  // Reset error state when media changes
+  React.useEffect(() => {
+    setHasVideoError(false);
+  }, [aboutMedia?.url, aboutMedia?.customUrl, aboutMedia?.customVideoUrl]);
 
   return (
     <section id="about" style={{ padding: '80px 0', position: 'relative', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>

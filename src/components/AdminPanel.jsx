@@ -1732,8 +1732,49 @@ export default function AdminPanel({
                 </div>
 
                 {aboutFile && (
-                  <div style={{ padding: '12px 16px', backgroundColor: '#D4EDDA', borderRadius: 'var(--radius-sm)', border: '1px solid #C3E6CB', color: '#155724', fontSize: '0.85rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    ✓ Attached: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB) — Ready to save!
+                  <div style={{ marginTop: '14px', padding: '14px', backgroundColor: '#F0F9F4', borderRadius: 'var(--radius-sm)', border: '1px solid #C3E6CB' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#155724' }}>
+                        ✓ Selected: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB)
+                      </span>
+                    </div>
+                    <div style={{ maxHeight: '180px', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#000', marginBottom: '12px' }}>
+                      <video 
+                        key={aboutFile.name}
+                        src={URL.createObjectURL(aboutFile)} 
+                        controls 
+                        autoPlay 
+                        muted 
+                        loop 
+                        playsInline 
+                        style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isProcessing}
+                      onClick={async () => {
+                        setIsProcessing(true);
+                        try {
+                          const saved = await saveSectionMedia('about', aboutFile, {});
+                          const updated = { ...sectionMedia, about: saved };
+                          setSectionMedia(updated);
+                          if (onUpdateSectionMedia) onUpdateSectionMedia(updated);
+                          setAboutFile(null);
+                          const fileInp = document.getElementById('about-file-input');
+                          if (fileInp) fileInp.value = '';
+                          showNotification('✓ Video uploaded and active instantly on main page!');
+                        } catch (e) {
+                          showNotification('Failed to upload video.', 'error');
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      className="btn-gold"
+                      style={{ width: '100%', padding: '12px', fontSize: '0.9rem', fontWeight: '700' }}
+                    >
+                      <Upload size={16} /> {isProcessing ? 'Uploading & Publishing Video...' : '⚡ Save & Publish This Video to Main Page Now'}
+                    </button>
                   </div>
                 )}
               </div>

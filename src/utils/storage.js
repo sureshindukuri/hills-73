@@ -1,5 +1,5 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
-import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, fileToDataUrl } from '../firebase/firestoreSync';
+import { saveToFirebaseCloud, uploadMediaToFirebaseStorage } from '../firebase/firestoreSync';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -156,7 +156,7 @@ export function getStoredSectionMediaSync() {
 
 /**
  * Save Section-Specific Media (Logo, Hero, About, Celebrations, etc.)
- * Direct Firestore upload without external service dependencies.
+ * Direct Firebase Storage CDN upload + fast local persistence.
  */
 export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgress = null) {
   touchLocalUpdate();
@@ -166,7 +166,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
     let fileName = meta.title || 'Resort Media';
 
     if (typeof fileOrUrl === 'string') {
-      isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.includes('cloudinary.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
+      isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.includes('firebasestorage.googleapis.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
       fileName = meta.title || fileOrUrl.split('/').pop() || 'Custom Video Link';
       savedRecord = {
         sectionKey,
@@ -186,12 +186,16 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       fileName = fileOrUrl.name || 'uploaded_media';
       
       if (isVideo) {
-        // Fast direct file conversion for permanent playback
-        let videoDataUrl;
+        // 1. Upload video to Firebase Storage CDN with progress
+        let videoUrl;
         try {
-          videoDataUrl = await fileToDataUrl(fileOrUrl);
+          videoUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'resort_videos', onProgress);
         } catch (e) {
-          videoDataUrl = createBlobUrl(fileOrUrl);
+          videoUrl = createBlobUrl(fileOrUrl);
+        }
+
+        if (!videoUrl) {
+          videoUrl = createBlobUrl(fileOrUrl);
         }
 
         savedRecord = {
@@ -199,16 +203,16 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
           fileName,
           mediaType: 'video',
           videoType: 'custom_url',
-          customVideoUrl: videoDataUrl,
-          customUrl: videoDataUrl,
-          url: videoDataUrl,
+          customVideoUrl: videoUrl,
+          customUrl: videoUrl,
+          url: videoUrl,
           title: meta.title || fileName,
           updatedAt: new Date().toISOString(),
           isDefault: false,
           ...meta
         };
       } else {
-        // High-res Image Data URL (permanent, zero server dependencies)
+        // High-res Image Data URL (permanent, fast, zero server dependencies)
         const finalUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
         savedRecord = {
           sectionKey,
@@ -265,7 +269,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
           cleanCurrent[k] = {
             sectionKey: v.sectionKey,
             mediaType: v.mediaType || 'image',
-            videoType: v.videoType || (v.mediaType === 'video' ? 'cloudinary' : undefined),
+            videoType: v.videoType || (v.mediaType === 'video' ? 'custom_url' : undefined),
             customVideoUrl: v.customVideoUrl || (v.mediaType === 'video' ? (v.url || v.customUrl) : null),
             fileName: v.fileName || '',
             title: v.title || '',
