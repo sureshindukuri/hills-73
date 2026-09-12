@@ -389,6 +389,24 @@ export async function deleteSectionMedia(sectionKey) {
   }
 }
 
+export const GALLERY_CACHE_KEY = '73hills_gallery_cache_v2';
+
+/**
+ * Synchronously get stored gallery items from localStorage cache
+ */
+export function getStoredGallerySync() {
+  try {
+    const cached = localStorage.getItem(GALLERY_CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_GALLERY_ITEMS;
+}
+
 /**
  * Save custom media item to Gallery with Cloud Sync
  */
@@ -433,10 +451,10 @@ export async function saveMediaItem(mediaMeta, file, onProgress = null) {
       console.warn('[Storage] IndexedDB gallery put notice:', idbErr);
     }
 
-    // 2. Real-time Cloud Sync
+    // 2. Real-time Cloud Sync & localStorage cache
     try {
-      const allGallery = await getAllGalleryItems();
-      const cleanGallery = allGallery.map(item => ({
+      const currentCache = getStoredGallerySync();
+      const cleanGallery = [...currentCache.filter(item => item.id !== record.id), record].map(item => ({
         id: item.id,
         title: item.title,
         category: item.category,
@@ -445,6 +463,10 @@ export async function saveMediaItem(mediaMeta, file, onProgress = null) {
         uploadedAt: item.uploadedAt,
         isDefault: !!item.isDefault
       }));
+
+      try {
+        localStorage.setItem(GALLERY_CACHE_KEY, JSON.stringify(cleanGallery));
+      } catch (cacheErr) {}
 
       await saveToFirebaseCloud('gallery', cleanGallery);
       pushCloudUpdate('gallery', cleanGallery);
@@ -468,6 +490,7 @@ export async function saveMediaItem(mediaMeta, file, onProgress = null) {
  * Fetch all gallery media items
  */
 export async function getAllGalleryItems() {
+  const syncCache = getStoredGallerySync();
   try {
     const db = await openDB();
     const transaction = db.transaction(GALLERY_STORE, 'readonly');
@@ -476,22 +499,31 @@ export async function getAllGalleryItems() {
     return new Promise((resolve) => {
       const request = store.getAll();
       request.onsuccess = (event) => {
-        const customItems = (event.target.result || []).map(item => {
-          const url = item.customUrl || item.url || (item.fileBlob ? createBlobUrl(item.fileBlob) : null);
-          return {
-            ...item,
-            url
-          };
+        const idbItems = event.target.result || [];
+        const mergedMap = new Map();
+        
+        // 1. Add Default items
+        DEFAULT_GALLERY_ITEMS.forEach(it => mergedMap.set(it.id, it));
+        // 2. Add Cached items
+        syncCache.forEach(it => {
+          if (it && it.id) mergedMap.set(it.id, it);
         });
-        resolve([...DEFAULT_GALLERY_ITEMS, ...customItems]);
+        // 3. Add IDB items
+        idbItems.forEach(it => {
+          if (it && it.id) {
+            const url = it.customUrl || it.url || (it.fileBlob ? createBlobUrl(it.fileBlob) : null);
+            mergedMap.set(it.id, { ...it, url: url || it.url });
+          }
+        });
+        resolve(Array.from(mergedMap.values()));
       };
       request.onerror = () => {
-        resolve(DEFAULT_GALLERY_ITEMS);
+        resolve(syncCache);
       };
     });
   } catch (e) {
-    console.warn('Falling back to default gallery items:', e);
-    return DEFAULT_GALLERY_ITEMS;
+    console.warn('Falling back to sync cache gallery items:', e);
+    return syncCache;
   }
 }
 
@@ -512,8 +544,8 @@ export async function deleteMediaItem(id) {
     });
 
     try {
-      const allGallery = await getAllGalleryItems();
-      const cleanGallery = allGallery.map(item => ({
+      const currentCache = getStoredGallerySync();
+      const cleanGallery = currentCache.filter(item => item.id !== id).map(item => ({
         id: item.id,
         title: item.title,
         category: item.category,
@@ -522,6 +554,10 @@ export async function deleteMediaItem(id) {
         uploadedAt: item.uploadedAt,
         isDefault: !!item.isDefault
       }));
+
+      try {
+        localStorage.setItem(GALLERY_CACHE_KEY, JSON.stringify(cleanGallery));
+      } catch (e) {}
 
       await saveToFirebaseCloud('gallery', cleanGallery);
       pushCloudUpdate('gallery', cleanGallery);
@@ -707,6 +743,17 @@ export async function syncFromCloudToLocal() {
     }
     if (cloudState.bookings && Array.isArray(cloudState.bookings)) {
       localStorage.setItem(BOOKINGS_KEY, JSON.stringify(cloudState.bookings));
+    }
+    if (cloudState.gallery && Array.isArray(cloudState.gallery) && cloudState.gallery.length > 0) {
+      localStorage.setItem(GALLERY_CACHE_KEY, JSON.stringify(cloudState.gallery));
+      try {
+        const db = await openDB();
+        const transaction = db.transaction(GALLERY_STORE, 'readwrite');
+        const store = transaction.objectStore(GALLERY_STORE);
+        cloudState.gallery.forEach(item => {
+          if (item && item.id) store.put(item);
+        });
+      } catch (e) {}
     }
     if (cloudState.sectionMedia) {
       try {

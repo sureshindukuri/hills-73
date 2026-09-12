@@ -16,6 +16,7 @@ import {
   getSiteSettings, 
   getStoredSectionMediaSync, 
   getAllSectionMedia, 
+  getStoredGallerySync,
   syncFromCloudToLocal 
 } from './utils/storage';
 import { subscribeToCloudUpdates } from './utils/cloudSync';
@@ -40,6 +41,7 @@ export default function App() {
   const [rooms, setRooms] = useState(getStoredRooms());
   const [settings, setSettings] = useState(getSiteSettings());
   const [sectionMedia, setSectionMedia] = useState(() => getStoredSectionMediaSync());
+  const [galleryItems, setGalleryItems] = useState(() => getStoredGallerySync());
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -80,6 +82,10 @@ export default function App() {
             setRooms(fbState.rooms);
             try { localStorage.setItem('73hills_rooms_v1', JSON.stringify(fbState.rooms)); } catch(e){}
           }
+          if (fbState.gallery && Array.isArray(fbState.gallery) && fbState.gallery.length > 0) {
+            setGalleryItems(fbState.gallery);
+            try { localStorage.setItem('73hills_gallery_cache_v2', JSON.stringify(fbState.gallery)); } catch(e){}
+          }
           if (fbState.sectionMedia) {
             setSectionMedia(prev => {
               const merged = { ...prev };
@@ -100,6 +106,7 @@ export default function App() {
         if (cloudState) {
           if (cloudState.settings) setSettings(prev => ({ ...prev, ...cloudState.settings }));
           if (cloudState.rooms && Array.isArray(cloudState.rooms) && cloudState.rooms.length > 0) setRooms(cloudState.rooms);
+          if (cloudState.gallery && Array.isArray(cloudState.gallery) && cloudState.gallery.length > 0) setGalleryItems(cloudState.gallery);
           if (cloudState.sectionMedia) {
             const freshMedia = await getAllSectionMedia();
             setSectionMedia(prev => ({ ...prev, ...freshMedia }));
@@ -116,6 +123,7 @@ export default function App() {
       if (newState) {
         if (newState.settings) setSettings(prev => ({ ...prev, ...newState.settings }));
         if (newState.rooms && Array.isArray(newState.rooms) && newState.rooms.length > 0) setRooms(newState.rooms);
+        if (newState.gallery && Array.isArray(newState.gallery) && newState.gallery.length > 0) setGalleryItems(newState.gallery);
         if (newState.sectionMedia) {
           setSectionMedia(prev => {
             const merged = { ...prev };
@@ -140,6 +148,10 @@ export default function App() {
         if (fbState.rooms && Array.isArray(fbState.rooms) && fbState.rooms.length > 0) {
           setRooms(fbState.rooms);
           try { localStorage.setItem('73hills_rooms_v1', JSON.stringify(fbState.rooms)); } catch(e){}
+        }
+        if (fbState.gallery && Array.isArray(fbState.gallery) && fbState.gallery.length > 0) {
+          setGalleryItems(fbState.gallery);
+          try { localStorage.setItem('73hills_gallery_cache_v2', JSON.stringify(fbState.gallery)); } catch(e){}
         }
         if (fbState.sectionMedia) {
           setSectionMedia(prev => {
@@ -186,7 +198,7 @@ export default function App() {
     if (window.location.pathname.toLowerCase().includes('/admin')) {
       window.history.pushState({}, '', '/');
     } else if (window.location.hash.toLowerCase().includes('admin')) {
-      window.location.hash = '';
+      window.history.pushState({}, '', '/');
     }
   };
 
@@ -239,7 +251,7 @@ export default function App() {
           onOpenBooking={() => handleOpenBooking()} 
         />
 
-        <GallerySection />
+        <GallerySection galleryItems={galleryItems} />
 
         <ContactSection 
           settings={settings} 
@@ -272,6 +284,7 @@ export default function App() {
           onUpdateSettings={(newSettings) => setSettings(newSettings)}
           onUpdateRooms={(newRooms) => setRooms(newRooms)}
           onUpdateSectionMedia={(newSectionMedia) => setSectionMedia(newSectionMedia)}
+          onUpdateGallery={(newGallery) => setGalleryItems(newGallery)}
         />
       )}
 

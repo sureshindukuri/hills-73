@@ -1,35 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { getAllGalleryItems } from '../utils/storage';
+import { getAllGalleryItems, getStoredGallerySync } from '../utils/storage';
 import { subscribeToCloudUpdates } from '../utils/cloudSync';
 import { subscribeToFirebaseLiveUpdates } from '../firebase/firestoreSync';
 import { Play, Maximize2, X } from 'lucide-react';
 
-export default function GallerySection() {
-  const [items, setItems] = useState([]);
+export default function GallerySection({ galleryItems = null }) {
+  const [items, setItems] = useState(() => (galleryItems && galleryItems.length > 0 ? galleryItems : getStoredGallerySync()));
   const [activeCategory, setActiveCategory] = useState('All');
   const [lightboxItem, setLightboxItem] = useState(null);
 
+  useEffect(() => {
+    if (galleryItems && Array.isArray(galleryItems) && galleryItems.length > 0) {
+      setItems(galleryItems);
+    }
+  }, [galleryItems]);
+
   const loadGallery = async () => {
     const list = await getAllGalleryItems();
-    setItems(list);
+    if (list && Array.isArray(list)) {
+      setItems(list);
+    }
   };
 
   useEffect(() => {
-    loadGallery();
-
-    const unsubCloud = subscribeToCloudUpdates(() => {
+    if (!galleryItems || galleryItems.length === 0) {
       loadGallery();
+    }
+
+    const unsubCloud = subscribeToCloudUpdates((newState) => {
+      if (newState && newState.gallery) {
+        setItems(newState.gallery);
+      } else {
+        loadGallery();
+      }
     });
 
-    const unsubFb = subscribeToFirebaseLiveUpdates(() => {
-      loadGallery();
+    const unsubFb = subscribeToFirebaseLiveUpdates((fbState) => {
+      if (fbState && fbState.gallery) {
+        setItems(fbState.gallery);
+      } else {
+        loadGallery();
+      }
     });
 
     return () => {
       unsubCloud();
       if (typeof unsubFb === 'function') unsubFb();
     };
-  }, []);
+  }, [galleryItems]);
 
   const categories = ['All', 'Cottages', 'Nature', 'Celebrations', 'Videos'];
 
