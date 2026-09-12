@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Users, Maximize, Star, Check, ArrowRight, X } from 'lucide-react';
+import { DEFAULT_ROOMS } from '../utils/storage';
 
 export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking }) {
   const [selectedRoomModal, setSelectedRoomModal] = useState(null);
+  const displayRooms = (Array.isArray(rooms) && rooms.length >= 3) ? rooms : DEFAULT_ROOMS;
 
   return (
     <section id="stay-rooms" style={{ padding: '80px 0', backgroundColor: 'var(--bg-main)' }}>
@@ -29,7 +31,7 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '24px'
         }}>
-          {rooms.map((room) => (
+          {displayRooms.map((room) => (
             <div key={room.id} className="luxury-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               
               {/* Room Image */}

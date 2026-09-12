@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, X, Info, Trees, Building, FileText, Lock } from 'lucide-react';
+import officialLogo from '../assets/73hills_official_logo.png';
 
 export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, sectionMedia = {} }) {
   const [infoModalItem, setInfoModalItem] = useState(null);
@@ -100,8 +101,13 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <img 
-                src={logoMedia?.customUrl || logoMedia?.url || '/assets/73hills_official_logo.png'} 
+                src={(logoMedia?.customUrl && !logoMedia.customUrl.startsWith('blob:')) 
+                  ? logoMedia.customUrl 
+                  : (logoMedia?.url && !logoMedia.url.startsWith('blob:')) 
+                    ? logoMedia.url 
+                    : officialLogo} 
                 alt={brandTitle} 
+                onError={(e) => { e.target.src = officialLogo; }}
                 style={{ 
                   height: '48px', 
                   width: 'auto',

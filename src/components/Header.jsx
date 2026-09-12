@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Calendar, Sun, Moon, Shield } from 'lucide-react';
+import officialLogo from '../assets/73hills_official_logo.png';
 
 export default function Header({ 
   onOpenBooking, 
@@ -25,6 +26,12 @@ export default function Header({
   const brandTitle = settings?.brandName || '73 HILLS';
   const brandSub = settings?.brandSubtitle || 'RESORT & REAL ESTATE';
   const isDark = theme === 'dark';
+
+  const logoSrc = (logoMedia?.customUrl && !logoMedia.customUrl.startsWith('blob:')) 
+    ? logoMedia.customUrl 
+    : (logoMedia?.url && !logoMedia.url.startsWith('blob:')) 
+      ? logoMedia.url 
+      : officialLogo;
 
   return (
     <header 
@@ -65,8 +72,9 @@ export default function Header({
             }}
           >
             <img 
-              src={logoMedia?.customUrl || logoMedia?.url || '/assets/73hills_official_logo.png'} 
+              src={logoSrc} 
               alt={brandTitle} 
+              onError={(e) => { e.target.src = officialLogo; }}
               style={{ 
                 height: scrolled ? '44px' : '52px', 
                 width: 'auto',
