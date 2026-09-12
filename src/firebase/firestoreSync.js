@@ -1,6 +1,5 @@
 import { db } from './config';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
-import { uploadVideoToCloudinary, validateVideoFile } from '../cloudinary/cloudinaryService';
 
 const RESORT_DOC_REF = 'resort_content';
 const MAIN_STATE_DOC = 'live_state';
@@ -67,11 +66,10 @@ export async function compressImageToDataUrl(file, maxWidth = 1280, quality = 0.
 /**
  * Permanent Cloud Media Uploader.
  * - Photos & Logos: Compressed to high-resolution web Data URLs (fast, zero cloud dependency).
- * - Videos: Uploaded directly to permanent Cloudinary CDN video storage with unsigned preset.
+ * - Videos: Direct parallel chunk storage in Firestore (resort_media_chunks).
  * - Direct URLs: Preserved and verified.
  * 
  * NEVER uses Firebase Storage or temporary file hosts.
- * NEVER stores large video binary Base64 inside Firestore.
  */
 export async function uploadMediaToCloud(file, folder = 'uploads', onProgress = null) {
   if (!file || typeof file === 'string') return typeof file === 'string' ? file : null;
@@ -87,14 +85,11 @@ export async function uploadMediaToCloud(file, folder = 'uploads', onProgress = 
     return compressedDataUrl;
   }
 
-  // 2. For videos: Upload directly to permanent Cloudinary CDN
+  // 2. For videos: Use direct Firestore chunk streaming
   if (isVideo) {
-    validateVideoFile(file);
-    const cloudinaryUrl = await uploadVideoToCloudinary(file, onProgress);
-    if (cloudinaryUrl && cloudinaryUrl.startsWith('http')) {
-      return cloudinaryUrl;
-    }
-    throw new Error('Cloudinary did not return a valid video URL.');
+    const { saveVideoToFirestore } = await import('./videoStreamService');
+    const streamMeta = await saveVideoToFirestore(file, folder, onProgress);
+    return streamMeta.fileName || 'custom_video_stream';
   }
 
   throw new Error('Unsupported media format. Please upload an image or video file.');

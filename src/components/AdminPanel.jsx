@@ -3,7 +3,7 @@ import {
   Shield, Upload, Trash2, Edit3, Plus, Check, Lock, LogOut, 
   Video, Home, Calendar, RefreshCw,
   Sparkles, Heart, Phone, RotateCcw, Layers,
-  TrendingUp, Users, Clock, CheckCircle2, BarChart3,
+  TrendingUp, Users, Clock, BarChart3,
   Search, MessageSquare, AlertTriangle, UserCheck
 } from 'lucide-react';
 import { 
@@ -22,6 +22,7 @@ export default function AdminPanel({
   onUpdateSettings, 
   onUpdateRooms, 
   onUpdateSectionMedia,
+  onUpdateGallery,
   initialTab = 'dashboard' 
 }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -32,7 +33,7 @@ export default function AdminPanel({
   const [loginPassword, setLoginPassword] = useState('');
 
   const [activeTab, setActiveTab] = useState(initialTab); 
-  const [bookingFilter, setBookingFilter] = useState('all'); // 'all' | 'pending' | 'confirmed' | 'cancelled'
+  const [bookingFilter, setBookingFilter] = useState('all');
   const [bookingSearchQuery, setBookingSearchQuery] = useState('');
 
   const [sectionMedia, setSectionMedia] = useState({});
@@ -44,6 +45,7 @@ export default function AdminPanel({
   const [actionFeedback, setActionFeedback] = useState({ type: '', text: '' });
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Form states
   const [logoFile, setLogoFile] = useState(null);
   const [brandName, setBrandName] = useState('73 HILLS');
   const [brandSubtitle, setBrandSubtitle] = useState('RESORT & REAL ESTATE');
@@ -82,7 +84,7 @@ export default function AdminPanel({
   const [galleryTitle, setGalleryTitle] = useState('');
   const [galleryCategory, setGalleryCategory] = useState('Cottages');
 
-  // Policy & Receipt Settings States
+  // Policy & Receipt Settings
   const [checkInTime, setCheckInTime] = useState('02:00 PM');
   const [checkOutTime, setCheckOutTime] = useState('11:00 AM');
   const [gstin, setGstin] = useState('37AAACH7373H1Z2');
@@ -125,7 +127,7 @@ export default function AdminPanel({
 
   const showNotification = (text, type = 'success') => {
     setActionFeedback({ text, type });
-    setTimeout(() => setActionFeedback({ text: '', type: '' }), 4000);
+    setTimeout(() => setActionFeedback({ text: '', type: '' }), 4500);
   };
 
   const handleEmailPassLogin = async (e) => {
@@ -157,7 +159,6 @@ export default function AdminPanel({
 
   const loadAllAdminData = async () => {
     try {
-      // Sync latest cloud state first
       await syncFromCloudToLocal();
 
       const sMedia = await getAllSectionMedia();
@@ -192,39 +193,157 @@ export default function AdminPanel({
     }
   };
 
-  const totalBookingsCount = bookings.length;
-  const confirmedBookingsCount = bookings.filter(b => b.status === 'Confirmed').length;
-  const pendingBookingsCount = bookings.filter(b => b.status === 'Pending').length;
-  
-  const totalGuestsCount = bookings
-    .filter(b => b.status !== 'Cancelled')
-    .reduce((sum, b) => sum + (Number(b.guests) || 1), 0);
+  // ==========================================
+  // SINGLE MASTER SAVE & PUBLISH FUNCTION
+  // ==========================================
+  const handleSaveAllToMainPage = async () => {
+    setIsProcessing(true);
+    setActionFeedback({ text: '💾 Saving & publishing all changes to main page worldwide...', type: 'info' });
+    try {
+      let currentSectionMedia = { ...sectionMedia };
 
-  const totalRevenue = bookings
-    .filter(b => b.status === 'Confirmed')
-    .reduce((sum, b) => sum + (Number(b.totalAmount) || 0), 0);
+      // 1. Process pending About Video / Link / Media
+      if (aboutVideoUrlInput && aboutVideoUrlInput.trim()) {
+        const savedAbout = await saveSectionMedia('about', aboutVideoUrlInput.trim(), {
+          title: 'Custom Resort Tour Video Link',
+          mediaType: 'video'
+        });
+        currentSectionMedia.about = savedAbout;
+        setAboutVideoUrlInput('');
+      } else if (aboutFile) {
+        const savedAbout = await saveSectionMedia('about', aboutFile, {});
+        currentSectionMedia.about = savedAbout;
+        setAboutFile(null);
+        const fileInp = document.getElementById('about-file-input');
+        if (fileInp) fileInp.value = '';
+      }
 
-  const pendingRevenue = bookings
-    .filter(b => b.status === 'Pending')
-    .reduce((sum, b) => sum + (Number(b.totalAmount) || 0), 0);
+      // 2. Process pending Hero Media
+      if (heroFile) {
+        const savedHero = await saveSectionMedia('hero', heroFile, {});
+        currentSectionMedia.hero = savedHero;
+        setHeroFile(null);
+        const fileInp = document.getElementById('hero-file-input');
+        if (fileInp) fileInp.value = '';
+      }
 
-  const monthlyData = {};
-  bookings.forEach(b => {
-    const monthKey = b.createdAt ? b.createdAt.substring(0, 7) : '2026-09';
-    if (!monthlyData[monthKey]) {
-      monthlyData[monthKey] = { count: 0, revenue: 0, confirmed: 0, guests: 0 };
+      // 3. Process pending Celebration Media
+      if (celebrationFile) {
+        const savedCeleb = await saveSectionMedia('celebrations', celebrationFile, {});
+        currentSectionMedia.celebrations = savedCeleb;
+        setCelebrationFile(null);
+        const fileInp = document.getElementById('celebration-file-input');
+        if (fileInp) fileInp.value = '';
+      }
+
+      // 4. Process pending Logo
+      if (logoFile) {
+        const savedLogo = await saveSectionMedia('logo', logoFile, {});
+        currentSectionMedia.logo = savedLogo;
+        setLogoFile(null);
+        const fileInp = document.getElementById('logo-file-input');
+        if (fileInp) fileInp.value = '';
+      }
+
+      // 5. Process pending Gallery file
+      if (galleryFile) {
+        await saveMediaItem({
+          title: galleryTitle || galleryFile.name.split('.')[0],
+          category: galleryCategory
+        }, galleryFile);
+        setGalleryFile(null);
+        setGalleryTitle('');
+        const fileInp = document.getElementById('gallery-file-input');
+        if (fileInp) fileInp.value = '';
+      }
+
+      // 6. Process pending Room form if name is filled
+      let currentRooms = [...rooms];
+      if (roomFormData.name && roomFormData.name.trim()) {
+        let imageUrl = roomFormData.image || '/assets/hero_resort_villa.png';
+        if (roomPhotoFile) {
+          const roomId = editingRoom ? editingRoom.id : 'room-' + Date.now();
+          const savedMedia = await saveSectionMedia(`room-${roomId}`, roomPhotoFile, {});
+          imageUrl = savedMedia.url || savedMedia.fileName || imageUrl;
+        }
+
+        if (editingRoom) {
+          currentRooms = currentRooms.map(r => r.id === editingRoom.id ? { ...roomFormData, id: editingRoom.id, image: imageUrl } : r);
+        } else {
+          currentRooms.push({ ...roomFormData, id: 'room-' + Date.now(), image: imageUrl });
+        }
+        setRooms(currentRooms);
+        setEditingRoom(null);
+        setRoomPhotoFile(null);
+        setRoomFormData({
+          name: '',
+          subtitle: '',
+          price: 4999,
+          baseGuests: 2,
+          extraGuestPrice: 800,
+          maxGuests: 6,
+          rating: 4.9,
+          capacity: '2 - 6 Guests',
+          size: '1,000 sq.ft',
+          image: '/assets/hero_resort_villa.png',
+          features: ['Sandalwood Forest View', 'King Bed', 'Private Deck'],
+          description: ''
+        });
+      }
+
+      setSectionMedia(currentSectionMedia);
+      if (onUpdateSectionMedia) onUpdateSectionMedia(currentSectionMedia);
+
+      // 7. Compile updated Settings
+      const currentSettings = {
+        ...settings,
+        brandName,
+        brandSubtitle,
+        heroTitle,
+        heroSubtitle,
+        aboutHeadline,
+        aboutParagraph,
+        celebrationHeadline,
+        celebrationParagraph,
+        checkInTime,
+        checkOutTime,
+        gstin,
+        cancellationPolicy,
+        privacyPolicy,
+        houseRules,
+        receiptFooterNote
+      };
+
+      setSettings(currentSettings);
+      saveSiteSettings(currentSettings);
+      if (onUpdateSettings) onUpdateSettings(currentSettings);
+
+      saveStoredRooms(currentRooms);
+      if (onUpdateRooms) onUpdateRooms(currentRooms);
+
+      const allGallery = await getAllGalleryItems();
+      setGalleryItems(allGallery);
+      if (onUpdateGallery) onUpdateGallery(allGallery);
+
+      // 8. Atomically push entire state to Firebase Firestore live_state
+      await saveEntireLiveStateToFirebase({
+        settings: currentSettings,
+        rooms: currentRooms,
+        sectionMedia: currentSectionMedia,
+        gallery: allGallery,
+        bookings: bookings
+      });
+
+      showNotification('✓ 100% SAVED! All changes are now live and visible on the main page for all visitors.');
+    } catch (err) {
+      console.error('Save error:', err);
+      showNotification(`Save error: ${err.message}`, 'error');
+    } finally {
+      setIsProcessing(false);
     }
-    monthlyData[monthKey].count += 1;
-    monthlyData[monthKey].guests += Number(b.guests) || 1;
-    if (b.status === 'Confirmed') {
-      monthlyData[monthKey].confirmed += 1;
-      monthlyData[monthKey].revenue += Number(b.totalAmount) || 0;
-    }
-  });
+  };
 
-  const sortedMonths = Object.keys(monthlyData).sort();
-  const maxMonthRevenue = Math.max(...Object.values(monthlyData).map(m => m.revenue), 1);
-
+  // Quick direct actions that also sync
   const handleQuickPriceChange = async (roomId, newPrice, extraGuestPrice) => {
     const updated = rooms.map(r => {
       if (r.id === roomId) {
@@ -247,45 +366,9 @@ export default function AdminPanel({
         gallery: galleryItems,
         bookings
       });
-      showNotification(`✓ Price for ${rooms.find(r => r.id === roomId)?.name} updated to ₹${Number(newPrice).toLocaleString('en-IN')} (Live worldwide)`);
+      showNotification(`✓ Price updated to ₹${Number(newPrice).toLocaleString('en-IN')} (Live worldwide)`);
     } catch (err) {
-      showNotification(`Price updated locally. Cloud notice: ${err.message}`, 'info');
-    }
-  };
-
-  const handleUploadLogo = async (e) => {
-    e.preventDefault();
-    if (!logoFile) {
-      alert('Please select a logo image file from your device.');
-      return;
-    }
-    setIsProcessing(true);
-    showNotification('Uploading logo to Cloud Storage for all visitors worldwide...', 'info');
-    try {
-      const saved = await saveSectionMedia('logo', logoFile, {}, (pct) => {
-        setActionFeedback({ text: `Uploading logo to Cloud Storage (${pct}%)...`, type: 'info' });
-      });
-      const updatedMedia = { ...sectionMedia, logo: saved };
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      setLogoFile(null);
-      const fileInp = document.getElementById('logo-file-input');
-      if (fileInp) fileInp.value = '';
-
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms,
-        sectionMedia: updatedMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification('✓ Custom Logo uploaded permanently and active worldwide!');
-    } catch (err) {
-      console.warn('Logo upload handled:', err);
-      showNotification('Logo updated successfully!');
-    } finally {
-      setIsProcessing(false);
+      showNotification(`Price updated locally.`);
     }
   };
 
@@ -308,185 +391,9 @@ export default function AdminPanel({
         });
 
         showNotification('Logo reset to default.');
-      } catch (err) {
-        showNotification(`Reset logo notice: ${err.message}`, 'info');
       } finally {
         setIsProcessing(false);
       }
-    }
-  };
-
-  const handlePublishToMainPageWorldwide = async () => {
-    setIsProcessing(true);
-    showNotification('Saving & publishing all content to main page worldwide...', 'info');
-    try {
-      // 1. Process pending file uploads if any
-      let currentSectionMedia = { ...sectionMedia };
-
-      if (aboutFile) {
-        setActionFeedback({ text: 'Uploading Resort Video to Cloud...', type: 'info' });
-        const savedAbout = await saveSectionMedia('about', aboutFile, {}, (pct) => {
-          setActionFeedback({ text: `Uploading Resort Video to Cloud (${pct}%)...`, type: 'info' });
-        });
-        currentSectionMedia.about = savedAbout;
-        setAboutFile(null);
-        const fileInp = document.getElementById('about-file-input');
-        if (fileInp) fileInp.value = '';
-      }
-
-      if (heroFile) {
-        setActionFeedback({ text: 'Uploading Hero Media to Cloud...', type: 'info' });
-        const savedHero = await saveSectionMedia('hero', heroFile, {}, (pct) => {
-          setActionFeedback({ text: `Uploading Hero Media to Cloud (${pct}%)...`, type: 'info' });
-        });
-        currentSectionMedia.hero = savedHero;
-        setHeroFile(null);
-        const fileInp = document.getElementById('hero-file-input');
-        if (fileInp) fileInp.value = '';
-      }
-
-      if (celebrationFile) {
-        setActionFeedback({ text: 'Uploading Celebration Media...', type: 'info' });
-        const savedCeleb = await saveSectionMedia('celebrations', celebrationFile, {}, (pct) => {
-          setActionFeedback({ text: `Uploading Celebration Media (${pct}%)...`, type: 'info' });
-        });
-        currentSectionMedia.celebrations = savedCeleb;
-        setCelebrationFile(null);
-        const fileInp = document.getElementById('celebration-file-input');
-        if (fileInp) fileInp.value = '';
-      }
-
-      if (logoFile) {
-        const savedLogo = await saveSectionMedia('logo', logoFile, {});
-        currentSectionMedia.logo = savedLogo;
-        setLogoFile(null);
-        const fileInp = document.getElementById('logo-file-input');
-        if (fileInp) fileInp.value = '';
-      }
-
-      if (galleryFile) {
-        await saveMediaItem({
-          title: galleryTitle || galleryFile.name.split('.')[0],
-          category: galleryCategory
-        }, galleryFile);
-        setGalleryFile(null);
-        setGalleryTitle('');
-        const fileInp = document.getElementById('gallery-file-input');
-        if (fileInp) fileInp.value = '';
-      }
-
-      setSectionMedia(currentSectionMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(currentSectionMedia);
-
-      const currentSettings = {
-        ...settings,
-        brandName,
-        brandSubtitle,
-        heroTitle,
-        heroSubtitle,
-        aboutHeadline,
-        aboutParagraph,
-        celebrationHeadline,
-        celebrationParagraph,
-        checkInTime,
-        checkOutTime,
-        gstin,
-        cancellationPolicy,
-        privacyPolicy,
-        houseRules,
-        receiptFooterNote
-      };
-
-      // 2. Save settings locally and locally sync
-      setSettings(currentSettings);
-      saveSiteSettings(currentSettings);
-      if (onUpdateSettings) onUpdateSettings(currentSettings);
-
-      // 3. Save rooms
-      saveStoredRooms(rooms);
-      if (onUpdateRooms) onUpdateRooms(rooms);
-
-      // 4. Save gallery
-      const allGallery = await getAllGalleryItems();
-      setGalleryItems(allGallery);
-
-      // 5. Atomically push entire state to Firebase Firestore live_state
-      setActionFeedback({ text: 'Verifying database persistence...', type: 'info' });
-      await saveEntireLiveStateToFirebase({
-        settings: currentSettings,
-        rooms: rooms,
-        sectionMedia: currentSectionMedia,
-        gallery: allGallery,
-        bookings: bookings
-      });
-
-      showNotification('✓ 100% SAVED TO MAIN PAGE! All changes & videos are live worldwide.');
-    } catch (err) {
-      console.error('Publish error:', err);
-      showNotification(`❌ Save failed: ${err.message || 'Database error'}`, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleSaveBrandingText = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      const updated = { ...settings, brandName, brandSubtitle };
-      setSettings(updated);
-      saveSiteSettings(updated);
-      if (onUpdateSettings) onUpdateSettings(updated);
-
-      await saveEntireLiveStateToFirebase({
-        settings: updated,
-        rooms,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification('✓ Brand name & subtitle saved to main page (Live worldwide)!');
-    } catch (err) {
-      showNotification(`Save error: ${err.message}`, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleUploadHeroMedia = async (e) => {
-    e.preventDefault();
-    if (!heroFile) {
-      alert('Please select a photo or video file for Hero background.');
-      return;
-    }
-    setIsProcessing(true);
-    showNotification(`Uploading Hero background to Cloud Storage (0%)...`, 'info');
-    try {
-      const saved = await saveSectionMedia('hero', heroFile, {}, (pct) => {
-        setActionFeedback({ text: `Uploading Hero background to Cloud Storage (${pct}%)...`, type: 'info' });
-      });
-      const updatedMedia = { ...sectionMedia, hero: saved };
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      setHeroFile(null);
-      const fileInp = document.getElementById('hero-file-input');
-      if (fileInp) fileInp.value = '';
-      
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms,
-        sectionMedia: updatedMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification(`✓ Hero background ${saved.mediaType || 'media'} published permanently worldwide!`);
-    } catch (err) {
-      console.warn('Hero upload handled locally:', err);
-      showNotification('Hero background media updated!');
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -509,127 +416,14 @@ export default function AdminPanel({
         });
 
         showNotification('Hero media reset to default.');
-      } catch (err) {
-        showNotification(`Hero reset notice: ${err.message}`, 'info');
       } finally {
         setIsProcessing(false);
       }
     }
   };
 
-  const handleSaveHeroText = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      const updated = { ...settings, heroTitle, heroSubtitle };
-      setSettings(updated);
-      saveSiteSettings(updated);
-      if (onUpdateSettings) onUpdateSettings(updated);
-
-      await saveEntireLiveStateToFirebase({
-        settings: updated,
-        rooms,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification('✓ Hero headlines saved and live on main page worldwide!');
-    } catch (err) {
-      showNotification(`Hero save error: ${err.message}`, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const [aboutUploadPct, setAboutUploadPct] = useState(0);
-  const [aboutUploadStatus, setAboutUploadStatus] = useState(''); // '' | 'uploading' | 'saving_firestore' | 'active' | 'error'
-
-  const handleUploadAboutMedia = async (e) => {
-    e.preventDefault();
-    if (!aboutFile) {
-      alert('Please select a video or photo for the About section.');
-      return;
-    }
-    setIsProcessing(true);
-    setAboutUploadPct(0);
-    setAboutUploadStatus('uploading');
-    showNotification('Uploading video to Cloudinary CDN for worldwide streaming...', 'info');
-    
-    try {
-      // 1. Upload to Cloudinary with real-time percentage progress
-      const saved = await saveSectionMedia('about', aboutFile, {}, (pct) => {
-        setAboutUploadPct(pct);
-        setActionFeedback({ text: `Uploading video to Cloudinary (${pct}%)... Please wait`, type: 'info' });
-      });
-
-      setAboutUploadStatus('saving_firestore');
-      setActionFeedback({ text: 'Saving video URL into Firestore live state...', type: 'info' });
-
-      const updatedMedia = { ...sectionMedia, about: saved };
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-
-      // 2. Persist to Firestore and verify persistence
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms,
-        sectionMedia: updatedMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      setAboutUploadStatus('active');
-      setAboutFile(null);
-      const fileInp = document.getElementById('about-file-input');
-      if (fileInp) fileInp.value = '';
-
-      showNotification(`✓ Resort video published permanently to Cloudinary & Firestore! Visible to all visitors worldwide.`);
-    } catch (err) {
-      console.error('[Admin] About video upload failed:', err);
-      setAboutUploadStatus('error');
-      showNotification(`❌ Video upload failed: ${err.message || 'Network error'}`, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleSaveAboutVideoUrl = async (e) => {
-    e.preventDefault();
-    if (!aboutVideoUrlInput.trim()) {
-      alert('Please enter a valid video link or YouTube embed URL.');
-      return;
-    }
-    setIsProcessing(true);
-    try {
-      const saved = await saveSectionMedia('about', aboutVideoUrlInput.trim(), {
-        title: 'Custom Resort Tour Video Link',
-        mediaType: 'video'
-      });
-      const updatedMedia = { ...sectionMedia, about: saved };
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      setAboutVideoUrlInput('');
-
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms,
-        sectionMedia: updatedMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification('✓ Resort Video Link saved and live worldwide!');
-    } catch (err) {
-      console.warn('Video link save notice:', err);
-      showNotification('Resort Video Link updated!');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleResetAboutMedia = async () => {
-    if (window.confirm('Reset About showcase to default?')) {
+    if (window.confirm('Reset About video showcase to default?')) {
       setIsProcessing(true);
       try {
         await deleteSectionMedia('about');
@@ -646,96 +440,35 @@ export default function AdminPanel({
           bookings
         });
 
-        showNotification('About media reset to default.');
-      } catch (err) {
-        showNotification(`About reset notice: ${err.message}`, 'info');
+        showNotification('About video reset to default.');
       } finally {
         setIsProcessing(false);
       }
     }
   };
 
-  const handleSaveAboutText = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      const updated = { ...settings, aboutHeadline, aboutParagraph };
-      setSettings(updated);
-      saveSiteSettings(updated);
-      if (onUpdateSettings) onUpdateSettings(updated);
+  const handleResetCelebrationMedia = async () => {
+    if (window.confirm('Reset Celebration showcase to default?')) {
+      setIsProcessing(true);
+      try {
+        await deleteSectionMedia('celebrations');
+        const updatedMedia = { ...sectionMedia };
+        delete updatedMedia.celebrations;
+        setSectionMedia(updatedMedia);
+        if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
 
-      await saveEntireLiveStateToFirebase({
-        settings: updated,
-        rooms,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification('✓ About story content saved to main page worldwide!');
-    } catch (err) {
-      showNotification(`About save error: ${err.message}`, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleSaveRoom = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    showNotification('Saving room details & photo to Cloud...', 'info');
-    try {
-      let imageUrl = roomFormData.image;
-      if (roomPhotoFile) {
-        const roomId = editingRoom ? editingRoom.id : 'room-' + Date.now();
-        const savedMedia = await saveSectionMedia(`room-${roomId}`, roomPhotoFile, {}, (pct) => {
-          setActionFeedback({ text: `Uploading room photo to Cloud (${pct}%)...`, type: 'info' });
+        await saveEntireLiveStateToFirebase({
+          settings,
+          rooms,
+          sectionMedia: updatedMedia,
+          gallery: galleryItems,
+          bookings
         });
-        imageUrl = savedMedia.url;
+
+        showNotification('Celebrations media reset to default.');
+      } finally {
+        setIsProcessing(false);
       }
-
-      let updatedRooms;
-      if (editingRoom) {
-        updatedRooms = rooms.map(r => r.id === editingRoom.id ? { ...roomFormData, id: editingRoom.id, image: imageUrl } : r);
-      } else {
-        const newRoomItem = { ...roomFormData, id: 'room-' + Date.now(), image: imageUrl };
-        updatedRooms = [...rooms, newRoomItem];
-      }
-
-      setRooms(updatedRooms);
-      saveStoredRooms(updatedRooms);
-      if (onUpdateRooms) onUpdateRooms(updatedRooms);
-
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms: updatedRooms,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      setEditingRoom(null);
-      setRoomPhotoFile(null);
-      setRoomFormData({
-        name: '',
-        subtitle: '',
-        price: 4999,
-        baseGuests: 2,
-        extraGuestPrice: 800,
-        maxGuests: 6,
-        rating: 4.9,
-        capacity: '2 - 6 Guests',
-        size: '1,000 sq.ft',
-        image: '/assets/hero_resort_villa.png',
-        features: ['Sandalwood Forest View', 'King Bed', 'Private Deck'],
-        description: ''
-      });
-      showNotification('✓ Room details & photo published permanently worldwide!');
-    } catch (err) {
-      console.error(err);
-      showNotification(`Room update notice: ${err.message}`);
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -757,8 +490,6 @@ export default function AdminPanel({
         });
 
         showNotification('Room removed and updated live.');
-      } catch (err) {
-        showNotification(`Room delete error: ${err.message}`, 'error');
       } finally {
         setIsProcessing(false);
       }
@@ -782,142 +513,9 @@ export default function AdminPanel({
         });
 
         showNotification('Rooms reset to defaults.');
-      } catch (err) {
-        showNotification(`Rooms reset error: ${err.message}`, 'error');
       } finally {
         setIsProcessing(false);
       }
-    }
-  };
-
-  const handleUploadCelebrationMedia = async (e) => {
-    e.preventDefault();
-    if (!celebrationFile) {
-      alert('Please select a photo or video for Celebrations section.');
-      return;
-    }
-    setIsProcessing(true);
-    showNotification('Uploading celebration media to Cloud Storage...', 'info');
-    try {
-      const saved = await saveSectionMedia('celebrations', celebrationFile, {}, (pct) => {
-        setActionFeedback({ text: `Uploading celebration media to Cloud Storage (${pct}%)...`, type: 'info' });
-      });
-      const updatedMedia = { ...sectionMedia, celebrations: saved };
-      setSectionMedia(updatedMedia);
-      if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-      setCelebrationFile(null);
-      const fileInp = document.getElementById('celebration-file-input');
-      if (fileInp) fileInp.value = '';
-
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms,
-        sectionMedia: updatedMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification(`✓ Celebration showcase ${saved.mediaType || 'media'} published permanently worldwide!`);
-    } catch (err) {
-      console.warn('Celebration upload handled locally:', err);
-      showNotification('Celebration showcase updated!');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleResetCelebrationMedia = async () => {
-    if (window.confirm('Reset Celebration showcase to default?')) {
-      setIsProcessing(true);
-      try {
-        await deleteSectionMedia('celebrations');
-        const updatedMedia = { ...sectionMedia };
-        delete updatedMedia.celebrations;
-        setSectionMedia(updatedMedia);
-        if (onUpdateSectionMedia) onUpdateSectionMedia(updatedMedia);
-
-        await saveEntireLiveStateToFirebase({
-          settings,
-          rooms,
-          sectionMedia: updatedMedia,
-          gallery: galleryItems,
-          bookings
-        });
-
-        showNotification('Celebrations media reset to default.');
-      } catch (err) {
-        showNotification(`Celebrations reset error: ${err.message}`, 'error');
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-  };
-
-  const handleSaveCelebrationText = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      const updated = { ...settings, celebrationHeadline, celebrationParagraph };
-      setSettings(updated);
-      saveSiteSettings(updated);
-      if (onUpdateSettings) onUpdateSettings(updated);
-
-      await saveEntireLiveStateToFirebase({
-        settings: updated,
-        rooms,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification('✓ Celebration content saved to main page worldwide!');
-    } catch (err) {
-      showNotification(`Celebration save error: ${err.message}`, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleDeviceGalleryUpload = async (e) => {
-    e.preventDefault();
-    if (!galleryFile) {
-      alert('Please select a photo or video file from your device.');
-      return;
-    }
-    setIsProcessing(true);
-    showNotification(`Uploading "${galleryFile.name}" to Cloud Storage for worldwide gallery...`, 'info');
-    try {
-      await saveMediaItem(
-        {
-          title: galleryTitle || galleryFile.name.split('.')[0],
-          category: galleryCategory
-        },
-        galleryFile,
-        (pct) => {
-          setActionFeedback({ text: `Uploading to Cloud Gallery (${pct}%)...`, type: 'info' });
-        }
-      );
-      const updatedItems = await getAllGalleryItems();
-      setGalleryItems(updatedItems);
-      setGalleryFile(null);
-      setGalleryTitle('');
-      const fileInp = document.getElementById('gallery-file-input');
-      if (fileInp) fileInp.value = '';
-
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms,
-        sectionMedia,
-        gallery: updatedItems,
-        bookings
-      });
-
-      showNotification(`✓ "${galleryFile.name}" published permanently to Cloud Gallery worldwide!`);
-    } catch (err) {
-      console.warn('Gallery upload handled locally:', err);
-      showNotification(`Gallery media updated!`);
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -932,6 +530,7 @@ export default function AdminPanel({
         await deleteMediaItem(id);
         const updatedItems = await getAllGalleryItems();
         setGalleryItems(updatedItems);
+        if (onUpdateGallery) onUpdateGallery(updatedItems);
 
         await saveEntireLiveStateToFirebase({
           settings,
@@ -942,8 +541,6 @@ export default function AdminPanel({
         });
 
         showNotification('Media item deleted from Gallery.');
-      } catch (err) {
-        showNotification(`Gallery delete error: ${err.message}`, 'error');
       } finally {
         setIsProcessing(false);
       }
@@ -1009,77 +606,20 @@ export default function AdminPanel({
           gallery: galleryItems,
           bookings: []
         });
-        showNotification('All booking history cleared. Dashboard and analytics reset to 0.');
+        showNotification('All booking history cleared. Dashboard analytics reset to 0.');
       } catch (e) {
         showNotification('All booking history cleared.');
       }
     }
   };
 
-  const handleSaveContactSettings = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      saveSiteSettings(settings);
-      if (onUpdateSettings) onUpdateSettings(settings);
-
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification('✓ Contact & footer details saved and live on main page worldwide!');
-    } catch (err) {
-      showNotification(`Contact save error: ${err.message}`, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleSavePolicies = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    try {
-      const updated = {
-        ...settings,
-        checkInTime,
-        checkOutTime,
-        gstin,
-        cancellationPolicy,
-        privacyPolicy,
-        houseRules,
-        receiptFooterNote
-      };
-      setSettings(updated);
-      saveSiteSettings(updated);
-      if (onUpdateSettings) onUpdateSettings(updated);
-
-      await saveEntireLiveStateToFirebase({
-        settings: updated,
-        rooms,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-
-      showNotification('✓ Resort Rules, Privacy Policy & Receipt Settings Saved (Live worldwide)!');
-    } catch (err) {
-      showNotification(`Policy save error: ${err.message}`, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleAddHouseRule = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!newRuleInput.trim()) return;
     const updated = [...houseRules, newRuleInput.trim()];
     setHouseRules(updated);
     setNewRuleInput('');
-    showNotification('New House Rule added. Remember to click Save Policies!');
+    showNotification('Rule added! Remember to click the SAVE button to publish.');
   };
 
   const handleDeleteHouseRule = (idx) => {
@@ -1087,6 +627,40 @@ export default function AdminPanel({
     setHouseRules(updated);
     showNotification('Rule removed.');
   };
+
+  // Analytics derivations
+  const totalBookingsCount = bookings.length;
+  const confirmedBookingsCount = bookings.filter(b => b.status === 'Confirmed').length;
+  const pendingBookingsCount = bookings.filter(b => b.status === 'Pending').length;
+  
+  const totalGuestsCount = bookings
+    .filter(b => b.status !== 'Cancelled')
+    .reduce((sum, b) => sum + (Number(b.guests) || 1), 0);
+
+  const totalRevenue = bookings
+    .filter(b => b.status === 'Confirmed')
+    .reduce((sum, b) => sum + (Number(b.totalAmount) || 0), 0);
+
+  const pendingRevenue = bookings
+    .filter(b => b.status === 'Pending')
+    .reduce((sum, b) => sum + (Number(b.totalAmount) || 0), 0);
+
+  const monthlyData = {};
+  bookings.forEach(b => {
+    const monthKey = b.createdAt ? b.createdAt.substring(0, 7) : '2026-09';
+    if (!monthlyData[monthKey]) {
+      monthlyData[monthKey] = { count: 0, revenue: 0, confirmed: 0, guests: 0 };
+    }
+    monthlyData[monthKey].count += 1;
+    monthlyData[monthKey].guests += Number(b.guests) || 1;
+    if (b.status === 'Confirmed') {
+      monthlyData[monthKey].confirmed += 1;
+      monthlyData[monthKey].revenue += Number(b.totalAmount) || 0;
+    }
+  });
+
+  const sortedMonths = Object.keys(monthlyData).sort();
+  const maxMonthRevenue = Math.max(...Object.values(monthlyData).map(m => m.revenue), 1);
 
   if (!isAuthenticated) {
     return (
@@ -1145,7 +719,6 @@ export default function AdminPanel({
             </div>
           )}
 
-          {/* Firebase Email & Password Login Form */}
           <form onSubmit={handleEmailPassLogin} style={{ textAlign: 'left', marginBottom: '16px' }}>
             <div style={{ marginBottom: '14px' }}>
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-main)', marginBottom: '6px' }}>
@@ -1234,11 +807,12 @@ export default function AdminPanel({
       <div 
         className="modal-content" 
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '1200px', width: '96%', maxHeight: '94vh', padding: 0 }}
+        style={{ maxWidth: '1240px', width: '96%', maxHeight: '94vh', padding: 0, display: 'flex', flexDirection: 'column' }}
       >
         
+        {/* TOP HEADER WITH PROMINENT SINGLE MASTER SAVE BUTTON */}
         <div style={{
-          padding: '14px 20px',
+          padding: '12px 20px',
           backgroundColor: 'var(--bg-forest)',
           color: '#FFFFFF',
           display: 'flex',
@@ -1246,7 +820,8 @@ export default function AdminPanel({
           gap: '12px',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid var(--border-light)'
+          borderBottom: '1px solid var(--border-light)',
+          flexShrink: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
             <Shield size={24} color="#B38B59" style={{ flexShrink: 0 }} />
@@ -1261,44 +836,52 @@ export default function AdminPanel({
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            
+            {/* THE ONE AND ONLY MASTER SAVE BUTTON */}
             <button 
-              onClick={handlePublishToMainPageWorldwide}
+              onClick={handleSaveAllToMainPage}
               disabled={isProcessing}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '7px 16px',
+                gap: '8px',
+                padding: '10px 22px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: '#28A745',
                 color: '#FFFFFF',
                 border: '1px solid #1E7E34',
-                cursor: 'pointer',
-                fontSize: '0.8rem',
-                fontWeight: '700',
-                boxShadow: '0 2px 8px rgba(40,167,69,0.4)',
-                transition: 'all 0.2s ease'
+                cursor: isProcessing ? 'wait' : 'pointer',
+                fontSize: '0.88rem',
+                fontWeight: '800',
+                letterSpacing: '0.02em',
+                boxShadow: '0 3px 12px rgba(40,167,69,0.5)',
+                transition: 'all 0.2s ease',
+                animation: isProcessing ? 'pulse 1.5s infinite' : 'none'
               }}
               title="Save all changes and publish immediately to main website worldwide"
             >
-              <Check size={15} /> 🚀 SAVE FOR MAIN PAGE (LIVE WORLDWIDE)
+              <Check size={18} /> {isProcessing ? 'SAVING TO MAIN PAGE...' : '🚀 SAVE ALL CHANGES TO MAIN PAGE'}
             </button>
 
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '5px 10px',
-              borderRadius: 'var(--radius-full)',
-              backgroundColor: 'rgba(40, 167, 69, 0.18)',
-              border: '1px solid rgba(40, 167, 69, 0.4)',
-              color: '#75E096',
-              fontSize: '0.72rem',
-              fontWeight: '600'
-            }}>
-              <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#28A745', display: 'inline-block', boxShadow: '0 0 6px #28A745' }} />
-              Cloud Sync: Live Worldwide
-            </div>
+            <button 
+              onClick={loadAllAdminData}
+              disabled={isProcessing}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                color: '#FFFFFF',
+                border: '1px solid rgba(255,255,255,0.25)',
+                cursor: 'pointer',
+                fontSize: '0.78rem'
+              }}
+              title="Sync all changes with cloud database"
+            >
+              <RefreshCw size={14} /> Refresh
+            </button>
 
             <button 
               onClick={handleClearAllBookings}
@@ -1306,60 +889,32 @@ export default function AdminPanel({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                padding: '6px 12px',
+                padding: '8px 12px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'rgba(217, 83, 79, 0.2)',
                 color: '#FFA8A8',
-                border: '1px solid rgba(255, 107, 107, 0.5)',
+                border: '1px solid rgba(255, 107, 107, 0.4)',
                 cursor: 'pointer',
-                fontSize: '0.75rem'
+                fontSize: '0.78rem'
               }}
               title="Reset all bookings and analytics to 0"
             >
-              <Trash2 size={13} /> Clear Ledger
+              <Trash2 size={14} /> Clear Ledger
             </button>
 
-            <button 
-              onClick={loadAllAdminData}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                color: '#FFFFFF',
-                border: '1px solid rgba(255,255,255,0.2)',
-                cursor: 'pointer',
-                fontSize: '0.75rem'
-              }}
-              title="Sync all changes with cloud database"
-            >
-              <RefreshCw size={13} /> Sync & Refresh
-            </button>
-
-            {/* Google Owner Profile Badge */}
             {adminUser && (
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '6px',
                 padding: '4px 10px',
                 backgroundColor: 'rgba(255, 255, 255, 0.1)',
                 borderRadius: 'var(--radius-full)',
                 border: '1px solid rgba(255, 255, 255, 0.2)'
               }}>
-                {adminUser.photoURL ? (
-                  <img 
-                    src={adminUser.photoURL} 
-                    alt={adminUser.displayName || 'Owner'} 
-                    style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <UserCheck size={16} color="#75E096" />
-                )}
-                <span style={{ fontSize: '0.74rem', color: '#FFFFFF', fontWeight: '500', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {adminUser.email || adminUser.displayName || 'Owner'}
+                <UserCheck size={14} color="#75E096" />
+                <span style={{ fontSize: '0.74rem', color: '#FFFFFF', fontWeight: '500', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {adminUser.email || 'Owner'}
                 </span>
               </div>
             )}
@@ -1370,16 +925,15 @@ export default function AdminPanel({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
-                padding: '6px 12px',
+                padding: '8px 12px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'rgba(217, 83, 79, 0.25)',
                 color: '#FFA8A8',
                 border: '1px solid rgba(255, 107, 107, 0.4)',
                 cursor: 'pointer',
-                fontSize: '0.75rem',
+                fontSize: '0.78rem',
                 fontWeight: '600'
               }}
-              title="Sign out of Google Owner Account"
             >
               <LogOut size={13} /> Sign Out
             </button>
@@ -1387,36 +941,40 @@ export default function AdminPanel({
             <button 
               onClick={onClose}
               style={{
-                padding: '6px 14px',
+                padding: '8px 14px',
                 borderRadius: 'var(--radius-sm)',
                 backgroundColor: 'var(--color-gold)',
                 color: '#FFFFFF',
                 border: 'none',
                 cursor: 'pointer',
-                fontSize: '0.75rem',
-                fontWeight: '600'
+                fontSize: '0.78rem',
+                fontWeight: '700'
               }}
             >
-              Close Panel
+              Close
             </button>
           </div>
         </div>
 
+        {/* Action feedback bar */}
         {actionFeedback.text && (
           <div style={{
             padding: '10px 20px',
-            backgroundColor: actionFeedback.type === 'error' ? '#F8D7DA' : '#D4EDDA',
-            color: actionFeedback.type === 'error' ? '#721C24' : '#155724',
-            fontSize: '0.85rem',
+            backgroundColor: actionFeedback.type === 'error' ? '#F8D7DA' : actionFeedback.type === 'info' ? '#D1ECF1' : '#D4EDDA',
+            color: actionFeedback.type === 'error' ? '#721C24' : actionFeedback.type === 'info' ? '#0C5460' : '#155724',
+            fontSize: '0.88rem',
             fontWeight: '600',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '8px',
+            borderBottom: '1px solid rgba(0,0,0,0.05)',
+            flexShrink: 0
           }}>
-            ✓ {actionFeedback.text}
+            {actionFeedback.type === 'error' ? '❌' : actionFeedback.type === 'info' ? 'ℹ️' : '✓'} {actionFeedback.text}
           </div>
         )}
 
+        {/* Tab Navigation */}
         <div 
           className="no-scrollbar"
           style={{
@@ -1425,7 +983,8 @@ export default function AdminPanel({
             backgroundColor: '#FFFFFF',
             borderBottom: '1px solid var(--border-light)',
             padding: '0 12px',
-            whiteSpace: 'nowrap'
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}
         >
           {navTabs.map(tab => (
@@ -1454,8 +1013,10 @@ export default function AdminPanel({
           ))}
         </div>
 
-        <div style={{ padding: 'clamp(16px, 3vw, 24px)', minHeight: '440px', maxHeight: '72vh', overflowY: 'auto' }}>
+        {/* TAB CONTENTS */}
+        <div style={{ padding: 'clamp(16px, 3vw, 24px)', minHeight: '440px', flex: '1 1 auto', overflowY: 'auto' }}>
           
+          {/* TAB 1: DASHBOARD */}
           {activeTab === 'dashboard' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -1466,7 +1027,7 @@ export default function AdminPanel({
                   </h3>
                 </div>
                 <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Live Data Sync: <strong>{new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</strong>
+                  Live Cloud Sync: <strong>{new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</strong>
                 </div>
               </div>
 
@@ -1591,7 +1152,7 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              {/* PENDING ACCOUNTS & SAVED LEADS SECTION */}
+              {/* PENDING LEADS */}
               {pendingBookingsCount > 0 && (
                 <div style={{
                   backgroundColor: '#FFFDF5',
@@ -1610,9 +1171,6 @@ export default function AdminPanel({
                         🟡 Pending Accounts ({pendingBookingsCount} Users Saved Details)
                       </h4>
                     </div>
-                    <span style={{ fontSize: '0.8rem', color: '#856404' }}>
-                      These users filled details & clicked Save. You can contact them or confirm their booking.
-                    </span>
                   </div>
 
                   <div style={{ overflowX: 'auto' }}>
@@ -1624,8 +1182,7 @@ export default function AdminPanel({
                           <th style={{ padding: '10px', color: '#856404' }}>Cottage Selected</th>
                           <th style={{ padding: '10px', color: '#856404' }}>Dates & Guests</th>
                           <th style={{ padding: '10px', color: '#856404' }}>Amount</th>
-                          <th style={{ padding: '10px', color: '#856404' }}>Payment Status</th>
-                          <th style={{ padding: '10px', color: '#856404' }}>Admin Actions</th>
+                          <th style={{ padding: '10px', color: '#856404' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1636,29 +1193,14 @@ export default function AdminPanel({
                               <div style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>{b.guestName}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>📞 {b.phone}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>✉️ {b.email}</div>
-                              {b.savedTime && <div style={{ fontSize: '0.7rem', color: '#856404', marginTop: '2px' }}>Saved at: {b.savedTime}</div>}
                             </td>
                             <td style={{ padding: '10px', fontWeight: '600' }}>{b.roomName}</td>
                             <td style={{ padding: '10px' }}>
                               <div>{b.checkIn} to {b.checkOut}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.guests} Guests ({b.nights || 1}N)</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.guests} Guests</div>
                             </td>
                             <td style={{ padding: '10px', fontWeight: '700', color: '#856404' }}>
                               ₹{b.totalAmount?.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ padding: '10px' }}>
-                              <span style={{
-                                padding: '3px 8px',
-                                borderRadius: 'var(--radius-full)',
-                                fontSize: '0.7rem',
-                                fontWeight: '700',
-                                backgroundColor: '#FFF3CD',
-                                color: '#856404',
-                                border: '1px solid #FFE08A',
-                                display: 'inline-block'
-                              }}>
-                                🟡 Awaiting Payment
-                              </span>
                             </td>
                             <td style={{ padding: '10px' }}>
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -1677,11 +1219,9 @@ export default function AdminPanel({
                                     alignItems: 'center',
                                     gap: '4px'
                                   }}
-                                  title="Confirm booking and seat"
                                 >
                                   <Check size={12} /> Confirm & Mark Paid
                                 </button>
-
                                 {b.phone && (
                                   <a 
                                     href={`https://wa.me/${b.phone.replace(/[^0-9]/g, '')}?text=Hello%20${encodeURIComponent(b.guestName)},%20greetings%20from%2073%20Hills%20Resort!%20We%20noticed%20you%20started%20reserving%20the%20${encodeURIComponent(b.roomName)}.%20Would%20you%20like%20assistance%20completing%20your%20booking?`}
@@ -1704,22 +1244,6 @@ export default function AdminPanel({
                                     <MessageSquare size={12} /> WhatsApp
                                   </a>
                                 )}
-
-                                <button 
-                                  onClick={() => handleDeleteBooking(b.id)}
-                                  style={{
-                                    padding: '5px 8px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    backgroundColor: 'transparent',
-                                    color: '#FF6B6B',
-                                    border: '1px solid #FF6B6B',
-                                    cursor: 'pointer',
-                                    fontSize: '0.75rem'
-                                  }}
-                                  title="Delete Lead"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
                               </div>
                             </td>
                           </tr>
@@ -1730,6 +1254,7 @@ export default function AdminPanel({
                 </div>
               )}
 
+              {/* MONTHLY CHART & QUICK PRICING */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
@@ -1757,7 +1282,7 @@ export default function AdminPanel({
                           No Bookings Recorded Yet
                         </div>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          As real visitors book on the website and complete checkout, monthly analytics and revenue charts will update automatically in real time.
+                          As real visitors book on the website, monthly analytics and revenue charts will update automatically.
                         </span>
                       </div>
                     ) : (
@@ -1772,7 +1297,7 @@ export default function AdminPanel({
                               <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>₹{data.revenue.toLocaleString('en-IN')}</span>
                             </div>
                             <div style={{ height: '10px', backgroundColor: '#F0EBE1', borderRadius: '5px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#B38B59', borderRadius: '5px', transition: 'width 0.5s ease' }} />
+                              <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#B38B59', borderRadius: '5px' }} />
                             </div>
                           </div>
                         );
@@ -1794,7 +1319,7 @@ export default function AdminPanel({
                         Quick Room Price & Guest Rates
                       </h4>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Change prices here to reflect on the user webpage instantly!
+                        Instant live pricing updates
                       </p>
                     </div>
                     <button 
@@ -1813,13 +1338,13 @@ export default function AdminPanel({
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Base: {room.baseGuests || 2} Guests</span>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', alignItems: 'flex-end' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                           <div>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Base Price (₹)</label>
                             <input 
                               type="number"
                               className="form-input"
-                              style={{ padding: '6px 8px', fontSize: '0.85rem' }}
+                              style={{ padding: '6px 8px', fontSize: '0.85rem', marginBottom: 0 }}
                               defaultValue={room.price}
                               onBlur={(e) => handleQuickPriceChange(room.id, e.target.value, room.extraGuestPrice)}
                             />
@@ -1830,127 +1355,35 @@ export default function AdminPanel({
                             <input 
                               type="number"
                               className="form-input"
-                              style={{ padding: '6px 8px', fontSize: '0.85rem' }}
+                              style={{ padding: '6px 8px', fontSize: '0.85rem', marginBottom: 0 }}
                               defaultValue={room.extraGuestPrice || 800}
                               onBlur={(e) => handleQuickPriceChange(room.id, room.price, e.target.value)}
                             />
                           </div>
-
-                          <button 
-                            type="button"
-                            onClick={() => showNotification(`Price for ${room.name} verified!`)}
-                            className="btn-gold" 
-                            style={{ padding: '7px 10px', fontSize: '0.75rem', height: '34px' }}
-                          >
-                            Update
-                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-
-              {/* CONFIRMED BOOKINGS ACTIVITY SECTION */}
-              <div style={{
-                backgroundColor: '#FFFFFF',
-                border: '1px solid var(--border-light)',
-                borderRadius: 'var(--radius-md)',
-                padding: '24px',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <CheckCircle2 size={20} color="#28A745" />
-                    <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--color-emerald)', margin: 0 }}>
-                      Confirmed Bookings & Paid Guests
-                    </h4>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setBookingFilter('confirmed');
-                      setActiveTab('bookings');
-                    }}
-                    className="btn-outline-dark" 
-                    style={{ padding: '6px 14px', fontSize: '0.75rem' }}
-                  >
-                    View All {confirmedBookingsCount} Confirmed Bookings →
-                  </button>
-                </div>
-
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: 'var(--bg-cream)', borderBottom: '2px solid var(--border-light)' }}>
-                        <th style={{ padding: '10px' }}>Ref ID</th>
-                        <th style={{ padding: '10px' }}>Guest Name</th>
-                        <th style={{ padding: '10px' }}>Room Selected</th>
-                        <th style={{ padding: '10px' }}>Guests & Dates</th>
-                        <th style={{ padding: '10px' }}>Amount</th>
-                        <th style={{ padding: '10px' }}>Payment Method</th>
-                        <th style={{ padding: '10px' }}>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bookings.filter(b => b.status === 'Confirmed').length === 0 ? (
-                        <tr>
-                          <td colSpan={7} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            <div style={{ fontWeight: '600', color: 'var(--color-emerald)', marginBottom: '4px' }}>No Confirmed Bookings Yet</div>
-                            <div style={{ fontSize: '0.8rem' }}>When guests complete their reservation & payment on the live website, their confirmed reservations will appear here.</div>
-                          </td>
-                        </tr>
-                      ) : (
-                        bookings.filter(b => b.status === 'Confirmed').slice(0, 5).map(b => (
-                          <tr key={b.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                            <td style={{ padding: '10px', fontWeight: '700' }}>{b.id}</td>
-                            <td style={{ padding: '10px' }}>
-                              <div><strong>{b.guestName}</strong></div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>📞 {b.phone}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>✉️ {b.email}</div>
-                            </td>
-                            <td style={{ padding: '10px', fontWeight: '600' }}>{b.roomName}</td>
-                            <td style={{ padding: '10px' }}>{b.guests} Guests • {b.checkIn}</td>
-                            <td style={{ padding: '10px', fontWeight: '700', color: 'var(--color-emerald)' }}>₹{b.totalAmount?.toLocaleString('en-IN')}</td>
-                            <td style={{ padding: '10px', fontSize: '0.75rem' }}>
-                              <div>{b.paymentMethod || 'Paid'}</div>
-                              {b.transactionId && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{b.transactionId}</div>}
-                            </td>
-                            <td style={{ padding: '10px' }}>
-                              <span style={{
-                                padding: '3px 8px',
-                                borderRadius: 'var(--radius-full)',
-                                fontSize: '0.7rem',
-                                fontWeight: '700',
-                                backgroundColor: '#D4EDDA',
-                                color: '#155724'
-                              }}>
-                                ✓ Confirmed & Paid
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </div>
           )}
 
+          {/* TAB 2: BRANDING & LOGO */}
           {activeTab === 'branding' && (
             <div style={{ maxWidth: '840px' }}>
               <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
                 Resort Logo & Brand Identity
               </h4>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
-                Upload your custom resort logo from your computer/phone. Supported formats include PNG, JPG, WebP, SVG, and GIF.
+                Select a custom logo image from your device and edit brand titles. Click the single <strong>🚀 SAVE ALL CHANGES</strong> button above or below to publish live to the main website.
               </p>
 
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: '24px',
-                marginBottom: '32px'
+                marginBottom: '28px'
               }}>
                 <div style={{
                   padding: '24px',
@@ -1993,7 +1426,6 @@ export default function AdminPanel({
                     <button
                       onClick={handleDeleteLogo}
                       style={{
-                        marginTop: '16px',
                         padding: '8px 16px',
                         backgroundColor: '#FFF',
                         color: '#FF6B6B',
@@ -2005,7 +1437,7 @@ export default function AdminPanel({
                       }}
                     >
                       <Trash2 size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                      Delete Logo (Reset to Default)
+                      Reset to Default Logo
                     </button>
                   )}
                 </div>
@@ -2017,32 +1449,25 @@ export default function AdminPanel({
                   borderRadius: 'var(--radius-md)'
                 }}>
                   <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '12px', color: 'var(--color-emerald)' }}>
-                    Upload New Logo File From Device
+                    Attach New Logo File From Device
                   </h5>
 
-                  <form onSubmit={handleUploadLogo}>
-                    <div className="form-group">
-                      <label className="form-label">Select Image File (PNG, JPG, SVG, WebP)</label>
-                      <input 
-                        id="logo-file-input"
-                        type="file" 
-                        accept="image/*"
-                        required 
-                        className="form-input"
-                        onChange={(e) => setLogoFile(e.target.files[0])}
-                      />
-                    </div>
+                  <div className="form-group">
+                    <label className="form-label">Select Image File (PNG, JPG, SVG, WebP)</label>
+                    <input 
+                      id="logo-file-input"
+                      type="file" 
+                      accept="image/*"
+                      className="form-input"
+                      onChange={(e) => setLogoFile(e.target.files[0])}
+                    />
+                  </div>
 
-                    <button 
-                      type="submit" 
-                      disabled={isProcessing}
-                      className="btn-gold" 
-                      style={{ width: '100%', padding: '12px', fontWeight: '700' }}
-                    >
-                      <Upload size={16} />
-                      {isProcessing ? 'Uploading Logo...' : '💾 Upload & Save Logo to Main Page'}
-                    </button>
-                  </form>
+                  {logoFile && (
+                    <div style={{ padding: '10px 14px', backgroundColor: '#D4EDDA', borderRadius: '4px', border: '1px solid #C3E6CB', color: '#155724', fontSize: '0.82rem', fontWeight: '600' }}>
+                      ✓ File Attached: {logoFile.name} — Will be saved when you click <strong>Save All Changes</strong>.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -2051,43 +1476,38 @@ export default function AdminPanel({
                   Brand Title & Subtitle
                 </h5>
 
-                <form onSubmit={handleSaveBrandingText}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                    <div>
-                      <label className="form-label">Brand Name</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={brandName} 
-                        onChange={(e) => setBrandName(e.target.value)} 
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Brand Subtitle</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={brandSubtitle} 
-                        onChange={(e) => setBrandSubtitle(e.target.value)} 
-                      />
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label className="form-label">Brand Name</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={brandName} 
+                      onChange={(e) => setBrandName(e.target.value)} 
+                    />
                   </div>
-
-                  <button type="submit" className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>
-                    💾 Save Branding to Main Page
-                  </button>
-                </form>
+                  <div>
+                    <label className="form-label">Brand Subtitle</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={brandSubtitle} 
+                      onChange={(e) => setBrandSubtitle(e.target.value)} 
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
+          {/* TAB 3: HERO BACKGROUND */}
           {activeTab === 'hero' && (
             <div style={{ maxWidth: '840px' }}>
               <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
                 Hero Background Media & Headline
               </h4>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
-                Upload a high-resolution photo or 4K video directly from your device for the main Hero section.
+                Choose a background photo/video and customize the main hero headline. Click the single <strong>🚀 SAVE ALL CHANGES</strong> button to publish live.
               </p>
 
               <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#0D2116' }}>
@@ -2130,58 +1550,50 @@ export default function AdminPanel({
 
               <div style={{ backgroundColor: 'var(--bg-cream)', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px dashed var(--color-gold)', marginBottom: '28px' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '12px', color: 'var(--color-emerald)' }}>
-                  Upload Hero Photo or Video From Device
+                  Attach New Hero Photo or Video From Device
                 </h5>
-                <form onSubmit={handleUploadHeroMedia}>
-                  <div className="form-group">
-                    <label className="form-label">Select Device File (Image or Video: MP4, WebM, PNG, JPG)</label>
-                    <input 
-                      id="hero-file-input"
-                      type="file" 
-                      accept="image/*,video/*"
-                      required 
-                      className="form-input" 
-                      onChange={(e) => setHeroFile(e.target.files[0])} 
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Select Device File (MP4, WebM, PNG, JPG, WebP)</label>
+                  <input 
+                    id="hero-file-input"
+                    type="file" 
+                    accept="image/*,video/*"
+                    className="form-input" 
+                    onChange={(e) => setHeroFile(e.target.files[0])} 
+                  />
+                </div>
 
-                  {/* Instant Selected File Preview */}
-                  {heroFile && (
-                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
-                        <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {heroFile.name} ({(heroFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
-                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
-                      </div>
-                      {heroFile.type.startsWith('video/') ? (
-                        <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
-                          <video 
-                            key={heroFile.name}
-                            src={URL.createObjectURL(heroFile)} 
-                            controls 
-                            autoPlay 
-                            muted 
-                            loop 
-                            playsInline 
-                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
-                          />
-                        </div>
-                      ) : (
-                        <img 
-                          src={URL.createObjectURL(heroFile)} 
-                          alt="Selected Preview" 
-                          style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
-                        />
-                      )}
+                {heroFile && (
+                  <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
+                      <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Attached: {heroFile.name} ({(heroFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                      <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
                     </div>
-                  )}
-
-                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
-                    <Upload size={16} /> {isProcessing ? 'Saving Hero Media...' : '💾 Upload & Save Hero to Main Page'}
-                  </button>
-                </form>
+                    {heroFile.type.startsWith('video/') ? (
+                      <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
+                        <video 
+                          key={heroFile.name}
+                          src={URL.createObjectURL(heroFile)} 
+                          controls 
+                          autoPlay 
+                          muted 
+                          loop 
+                          playsInline 
+                          style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
+                        />
+                      </div>
+                    ) : (
+                      <img 
+                        src={URL.createObjectURL(heroFile)} 
+                        alt="Selected Preview" 
+                        style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
-              <form onSubmit={handleSaveHeroText} style={{ backgroundColor: '#FFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+              <div style={{ backgroundColor: '#FFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '16px' }}>
                   Hero Headline & Description Text
                 </h5>
@@ -2189,15 +1601,15 @@ export default function AdminPanel({
                   <label className="form-label">Hero Title</label>
                   <input type="text" className="form-input" value={heroTitle} onChange={(e) => setHeroTitle(e.target.value)} />
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Hero Subtitle Paragraph</label>
                   <textarea rows={3} className="form-textarea" value={heroSubtitle} onChange={(e) => setHeroSubtitle(e.target.value)} />
                 </div>
-                <button type="submit" className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>💾 Save Hero Text to Main Page</button>
-              </form>
+              </div>
             </div>
           )}
 
+          {/* TAB 4: ABOUT SECTION & VIDEO */}
           {activeTab === 'about' && (
             <div style={{ maxWidth: '840px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -2206,7 +1618,7 @@ export default function AdminPanel({
                     About Section Resort Full View Video & Story
                   </h4>
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    Add or change the 73 Hills Resort video tour. Upload an MP4/WebM/MOV video file from your device (permanently hosted on Cloudinary CDN) OR paste a YouTube / Video link.
+                    Provide a YouTube/Vimeo/MP4 video URL or attach a video file directly. Click the single <strong>🚀 SAVE ALL CHANGES</strong> button to publish.
                   </p>
                 </div>
               </div>
@@ -2251,7 +1663,6 @@ export default function AdminPanel({
                     />
                   )}
                   
-                  {/* Status Badge */}
                   <div style={{ position: 'absolute', top: '14px', left: '14px', zIndex: 10, display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span style={{
                       backgroundColor: sectionMedia.about ? '#1B4D3E' : '#132E1F',
@@ -2266,13 +1677,8 @@ export default function AdminPanel({
                       gap: '6px'
                     }}>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#4EBA6F', boxShadow: '0 0 6px #4EBA6F' }} />
-                      {sectionMedia.about ? 'STATUS: ACTIVE' : 'STATUS: DEFAULT DRONE VIDEO'}
+                      {sectionMedia.about ? 'STATUS: ACTIVE ON MAIN PAGE' : 'STATUS: DEFAULT DRONE VIDEO'}
                     </span>
-                    {sectionMedia.about?.videoType === 'cloudinary' && (
-                      <span style={{ backgroundColor: 'rgba(0,113,227,0.85)', color: '#FFF', padding: '4px 10px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', fontWeight: '600' }}>
-                        ☁ Cloudinary CDN
-                      </span>
-                    )}
                   </div>
                 </div>
 
@@ -2295,116 +1701,58 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              {/* Option A: Fast Video Link (YouTube / Vimeo / MP4 / Cloudinary) */}
+              {/* Video Selector */}
               <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px solid var(--color-gold)', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', margin: 0 }}>
-                    ⭐ Recommended: Enter Video Streaming Link (YouTube, Vimeo, MP4)
-                  </h5>
-                  <span style={{ fontSize: '0.75rem', backgroundColor: '#E8F5E9', color: '#2E7D32', fontWeight: '700', padding: '3px 8px', borderRadius: '4px' }}>
-                    ⚡ Instant (0s Upload)
-                  </span>
-                </div>
-                <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
-                  Paste any YouTube link (e.g. <code>https://youtube.com/watch?v=...</code> or <code>https://youtu.be/...</code>), Vimeo, or direct MP4 URL. Saves in 0.1s to Firestore and streams smoothly on all mobile devices worldwide.
-                </p>
-                <form onSubmit={handleSaveAboutVideoUrl}>
-                  <div className="form-group" style={{ marginBottom: '14px' }}>
-                    <input 
-                      type="url"
-                      placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ or https://youtu.be/..."
-                      className="form-input"
-                      value={aboutVideoUrlInput}
-                      onChange={(e) => setAboutVideoUrlInput(e.target.value)}
-                    />
-                  </div>
-                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
-                    💾 Save Video Link to Main Page (Live Worldwide)
-                  </button>
-                </form>
-              </div>
-
-              {/* Option B: Direct Video File Upload to Cloudinary */}
-              <div style={{ backgroundColor: 'var(--bg-cream)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-light)', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', margin: 0 }}>
-                    Option B: Upload Video File From Device (Cloudinary CDN)
-                  </h5>
-                  <span style={{ fontSize: '0.75rem', backgroundColor: '#E9ECEF', padding: '3px 8px', borderRadius: '4px', color: '#495057' }}>
-                    MP4, WebM, MOV
-                  </span>
-                </div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Select an MP4/WebM video file from your phone or PC. Uploads directly to Cloudinary permanent CDN.
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
+                  Choose Resort Tour Video Source
+                </h5>
+                <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  Enter a YouTube/Vimeo/MP4 video link, or select a video file from your device.
                 </p>
 
-                <form onSubmit={handleUploadAboutMedia}>
-                  <div className="form-group" style={{ marginBottom: '16px' }}>
-                    <input 
-                      id="about-file-input"
-                      type="file" 
-                      accept="video/*,video/mp4,video/webm,video/quicktime"
-                      className="form-input" 
-                      onChange={(e) => {
-                        const selected = e.target.files[0];
-                        setAboutFile(selected);
-                        setAboutUploadStatus('');
-                        setAboutUploadPct(0);
-                      }} 
-                    />
-                  </div>
+                {/* Option 1 */}
+                <div style={{ marginBottom: '18px' }}>
+                  <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>
+                    Option 1: Video Streaming Link (YouTube, Vimeo, MP4 URL)
+                  </label>
+                  <input 
+                    type="url"
+                    placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                    className="form-input"
+                    value={aboutVideoUrlInput}
+                    onChange={(e) => {
+                      setAboutVideoUrlInput(e.target.value);
+                      if (e.target.value) setAboutFile(null);
+                    }}
+                  />
+                </div>
 
-                  {/* Instant Selected File Preview */}
+                {/* Option 2 */}
+                <div style={{ marginBottom: '10px' }}>
+                  <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>
+                    Option 2: Or Select Video File From Device
+                  </label>
+                  <input 
+                    id="about-file-input"
+                    type="file" 
+                    accept="video/*,video/mp4,video/webm,video/quicktime"
+                    className="form-input" 
+                    onChange={(e) => {
+                      const selected = e.target.files[0];
+                      setAboutFile(selected);
+                      if (selected) setAboutVideoUrlInput('');
+                    }} 
+                  />
                   {aboutFile && (
-                    <div style={{ marginBottom: '16px', padding: '14px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.825rem' }}>
-                        <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
-                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Valid File</span>
-                      </div>
-                      {aboutFile.type.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(aboutFile.name) ? (
-                        <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
-                          <video 
-                            key={aboutFile.name}
-                            src={URL.createObjectURL(aboutFile)} 
-                            controls 
-                            autoPlay 
-                            muted 
-                            loop 
-                            playsInline 
-                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
-                          />
-                        </div>
-                      ) : (
-                        <img 
-                          src={URL.createObjectURL(aboutFile)} 
-                          alt="Selected Preview" 
-                          style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
-                        />
-                      )}
+                    <div style={{ marginTop: '8px', padding: '10px 14px', backgroundColor: 'var(--bg-cream)', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--color-emerald)', fontWeight: '600' }}>
+                      📁 Selected: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB) — Ready to save!
                     </div>
                   )}
-
-                  {/* Upload Progress Bar */}
-                  {isProcessing && aboutUploadPct > 0 && (
-                    <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-gold)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-emerald)' }}>
-                        <span>{aboutUploadStatus === 'saving_firestore' ? 'Saving to Firestore Live State...' : `Uploading to Cloudinary CDN: ${aboutUploadPct}%`}</span>
-                        <span>{aboutUploadPct}%</span>
-                      </div>
-                      <div style={{ width: '100%', height: '8px', backgroundColor: '#E9ECEF', borderRadius: '4px', overflow: 'hidden' }}>
-                        <div style={{ width: `${aboutUploadPct}%`, height: '100%', backgroundColor: '#B38B59', transition: 'width 0.3s ease' }} />
-                      </div>
-                    </div>
-                  )}
-
-                  <button type="submit" disabled={isProcessing || !aboutFile} className="btn-outline-dark" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
-                    <Upload size={16} /> {isProcessing ? `Uploading Video (${aboutUploadPct}%)...` : '💾 Upload Video File to Cloudinary'}
-                  </button>
-                </form>
+                </div>
               </div>
 
-              {/* Story Content Form */}
-              <form onSubmit={handleSaveAboutText} style={{ backgroundColor: '#FFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+              {/* Story Content */}
+              <div style={{ backgroundColor: '#FFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '16px' }}>
                   About Headline & Paragraph Content
                 </h5>
@@ -2412,24 +1760,24 @@ export default function AdminPanel({
                   <label className="form-label">About Headline</label>
                   <input type="text" className="form-input" value={aboutHeadline} onChange={(e) => setAboutHeadline(e.target.value)} />
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">About Story Paragraph</label>
                   <textarea rows={4} className="form-textarea" value={aboutParagraph} onChange={(e) => setAboutParagraph(e.target.value)} />
                 </div>
-                <button type="submit" className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>💾 Save About Story to Main Page</button>
-              </form>
+              </div>
             </div>
           )}
 
+          {/* TAB 5: STAY & ROOMS */}
           {activeTab === 'rooms' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)' }}>
                     Stay Cottages & Luxury Suites ({rooms.length})
                   </h4>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    Manage rooms, upload photos directly from your device, update nightly base prices, and configure guest capacities.
+                    Add cottages, configure nightly rates, upload photos, and manage suite details.
                   </p>
                 </div>
 
@@ -2458,119 +1806,136 @@ export default function AdminPanel({
                     className="btn-gold" 
                     style={{ padding: '8px 16px', fontSize: '0.8rem' }}
                   >
-                    <Plus size={16} /> Add New Cottage
+                    <Plus size={16} /> New Cottage Form
                   </button>
                 </div>
               </div>
 
+              {/* Room Form */}
               <div style={{ backgroundColor: 'var(--bg-cream)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-gold)', marginBottom: '32px' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.35rem', marginBottom: '16px', color: 'var(--color-emerald)' }}>
-                  {editingRoom ? `Edit Suite: ${editingRoom.name}` : 'Create New Luxury Room / Cottage'}
+                  {editingRoom ? `Editing Suite: ${editingRoom.name}` : 'Create / Edit Luxury Cottage'}
                 </h5>
 
-                <form onSubmit={handleSaveRoom}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-                    <div>
-                      <label className="form-label">Room / Villa Title</label>
-                      <input 
-                        type="text" 
-                        required 
-                        placeholder="e.g. Red Sandalwood Villa"
-                        className="form-input" 
-                        value={roomFormData.name} 
-                        onChange={(e) => setRoomFormData({ ...roomFormData, name: e.target.value })} 
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Subtitle / View Tag</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. 73 Acres Forest Facing Luxury Suite"
-                        className="form-input" 
-                        value={roomFormData.subtitle} 
-                        onChange={(e) => setRoomFormData({ ...roomFormData, subtitle: e.target.value })} 
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Base Nightly Price (₹)</label>
-                      <input 
-                        type="number" 
-                        required 
-                        className="form-input" 
-                        value={roomFormData.price} 
-                        onChange={(e) => setRoomFormData({ ...roomFormData, price: Number(e.target.value) })} 
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Base Guests Included</label>
-                      <input 
-                        type="number" 
-                        required 
-                        className="form-input" 
-                        value={roomFormData.baseGuests || 2} 
-                        onChange={(e) => setRoomFormData({ ...roomFormData, baseGuests: Number(e.target.value) })} 
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Extra Guest Surcharge / Night (₹)</label>
-                      <input 
-                        type="number" 
-                        required 
-                        className="form-input" 
-                        value={roomFormData.extraGuestPrice || 800} 
-                        onChange={(e) => setRoomFormData({ ...roomFormData, extraGuestPrice: Number(e.target.value) })} 
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Capacity String & Size</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. 2 - 6 Guests, 1,200 sq.ft"
-                        className="form-input" 
-                        value={roomFormData.capacity} 
-                        onChange={(e) => setRoomFormData({ ...roomFormData, capacity: e.target.value })} 
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <label className="form-label">Upload Room Photo From Device (or leave blank to keep current photo)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label className="form-label">Room / Villa Title</label>
                     <input 
-                      type="file" 
-                      accept="image/*"
+                      type="text" 
+                      placeholder="e.g. Red Sandalwood Villa"
                       className="form-input" 
-                      onChange={(e) => setRoomPhotoFile(e.target.files[0])} 
+                      value={roomFormData.name} 
+                      onChange={(e) => setRoomFormData({ ...roomFormData, name: e.target.value })} 
                     />
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Room Description</label>
-                    <textarea 
-                      rows={3} 
-                      className="form-textarea" 
-                      value={roomFormData.description} 
-                      onChange={(e) => setRoomFormData({ ...roomFormData, description: e.target.value })} 
+                  <div>
+                    <label className="form-label">Subtitle / View Tag</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 73 Acres Forest Facing Luxury Suite"
+                      className="form-input" 
+                      value={roomFormData.subtitle} 
+                      onChange={(e) => setRoomFormData({ ...roomFormData, subtitle: e.target.value })} 
                     />
                   </div>
+                  <div>
+                    <label className="form-label">Base Nightly Price (₹)</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={roomFormData.price} 
+                      onChange={(e) => setRoomFormData({ ...roomFormData, price: Number(e.target.value) })} 
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Base Guests Included</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={roomFormData.baseGuests || 2} 
+                      onChange={(e) => setRoomFormData({ ...roomFormData, baseGuests: Number(e.target.value) })} 
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Extra Guest Surcharge / Night (₹)</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={roomFormData.extraGuestPrice || 800} 
+                      onChange={(e) => setRoomFormData({ ...roomFormData, extraGuestPrice: Number(e.target.value) })} 
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Capacity String & Size</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 2 - 6 Guests, 1,200 sq.ft"
+                      className="form-input" 
+                      value={roomFormData.capacity} 
+                      onChange={(e) => setRoomFormData({ ...roomFormData, capacity: e.target.value })} 
+                    />
+                  </div>
+                </div>
 
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button type="submit" disabled={isProcessing} className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>
-                      {isProcessing ? 'Saving to Cloud...' : editingRoom ? '💾 Save Room Changes to Main Page' : '💾 Create & Save Suite to Main Page'}
+                <div style={{ marginBottom: '16px' }}>
+                  <label className="form-label">Attach Room Photo From Device</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    className="form-input" 
+                    onChange={(e) => setRoomPhotoFile(e.target.files[0])} 
+                  />
+                  {roomPhotoFile && (
+                    <div style={{ marginTop: '6px', fontSize: '0.8rem', color: 'var(--color-emerald)', fontWeight: '600' }}>
+                      📁 Attached Photo: {roomPhotoFile.name}
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Room Description</label>
+                  <textarea 
+                    rows={3} 
+                    className="form-textarea" 
+                    value={roomFormData.description} 
+                    onChange={(e) => setRoomFormData({ ...roomFormData, description: e.target.value })} 
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    💡 When ready, click the top or bottom <strong>🚀 SAVE ALL CHANGES TO MAIN PAGE</strong> button to make this room live!
+                  </span>
+                  {editingRoom && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setEditingRoom(null);
+                        setRoomFormData({
+                          name: '',
+                          subtitle: '',
+                          price: 4999,
+                          baseGuests: 2,
+                          extraGuestPrice: 800,
+                          maxGuests: 6,
+                          rating: 4.9,
+                          capacity: '2 - 6 Guests',
+                          size: '1,000 sq.ft',
+                          image: '/assets/hero_resort_villa.png',
+                          features: ['Sandalwood Forest View', 'King Bed', 'Private Deck'],
+                          description: ''
+                        });
+                      }} 
+                      className="btn-outline-dark" 
+                      style={{ padding: '6px 14px', fontSize: '0.78rem' }}
+                    >
+                      Cancel Edit
                     </button>
-                    {editingRoom && (
-                      <button 
-                        type="button" 
-                        onClick={() => setEditingRoom(null)} 
-                        className="btn-outline-dark" 
-                        style={{ padding: '10px 20px' }}
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </form>
+                  )}
+                </div>
               </div>
 
+              {/* Room Cards */}
               <div style={{ display: 'grid', gap: '16px' }}>
                 {rooms.map(room => (
                   <div key={room.id} style={{ display: 'flex', gap: '20px', padding: '18px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', backgroundColor: '#FFFFFF', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2610,13 +1975,14 @@ export default function AdminPanel({
             </div>
           )}
 
+          {/* TAB 6: CELEBRATIONS */}
           {activeTab === 'celebrations' && (
             <div style={{ maxWidth: '840px' }}>
               <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
                 Celebrations & Weddings Section Manager
               </h4>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
-                Upload your custom photo or video for the Celebrations section, and customize the headline narrative.
+                Attach celebration photos/videos and edit wedding narrative. Click the single <strong>🚀 SAVE ALL CHANGES</strong> button to publish.
               </p>
 
               <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
@@ -2659,58 +2025,50 @@ export default function AdminPanel({
 
               <div style={{ backgroundColor: 'var(--bg-cream)', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px dashed var(--color-gold)', marginBottom: '28px' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '12px', color: 'var(--color-emerald)' }}>
-                  Upload Celebration Photo or Video From Device
+                  Attach Celebration Photo or Video From Device
                 </h5>
-                <form onSubmit={handleUploadCelebrationMedia}>
-                  <div className="form-group">
-                    <label className="form-label">Select Device File (Image or Video)</label>
-                    <input 
-                      id="celebration-file-input"
-                      type="file" 
-                      accept="image/*,video/*"
-                      required 
-                      className="form-input" 
-                      onChange={(e) => setCelebrationFile(e.target.files[0])} 
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Select Device File (Image or Video)</label>
+                  <input 
+                    id="celebration-file-input"
+                    type="file" 
+                    accept="image/*,video/*"
+                    className="form-input" 
+                    onChange={(e) => setCelebrationFile(e.target.files[0])} 
+                  />
+                </div>
 
-                  {/* Instant Selected File Preview */}
-                  {celebrationFile && (
-                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
-                        <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {celebrationFile.name} ({(celebrationFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
-                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
-                      </div>
-                      {celebrationFile.type.startsWith('video/') ? (
-                        <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
-                          <video 
-                            key={celebrationFile.name}
-                            src={URL.createObjectURL(celebrationFile)} 
-                            controls 
-                            autoPlay 
-                            muted 
-                            loop 
-                            playsInline 
-                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
-                          />
-                        </div>
-                      ) : (
-                        <img 
-                          src={URL.createObjectURL(celebrationFile)} 
-                          alt="Selected Preview" 
-                          style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
-                        />
-                      )}
+                {celebrationFile && (
+                  <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
+                      <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Attached: {celebrationFile.name} ({(celebrationFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                      <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
                     </div>
-                  )}
-
-                  <button type="submit" disabled={isProcessing} className="btn-gold" style={{ width: '100%', padding: '12px', fontWeight: '700' }}>
-                    <Upload size={16} /> {isProcessing ? 'Saving Celebration Media...' : '💾 Upload & Save Celebrations to Main Page'}
-                  </button>
-                </form>
+                    {celebrationFile.type.startsWith('video/') ? (
+                      <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
+                        <video 
+                          key={celebrationFile.name}
+                          src={URL.createObjectURL(celebrationFile)} 
+                          controls 
+                          autoPlay 
+                          muted 
+                          loop 
+                          playsInline 
+                          style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
+                        />
+                      </div>
+                    ) : (
+                      <img 
+                        src={URL.createObjectURL(celebrationFile)} 
+                        alt="Selected Preview" 
+                        style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
-              <form onSubmit={handleSaveCelebrationText} style={{ backgroundColor: '#FFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+              <div style={{ backgroundColor: '#FFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                 <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', marginBottom: '16px' }}>
                   Celebrations Headline & Story Content
                 </h5>
@@ -2718,15 +2076,15 @@ export default function AdminPanel({
                   <label className="form-label">Headline</label>
                   <input type="text" className="form-input" value={celebrationHeadline} onChange={(e) => setCelebrationHeadline(e.target.value)} />
                 </div>
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Story Paragraph</label>
                   <textarea rows={4} className="form-textarea" value={celebrationParagraph} onChange={(e) => setCelebrationParagraph(e.target.value)} />
                 </div>
-                <button type="submit" className="btn-gold" style={{ padding: '10px 24px', fontWeight: '700' }}>💾 Save Celebration Story to Main Page</button>
-              </form>
+              </div>
             </div>
           )}
 
+          {/* TAB 7: GALLERY MEDIA */}
           {activeTab === 'gallery' && (
             <div>
               <div style={{
@@ -2737,92 +2095,55 @@ export default function AdminPanel({
                 marginBottom: '32px'
               }}>
                 <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', marginBottom: '8px', color: 'var(--color-emerald)' }}>
-                  Upload Photos or Videos Directly From Your Device
+                  Attach Photos or Videos to Gallery
                 </h4>
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-                  Select any photo or video file from your computer or phone. Uploaded media is saved to high-capacity storage!
+                  Select any photo or video file from your computer or phone. Click the single <strong>🚀 SAVE ALL CHANGES</strong> button to publish.
                 </p>
 
-                <form onSubmit={handleDeviceGalleryUpload}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-                    <div>
-                      <label className="form-label">Select Device File (Image or Video)</label>
-                      <input 
-                        id="gallery-file-input"
-                        type="file" 
-                        accept="image/*,video/*"
-                        required 
-                        className="form-input" 
-                        onChange={(e) => setGalleryFile(e.target.files[0])} 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label">Media Title / Name</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. Twilight Pool Party View"
-                        className="form-input" 
-                        value={galleryTitle}
-                        onChange={(e) => setGalleryTitle(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label">Gallery Category</label>
-                      <select 
-                        className="form-select"
-                        value={galleryCategory}
-                        onChange={(e) => setGalleryCategory(e.target.value)}
-                      >
-                        <option value="Cottages">Cottages & Villas</option>
-                        <option value="Nature">Nature & Sandalwood</option>
-                        <option value="Celebrations">Celebrations & Events</option>
-                        <option value="Videos">Resort Videos</option>
-                      </select>
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label className="form-label">Select Device File (Image or Video)</label>
+                    <input 
+                      id="gallery-file-input"
+                      type="file" 
+                      accept="image/*,video/*"
+                      className="form-input" 
+                      onChange={(e) => setGalleryFile(e.target.files[0])} 
+                    />
                   </div>
 
-                  {/* Instant Selected File Preview */}
-                  {galleryFile && (
-                    <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '0.8rem' }}>
-                        <span style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>📁 Selected: {galleryFile.name} ({(galleryFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
-                        <span style={{ color: '#28A745', fontWeight: '600' }}>✓ Ready to save</span>
-                      </div>
-                      {galleryFile.type.startsWith('video/') ? (
-                        <div style={{ maxHeight: '180px', borderRadius: '4px', overflow: 'hidden', backgroundColor: '#000' }}>
-                          <video 
-                            key={galleryFile.name}
-                            src={URL.createObjectURL(galleryFile)} 
-                            controls 
-                            autoPlay 
-                            muted 
-                            loop 
-                            playsInline 
-                            style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
-                          />
-                        </div>
-                      ) : (
-                        <img 
-                          src={URL.createObjectURL(galleryFile)} 
-                          alt="Selected Preview" 
-                          style={{ maxHeight: '160px', width: '100%', objectFit: 'cover', borderRadius: '4px' }} 
-                        />
-                      )}
-                    </div>
-                  )}
+                  <div>
+                    <label className="form-label">Media Title / Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Twilight Pool Party View"
+                      className="form-input" 
+                      value={galleryTitle}
+                      onChange={(e) => setGalleryTitle(e.target.value)}
+                    />
+                  </div>
 
-                  <button 
-                    type="submit" 
-                    disabled={isProcessing}
-                    className="btn-gold" 
-                    style={{ padding: '12px 28px', fontWeight: '700' }}
-                  >
-                    <Upload size={16} />
-                    {isProcessing ? 'Saving File...' : '💾 Upload & Publish to Main Page Gallery'}
-                  </button>
-                </form>
+                  <div>
+                    <label className="form-label">Gallery Category</label>
+                    <select 
+                      className="form-select"
+                      value={galleryCategory}
+                      onChange={(e) => setGalleryCategory(e.target.value)}
+                    >
+                      <option value="Cottages">Cottages & Villas</option>
+                      <option value="Nature">Nature & Sandalwood</option>
+                      <option value="Celebrations">Celebrations & Events</option>
+                      <option value="Videos">Resort Videos</option>
+                    </select>
+                  </div>
+                </div>
+
+                {galleryFile && (
+                  <div style={{ padding: '12px', backgroundColor: '#D4EDDA', borderRadius: 'var(--radius-sm)', border: '1px solid #C3E6CB', color: '#155724', fontSize: '0.85rem', fontWeight: '600' }}>
+                    ✓ Attached File: {galleryFile.name} ({(galleryFile.size / (1024 * 1024)).toFixed(2)} MB) — Click <strong>Save All Changes</strong> to publish!
+                  </div>
+                )}
               </div>
 
               <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', marginBottom: '16px' }}>
@@ -2869,6 +2190,7 @@ export default function AdminPanel({
             </div>
           )}
 
+          {/* TAB 8: BOOKINGS LEDGER */}
           {activeTab === 'bookings' && (() => {
             const filteredList = bookings.filter(b => {
               const matchesFilter = 
@@ -2899,11 +2221,10 @@ export default function AdminPanel({
                       Guest Bookings & Leads Ledger ({bookings.length})
                     </h4>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Manage live reservations, review pending checkouts, and follow up directly with guests.
+                      Review live reservations, pending checkouts, and guest details.
                     </p>
                   </div>
 
-                  {/* Search Bar */}
                   <div style={{ display: 'flex', alignItems: 'center', position: 'relative', minWidth: '280px' }}>
                     <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px' }} />
                     <input 
@@ -2925,7 +2246,6 @@ export default function AdminPanel({
                   </div>
                 </div>
 
-                {/* Filter Pills */}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
                   {[
                     { id: 'all', label: `All Bookings (${bookings.length})` },
@@ -2963,7 +2283,6 @@ export default function AdminPanel({
                         <th style={{ padding: '12px' }}>Cottage / Suite</th>
                         <th style={{ padding: '12px' }}>Stay Dates & Guests</th>
                         <th style={{ padding: '12px' }}>Total Amount</th>
-                        <th style={{ padding: '12px' }}>Payment Mode</th>
                         <th style={{ padding: '12px' }}>Status</th>
                         <th style={{ padding: '12px' }}>Actions</th>
                       </tr>
@@ -2971,8 +2290,8 @@ export default function AdminPanel({
                     <tbody>
                       {filteredList.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            No bookings found matching your filter / search query.
+                          <td colSpan={7} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            No bookings found matching your search query.
                           </td>
                         </tr>
                       ) : (
@@ -2986,24 +2305,14 @@ export default function AdminPanel({
                               <div style={{ fontWeight: '700' }}>{b.guestName}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>📞 {b.phone}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>✉️ {b.email}</div>
-                              {b.savedTime && <div style={{ fontSize: '0.7rem', color: '#856404' }}>Saved at: {b.savedTime}</div>}
-                              {b.specialRequest && (
-                                <div style={{ fontSize: '0.7rem', color: '#666', fontStyle: 'italic', marginTop: '2px' }}>
-                                  Req: "{b.specialRequest}"
-                                </div>
-                              )}
                             </td>
                             <td style={{ padding: '12px', fontWeight: '600' }}>{b.roomName}</td>
                             <td style={{ padding: '12px' }}>
                               <div>{b.checkIn} to {b.checkOut}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.guests} Guests ({b.nights || 1} Nights)</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.guests} Guests ({b.nights || 1}N)</div>
                             </td>
                             <td style={{ padding: '12px', fontWeight: '700', color: 'var(--color-emerald)', fontSize: '0.95rem' }}>
                               ₹{b.totalAmount?.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ padding: '12px', fontSize: '0.8rem' }}>
-                              <div>{b.paymentMethod || 'Paid'}</div>
-                              {b.transactionId && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{b.transactionId}</div>}
                             </td>
                             <td style={{ padding: '12px' }}>
                               <span style={{
@@ -3034,9 +2343,8 @@ export default function AdminPanel({
                                       cursor: 'pointer',
                                       fontWeight: '600'
                                     }}
-                                    title="Mark Paid and Confirm Booking"
                                   >
-                                    Approve & Confirm
+                                    Confirm
                                   </button>
                                 )}
 
@@ -3057,7 +2365,6 @@ export default function AdminPanel({
                                       alignItems: 'center',
                                       gap: '4px'
                                     }}
-                                    title="WhatsApp Guest"
                                   >
                                     <MessageSquare size={12} /> WhatsApp
                                   </a>
@@ -3067,7 +2374,6 @@ export default function AdminPanel({
                                   <button 
                                     onClick={() => handleBookingStatus(b.id, 'Cancelled')}
                                     style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#FF6B6B', border: '1px solid #FF6B6B', borderRadius: '4px', backgroundColor: 'transparent', cursor: 'pointer' }}
-                                    title="Cancel Booking"
                                   >
                                     Cancel
                                   </button>
@@ -3076,7 +2382,6 @@ export default function AdminPanel({
                                 <button 
                                   onClick={() => handleDeleteBooking(b.id)}
                                   style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#999', border: '1px solid #CCC', borderRadius: '4px', backgroundColor: 'transparent', cursor: 'pointer' }}
-                                  title="Delete Record"
                                 >
                                   <Trash2 size={12} />
                                 </button>
@@ -3092,13 +2397,166 @@ export default function AdminPanel({
             );
           })()}
 
+          {/* TAB 9: RULES & POLICIES */}
+          {activeTab === 'policies' && (
+            <div style={{ maxWidth: '860px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.7rem', color: 'var(--color-emerald)', margin: 0 }}>
+                  Resort Policies, Rules & Receipt Settings
+                </h4>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
+                Customize timings, cancellation policy, privacy policy, house rules, and receipt details. Click the single <strong>🚀 SAVE ALL CHANGES</strong> button to publish.
+              </p>
+
+              {/* Timings and GSTIN */}
+              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '16px' }}>
+                  1. Check-In / Check-Out & Tax Identifiers
+                </h5>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Check-In Time</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={checkInTime} 
+                      onChange={(e) => setCheckInTime(e.target.value)} 
+                      placeholder="e.g. 02:00 PM"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Check-Out Time</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={checkOutTime} 
+                      onChange={(e) => setCheckOutTime(e.target.value)} 
+                      placeholder="e.g. 11:00 AM"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">GSTIN / Tax Number</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={gstin} 
+                      onChange={(e) => setGstin(e.target.value)} 
+                      placeholder="e.g. 37AAACH7373H1Z2"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Policies & Privacy */}
+              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '16px' }}>
+                  2. Cancellation & Privacy Protection Policies
+                </h5>
+
+                <div className="form-group">
+                  <label className="form-label">Cancellation & Refund Policy</label>
+                  <textarea 
+                    rows={3} 
+                    className="form-textarea"
+                    value={cancellationPolicy}
+                    onChange={(e) => setCancellationPolicy(e.target.value)}
+                    placeholder="e.g. Free cancellation up to 48 hours prior to check-in..."
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Privacy Policy & Guest Data Confidentiality</label>
+                  <textarea 
+                    rows={3} 
+                    className="form-textarea"
+                    value={privacyPolicy}
+                    onChange={(e) => setPrivacyPolicy(e.target.value)}
+                    placeholder="e.g. Guest personal data and booking records are encrypted..."
+                  />
+                </div>
+              </div>
+
+              {/* House Rules & Regulations */}
+              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
+                  3. Resort House Rules & Eco Guidelines
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  These rules are printed directly on guest confirmation receipts.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                  {houseRules.map((rule, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: 'var(--bg-cream)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-main)', paddingRight: '12px' }}>
+                        <strong>{idx + 1}.</strong> {rule}
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => handleDeleteHouseRule(idx)}
+                        style={{ background: 'none', border: 'none', color: '#FF6B6B', cursor: 'pointer', padding: '4px' }}
+                        title="Remove rule"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Type a new house rule or guideline and click Add..."
+                    className="form-input" 
+                    style={{ marginBottom: 0 }}
+                    value={newRuleInput}
+                    onChange={(e) => setNewRuleInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddHouseRule();
+                      }
+                    }}
+                  />
+                  <button 
+                    type="button" 
+                    onClick={handleAddHouseRule}
+                    className="btn-outline-dark" 
+                    style={{ padding: '10px 18px', whiteSpace: 'nowrap', fontSize: '0.8rem' }}
+                  >
+                    <Plus size={14} /> Add Rule
+                  </button>
+                </div>
+              </div>
+
+              {/* Receipt Footer Note */}
+              <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '12px' }}>
+                  4. Printed Receipt Footer Note
+                </h5>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={receiptFooterNote} 
+                  onChange={(e) => setReceiptFooterNote(e.target.value)}
+                  placeholder="e.g. Thank you for choosing 73 Hills Resort. Have a serene luxury stay!"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 10: CONTACT & INFO */}
           {activeTab === 'contact' && (
-            <form onSubmit={handleSaveContactSettings} style={{ maxWidth: '720px' }}>
+            <div style={{ maxWidth: '720px' }}>
               <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', marginBottom: '8px', color: 'var(--color-emerald)' }}>
                 Contact Details & Location Coordinates
               </h4>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-                Update customer service phone lines, inquiry email, and resort address.
+                Update customer service phone lines, inquiry email, and resort address. Click the single <strong>🚀 SAVE ALL CHANGES</strong> button to publish.
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -3142,168 +2600,12 @@ export default function AdminPanel({
                   onChange={(e) => setSettings({ ...settings, location: e.target.value })} 
                 />
               </div>
-
-              <button type="submit" className="btn-gold" style={{ padding: '12px 28px', fontWeight: '700' }}>
-                💾 Save Contact & Location to Main Page
-              </button>
-            </form>
-          )}
-
-          {activeTab === 'policies' && (
-            <div style={{ maxWidth: '860px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.7rem', color: 'var(--color-emerald)', margin: 0 }}>
-                  Resort Policies, Rules & Single-Page Receipt Settings
-                </h4>
-              </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
-                Customize your resort's official check-in/out timings, cancellation policy, privacy policy, house rules, and tax receipt details. Changes are instantly reflected on customer receipts!
-              </p>
-
-              <form onSubmit={handleSavePolicies}>
-                
-                {/* Timings and GSTIN */}
-                <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                  <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '16px' }}>
-                    1. Check-In / Check-Out & Tax Identifiers
-                  </h5>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Check-In Time</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={checkInTime} 
-                        onChange={(e) => setCheckInTime(e.target.value)} 
-                        placeholder="e.g. 02:00 PM"
-                      />
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Check-Out Time</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={checkOutTime} 
-                        onChange={(e) => setCheckOutTime(e.target.value)} 
-                        placeholder="e.g. 11:00 AM"
-                      />
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">GSTIN / Tax Number</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={gstin} 
-                        onChange={(e) => setGstin(e.target.value)} 
-                        placeholder="e.g. 37AAACH7373H1Z2"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Policies & Privacy */}
-                <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                  <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '16px' }}>
-                    2. Cancellation & Privacy Protection Policies
-                  </h5>
-
-                  <div className="form-group">
-                    <label className="form-label">Cancellation & Refund Policy</label>
-                    <textarea 
-                      rows={3}
-                      className="form-textarea"
-                      value={cancellationPolicy}
-                      onChange={(e) => setCancellationPolicy(e.target.value)}
-                      placeholder="e.g. Free cancellation up to 48 hours prior to check-in..."
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">Privacy Policy & Guest Data Confidentiality</label>
-                    <textarea 
-                      rows={3}
-                      className="form-textarea"
-                      value={privacyPolicy}
-                      onChange={(e) => setPrivacyPolicy(e.target.value)}
-                      placeholder="e.g. Guest personal data and booking records are encrypted..."
-                    />
-                  </div>
-                </div>
-
-                {/* House Rules & Regulations */}
-                <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                  <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '8px' }}>
-                    3. Resort House Rules & Eco Guidelines
-                  </h5>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                    These rules are printed directly on the guest confirmation tax invoice.
-                  </p>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                    {houseRules.map((rule, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: 'var(--bg-cream)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-main)', paddingRight: '12px' }}>
-                          <strong>{idx + 1}.</strong> {rule}
-                        </span>
-                        <button 
-                          type="button"
-                          onClick={() => handleDeleteHouseRule(idx)}
-                          style={{ background: 'none', border: 'none', color: '#FF6B6B', cursor: 'pointer', padding: '4px' }}
-                          title="Remove rule"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input 
-                      type="text" 
-                      placeholder="Type a new house rule or guideline and click Add..."
-                      className="form-input" 
-                      style={{ marginBottom: 0 }}
-                      value={newRuleInput}
-                      onChange={(e) => setNewRuleInput(e.target.value)}
-                    />
-                    <button 
-                      type="button" 
-                      onClick={handleAddHouseRule}
-                      className="btn-outline-dark" 
-                      style={{ padding: '10px 18px', whiteSpace: 'nowrap', fontSize: '0.8rem' }}
-                    >
-                      <Plus size={14} /> Add Rule
-                    </button>
-                  </div>
-                </div>
-
-                {/* Receipt Footer Note */}
-                <div style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '24px', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                  <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '12px' }}>
-                    4. Printed Receipt Footer Note
-                  </h5>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    value={receiptFooterNote} 
-                    onChange={(e) => setReceiptFooterNote(e.target.value)}
-                    placeholder="e.g. Thank you for choosing 73 Hills Resort. Have a serene luxury stay!"
-                  />
-                </div>
-
-                <button type="submit" className="btn-gold" style={{ padding: '14px 32px', fontSize: '0.95rem', fontWeight: '700' }}>
-                  <Check size={18} /> 💾 SAVE POLICIES & PUBLISH TO MAIN PAGE
-                </button>
-              </form>
             </div>
           )}
 
         </div>
 
-        {/* Persistent Bottom Global Save Bar */}
+        {/* PERSISTENT FLOATING BOTTOM SAVE BAR WITH ONE MASTER BUTTON */}
         <div style={{
           padding: '14px 24px',
           backgroundColor: '#0D2116',
@@ -3312,35 +2614,36 @@ export default function AdminPanel({
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '12px'
+          gap: '12px',
+          flexShrink: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#28A745', display: 'inline-block', boxShadow: '0 0 8px #28A745' }} />
-            <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.8)' }}>
-              All changes in any tab become live for everyone worldwide when you click Save.
+            <span style={{ fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.85)' }}>
+              All modifications, uploads, and edits are published to everyone worldwide when you click Save.
             </span>
           </div>
 
           <button
-            onClick={handlePublishToMainPageWorldwide}
+            onClick={handleSaveAllToMainPage}
             disabled={isProcessing}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '10px 22px',
+              padding: '12px 28px',
               borderRadius: 'var(--radius-sm)',
               backgroundColor: '#28A745',
               color: '#FFFFFF',
               border: '1px solid #1E7E34',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: '700',
-              boxShadow: '0 4px 14px rgba(40,167,69,0.45)',
+              cursor: isProcessing ? 'wait' : 'pointer',
+              fontSize: '0.95rem',
+              fontWeight: '800',
+              boxShadow: '0 4px 16px rgba(40,167,69,0.5)',
               transition: 'all 0.2s ease'
             }}
           >
-            <Check size={18} /> {isProcessing ? 'Saving to Main Page...' : '🚀 SAVE TO MAIN PAGE (VISIBLE TO EVERYONE)'}
+            <Check size={20} /> {isProcessing ? 'SAVING TO MAIN PAGE...' : '🚀 SAVE ALL CHANGES TO MAIN PAGE'}
           </button>
         </div>
 
@@ -3348,4 +2651,3 @@ export default function AdminPanel({
     </div>
   );
 }
-
