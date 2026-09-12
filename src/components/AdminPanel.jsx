@@ -2314,7 +2314,7 @@ export default function AdminPanel({
                     <input 
                       id="about-file-input"
                       type="file" 
-                      accept="video/mp4,video/webm,video/quicktime,video/*,image/*"
+                      accept="video/*,video/mp4,video/webm,video/quicktime"
                       required 
                       className="form-input" 
                       onChange={(e) => {
