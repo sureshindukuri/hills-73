@@ -172,9 +172,12 @@ export default function App() {
     const syncInterval = setInterval(syncCloud, 15000);
 
     const checkAdminRoute = () => {
-      const isRoute = window.location.pathname.toLowerCase().includes('/admin') || 
-                      window.location.hash.toLowerCase().includes('admin');
-      setAdminPanelOpen(isRoute);
+      const isRoute = window.location.pathname.toLowerCase().includes('admin') || 
+                      window.location.hash.toLowerCase().includes('admin') ||
+                      window.location.search.toLowerCase().includes('admin');
+      if (isRoute) {
+        setAdminPanelOpen(true);
+      }
     };
 
     checkAdminRoute();
@@ -195,10 +198,8 @@ export default function App() {
 
   const handleCloseAdmin = () => {
     setAdminPanelOpen(false);
-    if (window.location.pathname.toLowerCase().includes('/admin')) {
-      window.history.pushState({}, '', '/');
-    } else if (window.location.hash.toLowerCase().includes('admin')) {
-      window.history.pushState({}, '', '/');
+    if (window.location.pathname.toLowerCase().includes('admin') || window.location.hash.toLowerCase().includes('admin')) {
+      window.history.pushState({}, '', window.location.pathname.replace(/\/admin\/?/i, '/') || '/');
     }
   };
 
@@ -208,7 +209,7 @@ export default function App() {
   };
 
   const handleToggleAdmin = () => {
-    setAdminPanelOpen(!adminPanelOpen);
+    setAdminPanelOpen(prev => !prev);
   };
 
   return (

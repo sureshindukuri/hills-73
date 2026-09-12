@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
-import { Menu, X, Calendar, Sun, Moon } from 'lucide-react';
+import { Menu, X, Calendar, Sun, Moon, Shield } from 'lucide-react';
 
 export default function Header({ 
   onOpenBooking, 
@@ -182,6 +182,29 @@ export default function Header({
               <Calendar size={16} />
               BOOK NOW
             </button>
+
+            {/* Admin Portal Trigger */}
+            <button
+              onClick={onToggleAdmin}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border-light)',
+                borderRadius: '6px',
+                color: (scrolled || mobileMenuOpen) ? 'var(--text-main)' : '#FFFFFF',
+                cursor: 'pointer',
+                padding: '8px 12px',
+                fontSize: '0.78rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                opacity: 0.9,
+                transition: 'all 0.2s ease'
+              }}
+              title="Open Owner Admin Portal"
+            >
+              <Shield size={14} color="var(--color-gold)" /> Admin
+            </button>
           </nav>
 
           {/* Mobile Actions: Theme Toggle + Compact BOOK NOW + Hamburger */}
@@ -312,6 +335,34 @@ export default function Header({
                 </span>
               </button>
             )}
+
+            {/* Mobile Drawer Admin Portal Button */}
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onToggleAdmin();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'rgba(179, 139, 89, 0.12)',
+                border: '1px solid var(--color-gold)',
+                padding: '11px 14px',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--color-emerald)',
+                cursor: 'pointer',
+                fontSize: '0.88rem',
+                fontWeight: '700',
+                marginTop: '4px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Shield size={18} color="var(--color-gold)" />
+                <span>Executive Admin Portal</span>
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-gold)' }}>Open →</span>
+            </button>
 
             <div style={{ paddingTop: '10px', display: 'flex', gap: '10px' }}>
               <button
