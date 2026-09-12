@@ -1,5 +1,5 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
-import { saveToFirebaseCloud, uploadMediaToFirebaseStorage } from '../firebase/firestoreSync';
+import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, fileToDataUrl } from '../firebase/firestoreSync';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -186,16 +186,22 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       fileName = fileOrUrl.name || 'uploaded_media';
       
       if (isVideo) {
-        // Create an immediate local blob / data stream for zero-delay local playback
-        const localBlobUrl = createBlobUrl(fileOrUrl);
+        // Fast direct file conversion for permanent playback
+        let videoDataUrl;
+        try {
+          videoDataUrl = await fileToDataUrl(fileOrUrl);
+        } catch (e) {
+          videoDataUrl = createBlobUrl(fileOrUrl);
+        }
+
         savedRecord = {
           sectionKey,
           fileName,
           mediaType: 'video',
           videoType: 'custom_url',
-          customVideoUrl: localBlobUrl,
-          customUrl: localBlobUrl,
-          url: localBlobUrl || 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4',
+          customVideoUrl: videoDataUrl,
+          customUrl: videoDataUrl,
+          url: videoDataUrl,
           title: meta.title || fileName,
           updatedAt: new Date().toISOString(),
           isDefault: false,

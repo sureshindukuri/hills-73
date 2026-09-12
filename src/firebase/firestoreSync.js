@@ -64,6 +64,19 @@ export async function compressImageToDataUrl(file, maxWidth = 1280, quality = 0.
 }
 
 /**
+ * Convert any device file (video or image) directly to permanent Data URL
+ */
+export async function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || typeof file === 'string') return resolve(file);
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read device file'));
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Permanent Cloud Media Uploader.
  * - Photos & Logos: Compressed to high-resolution web Data URLs (fast, zero cloud dependency).
  * - Videos: Direct parallel chunk storage in Firestore (resort_media_chunks).
