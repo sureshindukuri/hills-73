@@ -113,6 +113,13 @@ function createBlobUrl(blob) {
 
 // Default Section Media Fallbacks
 export const DEFAULT_SECTION_MEDIA = {
+  logo: {
+    sectionKey: 'logo',
+    mediaType: 'image',
+    url: '/assets/73hills_official_logo.png',
+    title: '73 Hills & Resorts Official Emblem',
+    isDefault: true
+  },
   about: {
     sectionKey: 'about',
     mediaType: 'video',

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 import { Shield, X, Info, Trees, Building, FileText, Lock } from 'lucide-react';
 
 export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, sectionMedia = {} }) {
@@ -99,16 +98,19 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
           
           {/* Col 1: Logo & Mission */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              {(logoMedia?.customUrl || logoMedia?.url) ? (
-                <img 
-                  src={logoMedia.customUrl || logoMedia.url} 
-                  alt={brandTitle} 
-                  style={{ maxHeight: '40px', maxWidth: '140px', objectFit: 'contain' }} 
-                />
-              ) : (
-                <SandalwoodTreeLogo size={38} color="#B38B59" />
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <img 
+                src={logoMedia?.customUrl || logoMedia?.url || '/assets/73hills_official_logo.png'} 
+                alt={brandTitle} 
+                style={{ 
+                  height: '48px', 
+                  width: 'auto',
+                  maxWidth: '64px', 
+                  objectFit: 'contain',
+                  borderRadius: '6px',
+                  filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45))'
+                }} 
+              />
               <div>
                 <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.45rem', fontWeight: '700', color: '#FFFFFF', letterSpacing: '0.06em', display: 'block', lineHeight: 1 }}>
                   {brandTitle}

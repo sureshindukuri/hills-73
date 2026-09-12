@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 import { Menu, X, Calendar, Sun, Moon, Shield } from 'lucide-react';
 
 export default function Header({ 
@@ -60,25 +59,24 @@ export default function Header({
             style={{ 
               display: 'flex', 
               alignItems: 'center', 
-              gap: '10px', 
+              gap: '12px', 
               textDecoration: 'none',
               minWidth: 0
             }}
           >
-            {(logoMedia?.customUrl || logoMedia?.url) ? (
-              <img 
-                src={logoMedia.customUrl || logoMedia.url} 
-                alt={brandTitle} 
-                style={{ 
-                  height: scrolled ? '34px' : '42px', 
-                  maxWidth: '140px', 
-                  objectFit: 'contain',
-                  transition: 'height 0.3s ease'
-                }} 
-              />
-            ) : (
-              <SandalwoodTreeLogo size={scrolled ? 34 : 40} color="var(--color-gold)" />
-            )}
+            <img 
+              src={logoMedia?.customUrl || logoMedia?.url || '/assets/73hills_official_logo.png'} 
+              alt={brandTitle} 
+              style={{ 
+                height: scrolled ? '44px' : '52px', 
+                width: 'auto',
+                maxWidth: '68px', 
+                objectFit: 'contain',
+                borderRadius: '6px',
+                filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45))',
+                transition: 'all 0.3s ease'
+              }} 
+            />
 
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
               <span style={{ 
