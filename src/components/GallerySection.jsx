@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { getAllGalleryItems, getStoredGallerySync } from '../utils/storage';
 import { subscribeToCloudUpdates } from '../utils/cloudSync';
 import { subscribeToFirebaseLiveUpdates } from '../firebase/firestoreSync';
-import { Play, Maximize2, X } from 'lucide-react';
+import { Play, Maximize2, X, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 
 export default function GallerySection({ galleryItems = null }) {
   const [items, setItems] = useState(() => (galleryItems && galleryItems.length > 0 ? galleryItems : getStoredGallerySync()));
   const [activeCategory, setActiveCategory] = useState('All');
   const [lightboxItem, setLightboxItem] = useState(null);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     if (galleryItems && Array.isArray(galleryItems) && galleryItems.length > 0) {
@@ -57,6 +58,8 @@ export default function GallerySection({ galleryItems = null }) {
       ? items.filter(item => item.type === 'video')
       : items.filter(item => item.category?.toLowerCase() === activeCategory.toLowerCase());
 
+  const displayedItems = showAll ? filteredItems : filteredItems.slice(0, 4);
+
   return (
     <section id="gallery" style={{ padding: '80px 0', backgroundColor: 'var(--bg-main)' }}>
       <div className="container">
@@ -93,7 +96,10 @@ export default function GallerySection({ galleryItems = null }) {
             {categories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => {
+                  setActiveCategory(cat);
+                  setShowAll(false);
+                }}
                 style={{
                   padding: '7px 16px',
                   borderRadius: 'var(--radius-full)',
@@ -119,10 +125,10 @@ export default function GallerySection({ galleryItems = null }) {
         {/* Gallery Image Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: filteredItems.length > 0 ? 'repeat(auto-fill, minmax(240px, 1fr))' : '1fr',
+          gridTemplateColumns: displayedItems.length > 0 ? 'repeat(auto-fill, minmax(240px, 1fr))' : '1fr',
           gap: '18px'
         }}>
-          {filteredItems.length === 0 ? (
+          {displayedItems.length === 0 ? (
             <div style={{
               textAlign: 'center',
               padding: '60px 20px',
@@ -138,7 +144,7 @@ export default function GallerySection({ galleryItems = null }) {
               </p>
             </div>
           ) : (
-            filteredItems.map((item) => (
+            displayedItems.map((item) => (
               <div 
                 key={item.id}
                 onClick={() => setLightboxItem(item)}
@@ -212,6 +218,42 @@ export default function GallerySection({ galleryItems = null }) {
             ))
           )}
         </div>
+
+        {/* View More / View Less Button */}
+        {filteredItems.length > 4 && (
+          <div style={{ textAlign: 'center', marginTop: '36px' }}>
+            <button
+              onClick={() => setShowAll(prev => !prev)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 32px',
+                borderRadius: 'var(--radius-full)',
+                backgroundColor: showAll ? 'var(--bg-card)' : 'var(--color-gold)',
+                color: showAll ? 'var(--text-main)' : '#FFFFFF',
+                border: '1px solid var(--color-gold)',
+                fontSize: '0.9rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                letterSpacing: '0.04em',
+                boxShadow: showAll ? 'var(--shadow-sm)' : '0 8px 24px rgba(179, 139, 89, 0.25)',
+                transition: 'all 0.3s ease'
+              }}
+              className="luxury-btn"
+            >
+              {showAll ? (
+                <>
+                  <ChevronUp size={18} /> Show Less
+                </>
+              ) : (
+                <>
+                  <ImageIcon size={18} /> View More Photos ({filteredItems.length - 4} More) <ChevronDown size={18} />
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Lightbox Modal */}
