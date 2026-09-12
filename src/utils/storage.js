@@ -1,5 +1,6 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
 import { saveToFirebaseCloud, uploadMediaToFirebaseStorage } from '../firebase/firestoreSync';
+import { saveVideoToFirestore } from '../firebase/videoStreamService';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -96,7 +97,6 @@ function openDB() {
     };
 
     request.onerror = (event) => {
-      console.error('IndexedDB Error:', event.target.error);
       reject(event.target.error);
     };
   });
@@ -157,45 +157,67 @@ export function getStoredSectionMediaSync() {
 
 /**
  * Save Section-Specific Media (Logo, Hero, About, Celebrations, etc.)
- * Permanently uploads to Firebase Storage so all devices worldwide can view it,
- * caches locally, and syncs across Firestore.
+ * Direct Firestore upload without external service dependencies.
  */
 export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgress = null) {
   touchLocalUpdate();
   try {
-    let finalUrl = null;
+    let savedRecord = null;
     let isVideo = false;
     let fileName = meta.title || 'Resort Media';
 
     if (typeof fileOrUrl === 'string') {
       isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.includes('cloudinary.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
-      finalUrl = fileOrUrl;
       fileName = meta.title || fileOrUrl.split('/').pop() || 'Custom Video Link';
+      savedRecord = {
+        sectionKey,
+        fileName,
+        mediaType: isVideo ? 'video' : 'image',
+        videoType: isVideo ? 'custom_url' : undefined,
+        customVideoUrl: isVideo ? fileOrUrl : null,
+        customUrl: fileOrUrl,
+        url: fileOrUrl,
+        title: meta.title || fileName,
+        updatedAt: new Date().toISOString(),
+        isDefault: false,
+        ...meta
+      };
     } else {
       isVideo = fileOrUrl.type ? fileOrUrl.type.startsWith('video/') : (fileOrUrl.name && /\.(mp4|webm|mov|mkv|m4v|ogg)$/i.test(fileOrUrl.name));
       fileName = fileOrUrl.name || 'uploaded_media';
       
-      // Upload video to Cloudinary or compress image to Web Data URL
-      finalUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
+      if (isVideo) {
+        // Direct parallel upload to Firestore collection resort_media_chunks
+        const streamMeta = await saveVideoToFirestore(fileOrUrl, sectionKey, onProgress);
+        savedRecord = {
+          ...streamMeta,
+          sectionKey,
+          customVideoUrl: streamMeta.fileName,
+          customUrl: streamMeta.fileName,
+          url: streamMeta.fileName,
+          ...meta
+        };
+      } else {
+        // High-res Image Data URL
+        const finalUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
+        savedRecord = {
+          sectionKey,
+          fileName,
+          mediaType: 'image',
+          customUrl: finalUrl,
+          url: finalUrl,
+          title: meta.title || fileName,
+          updatedAt: new Date().toISOString(),
+          isDefault: false,
+          ...meta
+        };
+      }
     }
 
-    if (!finalUrl || finalUrl.startsWith('blob:')) {
+    const finalUrl = savedRecord.url || savedRecord.fileName;
+    if (!finalUrl || (typeof finalUrl === 'string' && finalUrl.startsWith('blob:'))) {
       throw new Error('Failed to obtain a permanent cloud media URL. Please provide a video streaming URL or choose a supported file.');
     }
-
-    const savedRecord = {
-      sectionKey,
-      fileName,
-      mediaType: isVideo ? 'video' : 'image',
-      videoType: isVideo ? (finalUrl.includes('cloudinary') ? 'cloudinary' : 'custom') : undefined,
-      customVideoUrl: isVideo ? finalUrl : null,
-      customUrl: finalUrl,
-      url: finalUrl,
-      title: meta.title || fileName,
-      updatedAt: new Date().toISOString(),
-      isDefault: false,
-      ...meta
-    };
 
     // 1. Save synchronously to localStorage cache for instant zero-latency UI rendering
     try {

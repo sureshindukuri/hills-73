@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, Trees, X, Maximize, Film } from 'lucide-react';
 import { SandalwoodBotanicalArt } from './SandalwoodGraphics';
+import { loadVideoFromFirestore } from '../firebase/videoStreamService';
 
 function getEmbedUrl(url) {
   if (!url || typeof url !== 'string') return null;
@@ -20,17 +21,28 @@ function getEmbedUrl(url) {
 export default function AboutSection({ settings, sectionMedia = {} }) {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
+  const [streamedVideoUrl, setStreamedVideoUrl] = useState(null);
   const videoRef = useRef(null);
 
   const aboutMedia = sectionMedia?.about;
   const isVideo = aboutMedia 
     ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customVideoUrl || !!aboutMedia.customUrl || !!aboutMedia.url))) 
     : true;
+
+  useEffect(() => {
+    if (aboutMedia && aboutMedia.videoType === 'firestore_stream') {
+      loadVideoFromFirestore(aboutMedia).then((url) => {
+        if (url) setStreamedVideoUrl(url);
+      });
+    } else {
+      setStreamedVideoUrl(null);
+    }
+  }, [aboutMedia]);
   
-  const rawAboutUrl = aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl;
+  const rawAboutUrl = streamedVideoUrl || (aboutMedia?.videoType !== 'firestore_stream' ? (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url) : null) || settings?.aboutVideoUrl;
   const aboutUrl = (rawAboutUrl && typeof rawAboutUrl === 'string' && !rawAboutUrl.startsWith('blob:') && !hasVideoError) 
     ? rawAboutUrl 
-    : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+    : (streamedVideoUrl || 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4');
   const embedUrl = getEmbedUrl(rawAboutUrl && !rawAboutUrl.startsWith('blob:') ? rawAboutUrl : '');
 
   return (
