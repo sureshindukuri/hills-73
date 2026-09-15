@@ -6,11 +6,6 @@
       "src": "favicon.svg",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/svg+xml"
-    },
-    {
-      "src": "assets/73hills_official_logo.png",
-      "sizes": "512x512 192x192",
-      "type": "image/png"
     }
   ],
   "start_url": ".",
