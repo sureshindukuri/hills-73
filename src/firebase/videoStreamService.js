@@ -52,47 +52,38 @@ export async function saveVideoToFirestore(file, mediaKey = 'about', onProgress 
 
   if (typeof onProgress === 'function') onProgress(10);
 
-  // Read all chunks from file
-  const chunkPromises = [];
+  // Read entire file ArrayBuffer once for blazing fast in-memory slicing
+  const fullBuffer = await file.arrayBuffer();
+
+  const chunkTasks = [];
   for (let i = 0; i < totalChunks; i++) {
     const start = i * CHUNK_SIZE_BYTES;
     const end = Math.min(start + CHUNK_SIZE_BYTES, totalSize);
-    const slice = file.slice(start, end);
+    const sliceBuffer = fullBuffer.slice(start, end);
+    const base64Data = bufferToBase64(sliceBuffer);
 
-    const promise = new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error(`Failed to read chunk ${i}`));
-      reader.onload = async () => {
-        try {
-          const base64Data = bufferToBase64(reader.result);
-          const chunkDocRef = doc(db, CHUNKS_COLLECTION, `${mediaKey}_chunk_${i}`);
-          await setDoc(chunkDocRef, {
-            mediaKey,
-            index: i,
-            total: totalChunks,
-            data: base64Data,
-            mimeType,
-            updatedAt: timestamp
-          });
-          if (typeof onProgress === 'function') {
-            const pct = Math.min(95, Math.round(15 + ((i + 1) / totalChunks) * 80));
-            onProgress(pct);
-          }
-          resolve(true);
-        } catch (err) {
-          reject(err);
-        }
-      };
-      reader.readAsArrayBuffer(slice);
-    });
-
-    chunkPromises.push(promise);
+    const task = async () => {
+      const chunkDocRef = doc(db, CHUNKS_COLLECTION, `${mediaKey}_chunk_${i}`);
+      await setDoc(chunkDocRef, {
+        mediaKey,
+        index: i,
+        total: totalChunks,
+        data: base64Data,
+        mimeType,
+        updatedAt: timestamp
+      });
+      if (typeof onProgress === 'function') {
+        const pct = Math.min(95, Math.round(15 + ((i + 1) / totalChunks) * 80));
+        onProgress(pct);
+      }
+    };
+    chunkTasks.push(task);
   }
 
-  // Upload chunks in parallel batches of 5 to maximize throughput
-  const BATCH_SIZE = 5;
-  for (let i = 0; i < chunkPromises.length; i += BATCH_SIZE) {
-    const batch = chunkPromises.slice(i, i + BATCH_SIZE);
+  // Upload in parallel batches of 8
+  const BATCH_SIZE = 8;
+  for (let i = 0; i < chunkTasks.length; i += BATCH_SIZE) {
+    const batch = chunkTasks.slice(i, i + BATCH_SIZE).map(fn => fn());
     await Promise.all(batch);
   }
 

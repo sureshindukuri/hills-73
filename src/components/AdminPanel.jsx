@@ -57,6 +57,9 @@ export default function AdminPanel({
 
   const [aboutFile, setAboutFile] = useState(null);
   const [aboutVideoUrlInput, setAboutVideoUrlInput] = useState('');
+  const [aboutUploadProgress, setAboutUploadProgress] = useState(0);
+  const [preUploadedAboutRecord, setPreUploadedAboutRecord] = useState(null);
+  const [isAboutUploading, setIsAboutUploading] = useState(false);
   const [aboutHeadline, setAboutHeadline] = useState('');
   const [aboutParagraph, setAboutParagraph] = useState('');
 
@@ -211,6 +214,12 @@ export default function AdminPanel({
         });
         currentSectionMedia.about = savedAbout;
         setAboutVideoUrlInput('');
+      } else if (preUploadedAboutRecord) {
+        currentSectionMedia.about = preUploadedAboutRecord;
+        setAboutFile(null);
+        setPreUploadedAboutRecord(null);
+        const fileInp = document.getElementById('about-file-input');
+        if (fileInp) fileInp.value = '';
       } else if (aboutFile) {
         const savedAbout = await saveSectionMedia('about', aboutFile, {
           mediaType: 'video',
@@ -1786,11 +1795,29 @@ export default function AdminPanel({
                     accept="video/*,image/*" 
                     className="form-input" 
                     style={{ padding: '12px', fontSize: '0.9rem', cursor: 'pointer' }}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const selected = e.target.files[0];
                       if (selected) {
                         setAboutFile(selected);
                         setAboutVideoUrlInput('');
+                        setIsAboutUploading(true);
+                        setAboutUploadProgress(15);
+                        setPreUploadedAboutRecord(null);
+                        try {
+                          const isVid = selected.type ? selected.type.startsWith('video/') : /\.(mp4|webm|mov|mkv|m4v|ogg)$/i.test(selected.name);
+                          const saved = await saveSectionMedia('about', selected, {
+                            mediaType: isVid ? 'video' : 'image',
+                            title: selected.name
+                          }, (pct) => {
+                            setAboutUploadProgress(pct);
+                          });
+                          setPreUploadedAboutRecord(saved);
+                          setAboutUploadProgress(100);
+                          setIsAboutUploading(false);
+                        } catch (err) {
+                          console.warn('Background upload notice:', err);
+                          setIsAboutUploading(false);
+                        }
                       }
                     }} 
                   />
@@ -1800,9 +1827,26 @@ export default function AdminPanel({
                   <div style={{ marginTop: '14px', padding: '14px', backgroundColor: '#F0F9F4', borderRadius: 'var(--radius-sm)', border: '1px solid #C3E6CB' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                       <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#155724' }}>
-                        ✓ Selected: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB)
+                        📁 Selected: {aboutFile.name} ({(aboutFile.size / (1024 * 1024)).toFixed(2)} MB)
+                      </span>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: '700',
+                        color: preUploadedAboutRecord ? '#155724' : '#856404',
+                        backgroundColor: preUploadedAboutRecord ? '#D4EDDA' : '#FFF3CD',
+                        padding: '4px 8px',
+                        borderRadius: '4px'
+                      }}>
+                        {preUploadedAboutRecord ? '✓ Ready to Publish' : isAboutUploading ? `⚡ Preparing (${aboutUploadProgress}%)` : 'Ready'}
                       </span>
                     </div>
+
+                    {isAboutUploading && (
+                      <div style={{ height: '6px', backgroundColor: '#E0E0E0', borderRadius: '3px', overflow: 'hidden', marginBottom: '12px' }}>
+                        <div style={{ height: '100%', width: `${aboutUploadProgress}%`, backgroundColor: '#B38B59', transition: 'width 0.2s ease' }} />
+                      </div>
+                    )}
+
                     <div style={{ maxHeight: '180px', borderRadius: '6px', overflow: 'hidden', backgroundColor: '#000', marginBottom: '12px' }}>
                       <video 
                         key={aboutFile.name}
@@ -1815,19 +1859,24 @@ export default function AdminPanel({
                         style={{ width: '100%', maxHeight: '180px', objectFit: 'contain' }} 
                       />
                     </div>
+
                     <button
                       type="button"
                       disabled={isProcessing}
                       onClick={async () => {
                         setIsProcessing(true);
-                        setActionFeedback({ text: '⚡ Uploading & publishing video to cloud...', type: 'info' });
                         try {
-                          const saved = await saveSectionMedia('about', aboutFile, {
-                            mediaType: 'video',
-                            title: aboutFile.name
-                          }, (pct) => {
-                            setActionFeedback({ text: `⚡ Uploading video to cloud... ${pct}%`, type: 'info' });
-                          });
+                          let saved = preUploadedAboutRecord;
+                          if (!saved) {
+                            setActionFeedback({ text: '⚡ Finalizing video cloud upload...', type: 'info' });
+                            saved = await saveSectionMedia('about', aboutFile, {
+                              mediaType: 'video',
+                              title: aboutFile.name
+                            }, (pct) => {
+                              setAboutUploadProgress(pct);
+                            });
+                          }
+
                           const updated = { ...sectionMedia, about: saved };
                           setSectionMedia(updated);
                           if (onUpdateSectionMedia) onUpdateSectionMedia(updated);
@@ -1842,9 +1891,10 @@ export default function AdminPanel({
                           });
 
                           setAboutFile(null);
+                          setPreUploadedAboutRecord(null);
                           const fileInp = document.getElementById('about-file-input');
                           if (fileInp) fileInp.value = '';
-                          showNotification('✓ Video uploaded and published live to main website!');
+                          showNotification('✓ Video published live and permanent on main website!');
                         } catch (e) {
                           console.error('Failed to upload video:', e);
                           showNotification('Failed to upload video: ' + e.message, 'error');
@@ -1855,7 +1905,7 @@ export default function AdminPanel({
                       className="btn-gold"
                       style={{ width: '100%', padding: '12px', fontSize: '0.9rem', fontWeight: '700' }}
                     >
-                      <Upload size={16} /> {isProcessing ? 'Publishing Video to Cloud...' : '⚡ Upload & Publish This Video to Main Page Now'}
+                      <Upload size={16} /> {isProcessing ? 'Publishing to Cloud...' : '⚡ Save & Publish Video Instantly to Main Page'}
                     </button>
                   </div>
                 )}
