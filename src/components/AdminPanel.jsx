@@ -1706,13 +1706,74 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              {/* Upload from Device Gallery or Files */}
+              {/* OPTION 1: Instant Streaming Link (YouTube, Google Drive, Vimeo, MP4) */}
+              <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', marginBottom: '20px', boxShadow: 'var(--shadow-sm)' }}>
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Video size={20} color="var(--color-gold)" /> Option 1: Paste Video Link (Instant 0-Second Save)
+                </h5>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '14px' }}>
+                  Paste any <strong>YouTube video</strong>, <strong>Google Drive share link</strong>, <strong>Vimeo URL</strong>, or <strong>Direct .mp4 CDN link</strong> for instant worldwide playback:
+                </p>
+
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <input 
+                    type="url"
+                    placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/... or .mp4 link"
+                    className="form-input"
+                    style={{ flex: 1, minWidth: '260px', marginBottom: 0, padding: '12px' }}
+                    value={aboutVideoUrlInput}
+                    onChange={(e) => {
+                      setAboutVideoUrlInput(e.target.value);
+                      if (aboutFile) setAboutFile(null);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={isProcessing || !aboutVideoUrlInput.trim()}
+                    onClick={async () => {
+                      if (!aboutVideoUrlInput.trim()) return;
+                      setIsProcessing(true);
+                      try {
+                        const saved = await saveSectionMedia('about', aboutVideoUrlInput.trim(), {
+                          title: 'Custom Resort Tour Video Link',
+                          mediaType: 'video'
+                        });
+                        const updated = { ...sectionMedia, about: saved };
+                        setSectionMedia(updated);
+                        if (onUpdateSectionMedia) onUpdateSectionMedia(updated);
+
+                        await saveEntireLiveStateToFirebase({
+                          settings,
+                          rooms,
+                          sectionMedia: updated,
+                          gallery: galleryItems,
+                          bookings
+                        });
+
+                        setAboutVideoUrlInput('');
+                        showNotification('✓ Video link published live to main website!');
+                      } catch (err) {
+                        console.error('Error saving video link:', err);
+                        showNotification('Error saving video link: ' + err.message, 'error');
+                      } finally {
+                        setIsProcessing(false);
+                      }
+                    }}
+                    className="btn-gold"
+                    style={{ padding: '12px 24px', fontSize: '0.9rem', fontWeight: '700', whiteSpace: 'nowrap' }}
+                  >
+                    ⚡ Save & Publish Link
+                  </button>
+                </div>
+              </div>
+
+              {/* OPTION 2: Upload from Device Gallery or Files */}
               <div style={{ backgroundColor: '#FFFFFF', padding: '24px', borderRadius: 'var(--radius-md)', border: '2px dashed var(--color-gold)', marginBottom: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--color-emerald)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Upload size={20} color="var(--color-gold)" /> Upload From Device Gallery or Files
+                <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', color: 'var(--color-emerald)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Upload size={20} color="var(--color-gold)" /> Option 2: Upload Video or Photo File from Device
                 </h5>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                  Tap below to choose any video (MP4, MOV, WebM) or photo from your phone's gallery, camera roll, or file browser:
+                  Choose any video (MP4, MOV, WebM) or photo from your device gallery. Uploads permanently to high-speed cloud CDN:
                 </p>
 
                 <div className="form-group" style={{ marginBottom: '14px' }}>
@@ -1759,10 +1820,13 @@ export default function AdminPanel({
                       disabled={isProcessing}
                       onClick={async () => {
                         setIsProcessing(true);
+                        setActionFeedback({ text: '⚡ Uploading & publishing video to cloud...', type: 'info' });
                         try {
                           const saved = await saveSectionMedia('about', aboutFile, {
                             mediaType: 'video',
                             title: aboutFile.name
+                          }, (pct) => {
+                            setActionFeedback({ text: `⚡ Uploading video to cloud... ${pct}%`, type: 'info' });
                           });
                           const updated = { ...sectionMedia, about: saved };
                           setSectionMedia(updated);
@@ -1791,7 +1855,7 @@ export default function AdminPanel({
                       className="btn-gold"
                       style={{ width: '100%', padding: '12px', fontSize: '0.9rem', fontWeight: '700' }}
                     >
-                      <Upload size={16} /> {isProcessing ? 'Saving & Publishing Video...' : '⚡ Save & Publish This Video to Main Page Now'}
+                      <Upload size={16} /> {isProcessing ? 'Publishing Video to Cloud...' : '⚡ Upload & Publish This Video to Main Page Now'}
                     </button>
                   </div>
                 )}

@@ -21,6 +21,10 @@ export function sanitizeForFirestore(obj) {
     if (value !== undefined) {
       if (typeof Blob !== 'undefined' && value instanceof Blob) continue;
       if (typeof File !== 'undefined' && value instanceof File) continue;
+      // Do not store local temporary blob: URLs in Firestore (they are invalid on other devices)
+      if (typeof value === 'string' && value.startsWith('blob:')) continue;
+      // Do not store massive Base64 strings (>250KB) in live_state to prevent Firestore 1MB document rejection
+      if (typeof value === 'string' && value.startsWith('data:video') && value.length > 250000) continue;
       const cleaned = sanitizeForFirestore(value);
       if (cleaned !== undefined) {
         clean[key] = cleaned;

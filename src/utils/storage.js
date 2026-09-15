@@ -1,5 +1,7 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
 import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, readFileAsDataUrl } from '../firebase/firestoreSync';
+import { uploadVideoToCloudinary } from '../cloudinary/cloudinaryService';
+import { saveVideoToFirestore } from '../firebase/videoStreamService';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -193,29 +195,65 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       fileName = fileOrUrl.name || 'uploaded_media';
       
       if (isVideo) {
-        // 1. Upload video to Firebase Storage CDN with progress
-        let videoUrl;
+        let videoUrl = null;
+        let videoType = 'custom_url';
+        let extraMeta = {};
+
+        // 1. Try Cloudinary direct upload (high speed CDN)
         try {
-          videoUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'resort_videos', onProgress);
-        } catch (e) {
-          videoUrl = createBlobUrl(fileOrUrl);
+          const cUrl = await uploadVideoToCloudinary(fileOrUrl, onProgress);
+          if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
+            videoUrl = cUrl;
+            videoType = 'cloudinary';
+          }
+        } catch (cErr) {
+          console.warn('[Storage] Cloudinary video upload notice:', cErr.message);
+        }
+
+        // 2. Try Firebase Storage
+        if (!videoUrl) {
+          try {
+            const fbUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'resort_videos', onProgress);
+            if (fbUrl && typeof fbUrl === 'string' && fbUrl.startsWith('http') && !fbUrl.startsWith('blob:') && !fbUrl.startsWith('data:')) {
+              videoUrl = fbUrl;
+              videoType = 'firebase_storage';
+            }
+          } catch (e) {
+            console.warn('[Storage] Firebase Storage notice:', e.message);
+          }
+        }
+
+        // 3. Try Firestore chunking (permanent, zero server dependency, stores chunks in separate docs)
+        if (!videoUrl) {
+          try {
+            const chunkResult = await saveVideoToFirestore(fileOrUrl, sectionKey, onProgress);
+            if (chunkResult) {
+              videoUrl = createBlobUrl(fileOrUrl);
+              videoType = 'firestore_stream';
+              extraMeta = chunkResult;
+            }
+          } catch (chunkErr) {
+            console.warn('[Storage] Firestore chunk stream notice:', chunkErr.message);
+          }
         }
 
         if (!videoUrl) {
           videoUrl = createBlobUrl(fileOrUrl);
+          videoType = 'local_blob';
         }
 
         savedRecord = {
           sectionKey,
           fileName,
           mediaType: 'video',
-          videoType: 'custom_url',
+          videoType,
           customVideoUrl: videoUrl,
           customUrl: videoUrl,
           url: videoUrl,
           title: meta.title || fileName,
           updatedAt: new Date().toISOString(),
           isDefault: false,
+          ...extraMeta,
           ...meta
         };
       } else {
@@ -235,7 +273,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       }
     }
 
-    const finalUrl = savedRecord.url || savedRecord.customUrl;
+    const finalUrl = savedRecord.url || savedRecord.customUrl || (savedRecord.videoType === 'firestore_stream' ? 'firestore_stream' : null);
     if (!finalUrl) {
       throw new Error('Please provide a valid video link or choose a supported file.');
     }
@@ -273,34 +311,50 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       const cleanCurrent = {};
       Object.entries(allCurrent).forEach(([k, v]) => {
         if (v && v.sectionKey) {
-          const finalUrl = v.customUrl || v.url || v.customVideoUrl || null;
+          const u = (v.customUrl && !v.customUrl.startsWith('blob:') && !v.customUrl.startsWith('data:video'))
+            ? v.customUrl
+            : (v.url && !v.url.startsWith('blob:') && !v.url.startsWith('data:video'))
+              ? v.url
+              : v.customVideoUrl || null;
+
           cleanCurrent[k] = {
             sectionKey: v.sectionKey,
             mediaType: v.mediaType || 'image',
             videoType: v.videoType || (v.mediaType === 'video' ? 'custom_url' : undefined),
-            customVideoUrl: v.customVideoUrl || (v.mediaType === 'video' ? finalUrl : null),
+            customVideoUrl: v.videoType === 'firestore_stream' ? undefined : (v.customVideoUrl && !v.customVideoUrl.startsWith('blob:') && !v.customVideoUrl.startsWith('data:video') ? v.customVideoUrl : u),
             fileName: v.fileName || '',
             title: v.title || '',
-            customUrl: finalUrl,
-            url: finalUrl,
+            customUrl: v.videoType === 'firestore_stream' ? undefined : u,
+            url: v.videoType === 'firestore_stream' ? undefined : u,
+            totalChunks: v.totalChunks,
+            totalSize: v.totalSize,
+            mimeType: v.mimeType,
             updatedAt: v.updatedAt || new Date().toISOString(),
             isDefault: !!v.isDefault
           };
         }
       });
 
-      const activeRecordUrl = savedRecord.url || savedRecord.customUrl || savedRecord.customVideoUrl;
+      const activeRecordUrl = (savedRecord.url && !savedRecord.url.startsWith('blob:') && !savedRecord.url.startsWith('data:video'))
+        ? savedRecord.url
+        : (savedRecord.customUrl && !savedRecord.customUrl.startsWith('blob:') && !savedRecord.customUrl.startsWith('data:video'))
+          ? savedRecord.customUrl
+          : savedRecord.customVideoUrl;
+
       const updatedCloudMap = {
         ...cleanCurrent,
         [sectionKey]: {
           sectionKey,
           mediaType: savedRecord.mediaType || (isVideo ? 'video' : 'image'),
           videoType: savedRecord.videoType || (isVideo ? 'custom_url' : undefined),
-          customVideoUrl: savedRecord.customVideoUrl || activeRecordUrl,
+          customVideoUrl: savedRecord.videoType === 'firestore_stream' ? undefined : activeRecordUrl,
           fileName: savedRecord.fileName,
           title: savedRecord.title,
-          customUrl: activeRecordUrl,
-          url: activeRecordUrl,
+          customUrl: savedRecord.videoType === 'firestore_stream' ? undefined : activeRecordUrl,
+          url: savedRecord.videoType === 'firestore_stream' ? undefined : activeRecordUrl,
+          totalChunks: savedRecord.totalChunks,
+          totalSize: savedRecord.totalSize,
+          mimeType: savedRecord.mimeType,
           updatedAt: savedRecord.updatedAt,
           isDefault: false
         }

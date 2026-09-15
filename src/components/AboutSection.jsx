@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle2, Trees, X, Maximize, Film } from 'lucide-react';
 import { SandalwoodBotanicalArt } from './SandalwoodGraphics';
+import { loadVideoFromFirestore } from '../firebase/videoStreamService';
 
 export function getEmbedUrl(url) {
   if (!url || typeof url !== 'string') return null;
@@ -33,14 +34,30 @@ function isValidHttpUrl(string) {
 export default function AboutSection({ settings, sectionMedia = {} }) {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
+  const [streamBlobUrl, setStreamBlobUrl] = useState(null);
   const videoRef = useRef(null);
 
   const aboutMedia = sectionMedia?.about;
+
+  useEffect(() => {
+    let isMounted = true;
+    if (aboutMedia && aboutMedia.videoType === 'firestore_stream') {
+      loadVideoFromFirestore(aboutMedia).then((blobUrl) => {
+        if (isMounted && blobUrl) {
+          setStreamBlobUrl(blobUrl);
+        }
+      });
+    } else {
+      setStreamBlobUrl(null);
+    }
+    return () => { isMounted = false; };
+  }, [aboutMedia]);
+
   const isVideo = aboutMedia 
-    ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customVideoUrl || !!aboutMedia.customUrl || !!aboutMedia.url))) 
+    ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customVideoUrl || !!aboutMedia.customUrl || !!aboutMedia.url || !!streamBlobUrl))) 
     : true;
 
-  const rawCandidate = (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl || '');
+  const rawCandidate = streamBlobUrl || (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl || '');
   const candidateUrl = (typeof rawCandidate === 'string' && isValidHttpUrl(rawCandidate))
     ? rawCandidate.trim()
     : DEFAULT_DRONE_VIDEO;
@@ -49,9 +66,9 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
   const aboutUrl = (hasVideoError && !rawCandidate) ? DEFAULT_DRONE_VIDEO : candidateUrl;
 
   // Reset error state when media changes
-  React.useEffect(() => {
+  useEffect(() => {
     setHasVideoError(false);
-  }, [aboutMedia?.url, aboutMedia?.customUrl, aboutMedia?.customVideoUrl]);
+  }, [aboutMedia?.url, aboutMedia?.customUrl, aboutMedia?.customVideoUrl, streamBlobUrl]);
 
   return (
     <section id="about" style={{ padding: '80px 0', position: 'relative', backgroundColor: 'var(--bg-main)', overflow: 'hidden' }}>
