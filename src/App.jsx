@@ -40,8 +40,25 @@ const ensureThreeRooms = (incomingRooms) => {
 export default function App() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState(null);
-  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
-  const [adminInitialTab, setAdminInitialTab] = useState('dashboard');
+  const [adminPanelOpen, setAdminPanelOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      const s = window.location.search.toLowerCase();
+      return p.includes('video') || p.includes('admin') || h.includes('video') || h.includes('admin') || s.includes('video') || s.includes('admin');
+    }
+    return false;
+  });
+
+  const [adminInitialTab, setAdminInitialTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      const s = window.location.search.toLowerCase();
+      if (p.includes('video') || h.includes('video') || s.includes('video')) return 'about';
+    }
+    return 'dashboard';
+  });
 
   // Dark / Light Mode Theme State
   const [theme, setTheme] = useState(() => {
