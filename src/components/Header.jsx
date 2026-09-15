@@ -27,11 +27,9 @@ export default function Header({
   const brandSub = settings?.brandSubtitle || 'RESORT & REAL ESTATE';
   const isDark = theme === 'dark';
 
-  const logoSrc = (logoMedia?.customUrl && !logoMedia.customUrl.startsWith('blob:')) 
-    ? logoMedia.customUrl 
-    : (logoMedia?.url && !logoMedia.url.startsWith('blob:')) 
-      ? logoMedia.url 
-      : officialLogo;
+  const logoSrc = (logoMedia && !logoMedia.isDefault && (logoMedia.customUrl || logoMedia.url) && !logoMedia.url?.startsWith('blob:')) 
+    ? (logoMedia.customUrl || logoMedia.url) 
+    : officialLogo;
 
   return (
     <header 
