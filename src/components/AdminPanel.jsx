@@ -34,6 +34,12 @@ export default function AdminPanel({
   const [loginPassword, setLoginPassword] = useState('');
 
   const [activeTab, setActiveTab] = useState(initialTab); 
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [bookingFilter, setBookingFilter] = useState('all');
   const [bookingSearchQuery, setBookingSearchQuery] = useState('');
 

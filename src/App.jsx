@@ -41,6 +41,7 @@ export default function App() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState(null);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [adminInitialTab, setAdminInitialTab] = useState('dashboard');
 
   // Dark / Light Mode Theme State
   const [theme, setTheme] = useState(() => {
@@ -189,10 +190,18 @@ export default function App() {
     const syncInterval = setInterval(syncCloud, 15000);
 
     const checkAdminRoute = () => {
-      const isRoute = window.location.pathname.toLowerCase().includes('admin') || 
-                      window.location.hash.toLowerCase().includes('admin') ||
-                      window.location.search.toLowerCase().includes('admin');
-      if (isRoute) {
+      const p = window.location.pathname.toLowerCase();
+      const h = window.location.hash.toLowerCase();
+      const s = window.location.search.toLowerCase();
+
+      const isVideoRoute = p.includes('/video') || p.includes('/resort-video') || p.includes('/upload-video') || h.includes('video') || s.includes('video');
+      const isAdminRoute = p.includes('admin') || h.includes('admin') || s.includes('admin');
+
+      if (isVideoRoute) {
+        setAdminInitialTab('about');
+        setAdminPanelOpen(true);
+      } else if (isAdminRoute) {
+        setAdminInitialTab('dashboard');
         setAdminPanelOpen(true);
       }
     };
@@ -225,11 +234,11 @@ export default function App() {
 
   const handleCloseAdmin = () => {
     setAdminPanelOpen(false);
-    if (window.location.pathname.toLowerCase().includes('admin') || 
-        window.location.hash.toLowerCase().includes('admin') || 
-        window.location.search.toLowerCase().includes('admin')) {
-      const cleanPath = window.location.pathname.replace(/\/admin\/?/i, '/') || '/';
-      window.history.pushState({}, '', cleanPath);
+    const p = window.location.pathname.toLowerCase();
+    const h = window.location.hash.toLowerCase();
+    const s = window.location.search.toLowerCase();
+    if (p.includes('admin') || p.includes('video') || h.includes('admin') || h.includes('video') || s.includes('admin') || s.includes('video')) {
+      window.history.pushState({}, '', '/');
     }
   };
 
@@ -308,9 +317,10 @@ export default function App() {
         settings={settings}
       />
 
-      {/* Admin Panel Modal (/admin) */}
+      {/* Admin Panel Modal (/admin & /video) */}
       {adminPanelOpen && (
         <AdminPanel 
+          initialTab={adminInitialTab}
           onClose={handleCloseAdmin}
           onUpdateSettings={(newSettings) => setSettings(newSettings)}
           onUpdateRooms={(newRooms) => setRooms(newRooms)}
