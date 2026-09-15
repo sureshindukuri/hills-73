@@ -197,10 +197,19 @@ export default function App() {
       }
     };
 
+    const handleKeyDown = (e) => {
+      // Hotkey: Ctrl+Shift+A or Ctrl+Alt+A to open Admin portal
+      if ((e.ctrlKey || e.metaKey) && (e.shiftKey || e.altKey) && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setAdminPanelOpen(prev => !prev);
+      }
+    };
+
     checkAdminRoute();
 
     window.addEventListener('popstate', checkAdminRoute);
     window.addEventListener('hashchange', checkAdminRoute);
+    window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('focus', syncCloud);
 
     return () => {
@@ -209,14 +218,18 @@ export default function App() {
       clearInterval(syncInterval);
       window.removeEventListener('popstate', checkAdminRoute);
       window.removeEventListener('hashchange', checkAdminRoute);
+      window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('focus', syncCloud);
     };
   }, []);
 
   const handleCloseAdmin = () => {
     setAdminPanelOpen(false);
-    if (window.location.pathname.toLowerCase().includes('admin') || window.location.hash.toLowerCase().includes('admin')) {
-      window.history.pushState({}, '', window.location.pathname.replace(/\/admin\/?/i, '/') || '/');
+    if (window.location.pathname.toLowerCase().includes('admin') || 
+        window.location.hash.toLowerCase().includes('admin') || 
+        window.location.search.toLowerCase().includes('admin')) {
+      const cleanPath = window.location.pathname.replace(/\/admin\/?/i, '/') || '/';
+      window.history.pushState({}, '', cleanPath);
     }
   };
 

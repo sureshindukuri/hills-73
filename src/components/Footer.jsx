@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, X, Info, Trees, Building, FileText, Lock } from 'lucide-react';
+import { X, Info, Trees, Building, FileText, Lock } from 'lucide-react';
 import officialLogo from '../assets/73hills_official_logo.png';
 
 export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, sectionMedia = {} }) {
@@ -185,36 +185,6 @@ export default function Footer({ onOpenBooking, onToggleAdmin, settings = {}, se
             <p style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.75)', marginBottom: '18px' }}>
               Email: {settings?.email || 'hello@73hills.com'}
             </p>
-
-            {/* Admin Portal Trigger */}
-            <button
-              onClick={onToggleAdmin}
-              style={{
-                backgroundColor: 'rgba(179, 139, 89, 0.15)',
-                border: '1px solid rgba(179, 139, 89, 0.4)',
-                color: '#EFE7DA',
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'var(--color-gold)';
-                e.target.style.color = '#FFFFFF';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'rgba(179, 139, 89, 0.15)';
-                e.target.style.color = '#EFE7DA';
-              }}
-            >
-              <Shield size={14} />
-              Admin Portal
-            </button>
           </div>
 
         </div>
