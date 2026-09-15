@@ -1,6 +1,7 @@
 import { db, storage } from './config';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { uploadVideoToCloudinary } from '../cloudinary/cloudinaryService';
 
 const RESORT_DOC_REF = 'resort_content';
 const MAIN_STATE_DOC = 'live_state';
@@ -83,37 +84,32 @@ export async function readFileAsDataUrl(file) {
 
 /**
  * Direct fast video upload.
- * - Files <= 3.5MB (WhatsApp video, mobile clips): Converts to permanent Base64 Data URL in 15ms.
- * - Larger files: Streams to Firebase Storage CDN with live progress and automatic fallback.
+ * Streams directly to Firebase Storage CDN with Cloudinary fallback.
+ * Returns a permanent, fast-loading HTTPS CDN URL (~80 bytes) that stores cleanly in Firestore.
  */
 export async function uploadVideoToFirebaseStorage(file, folder = 'resort_videos', onProgress = null) {
   if (!file || typeof file === 'string') return typeof file === 'string' ? file : null;
 
-  // 1. Ultra-fast path for typical mobile clips & WhatsApp videos (<= 3.5MB)
-  if (file.size && file.size <= 3.5 * 1024 * 1024) {
-    if (typeof onProgress === 'function') onProgress(50);
-    const dataUrl = await readFileAsDataUrl(file);
-    if (typeof onProgress === 'function') onProgress(100);
-    return dataUrl;
-  }
-
-  // 2. Fast cloud upload for larger files
   try {
     const cleanName = (file.name || 'resort_video.mp4').replace(/[^a-zA-Z0-9._-]/g, '_');
     const storageRef = ref(storage, `${folder}/${Date.now()}_${cleanName}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
     return new Promise((resolve) => {
-      // 12 second safety timeout
+      // 30-second resilience timeout for mobile networks
       const timeoutId = setTimeout(async () => {
-        console.warn('[Firebase Storage] Upload timed out after 12s, using local Data URL fallback');
+        console.warn('[Firebase Storage] Upload timed out, trying Cloudinary fallback');
         try {
-          const fallbackData = await readFileAsDataUrl(file).catch(() => URL.createObjectURL(file));
-          resolve(fallbackData);
-        } catch (e) {
-          resolve(URL.createObjectURL(file));
+          const cUrl = await uploadVideoToCloudinary(file, onProgress);
+          if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
+            resolve(cUrl);
+            return;
+          }
+        } catch (cErr) {
+          console.warn('[Cloudinary] Fallback failed:', cErr);
         }
-      }, 12000);
+        resolve(URL.createObjectURL(file));
+      }, 30000);
 
       uploadTask.on(
         'state_changed',
@@ -127,11 +123,13 @@ export async function uploadVideoToFirebaseStorage(file, folder = 'resort_videos
           clearTimeout(timeoutId);
           console.warn('[Firebase Storage] Upload notice:', error.message);
           try {
-            const fallbackData = await readFileAsDataUrl(file).catch(() => URL.createObjectURL(file));
-            resolve(fallbackData);
-          } catch (e) {
-            resolve(URL.createObjectURL(file));
-          }
+            const cUrl = await uploadVideoToCloudinary(file, onProgress);
+            if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
+              resolve(cUrl);
+              return;
+            }
+          } catch (cErr) {}
+          resolve(URL.createObjectURL(file));
         },
         async () => {
           clearTimeout(timeoutId);
@@ -139,15 +137,27 @@ export async function uploadVideoToFirebaseStorage(file, folder = 'resort_videos
             const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
             resolve(downloadUrl);
           } catch (err) {
-            const fallbackData = await readFileAsDataUrl(file).catch(() => URL.createObjectURL(file));
-            resolve(fallbackData);
+            try {
+              const cUrl = await uploadVideoToCloudinary(file, onProgress);
+              if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
+                resolve(cUrl);
+                return;
+              }
+            } catch (cErr) {}
+            resolve(URL.createObjectURL(file));
           }
         }
       );
     });
   } catch (err) {
     console.warn('[Firebase Storage] Initialization notice:', err.message);
-    return await readFileAsDataUrl(file).catch(() => URL.createObjectURL(file));
+    try {
+      const cUrl = await uploadVideoToCloudinary(file, onProgress);
+      if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
+        return cUrl;
+      }
+    } catch (cErr) {}
+    return URL.createObjectURL(file);
   }
 }
 
