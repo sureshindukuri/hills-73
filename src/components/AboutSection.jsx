@@ -41,13 +41,20 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
 
   useEffect(() => {
     let isMounted = true;
+    if (aboutMedia && aboutMedia.fileBlob) {
+      try {
+        const localBlob = URL.createObjectURL(aboutMedia.fileBlob);
+        if (isMounted) setStreamBlobUrl(localBlob);
+        return () => { isMounted = false; };
+      } catch (e) {}
+    }
     if (aboutMedia && aboutMedia.videoType === 'firestore_stream') {
       loadVideoFromFirestore(aboutMedia).then((blobUrl) => {
         if (isMounted && blobUrl) {
           setStreamBlobUrl(blobUrl);
         }
       });
-    } else {
+    } else if (!aboutMedia?.fileBlob) {
       setStreamBlobUrl(null);
     }
     return () => { isMounted = false; };

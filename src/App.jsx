@@ -121,15 +121,7 @@ export default function App() {
             try { localStorage.setItem('73hills_gallery_cache_v2', JSON.stringify(fbState.gallery)); } catch(e){}
           }
           if (fbState.sectionMedia) {
-            setSectionMedia(prev => {
-              const merged = { ...prev };
-              Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
-                if (v && (v.url || v.customUrl || v.customVideoUrl)) {
-                  merged[k] = { ...merged[k], ...v };
-                }
-              });
-              return merged;
-            });
+            setSectionMedia(prev => ({ ...prev, ...fbState.sectionMedia }));
             try { localStorage.setItem('73hills_section_media_cache_v2', JSON.stringify(fbState.sectionMedia)); } catch(e){}
           }
           return;
@@ -143,7 +135,7 @@ export default function App() {
           if (cloudState.gallery && Array.isArray(cloudState.gallery) && cloudState.gallery.length > 0) setGalleryItems(cloudState.gallery);
           if (cloudState.sectionMedia) {
             const freshMedia = await getAllSectionMedia();
-            setSectionMedia(prev => ({ ...prev, ...freshMedia }));
+            setSectionMedia(prev => ({ ...prev, ...freshMedia, ...cloudState.sectionMedia }));
           }
         }
       } catch (e) {
@@ -159,15 +151,7 @@ export default function App() {
         if (newState.rooms && Array.isArray(newState.rooms) && newState.rooms.length > 0) setRooms(ensureThreeRooms(newState.rooms));
         if (newState.gallery && Array.isArray(newState.gallery) && newState.gallery.length > 0) setGalleryItems(newState.gallery);
         if (newState.sectionMedia) {
-          setSectionMedia(prev => {
-            const merged = { ...prev };
-            Object.entries(newState.sectionMedia).forEach(([k, v]) => {
-              if (v && (v.url || v.customUrl || v.customVideoUrl)) {
-                merged[k] = { ...merged[k], ...v };
-              }
-            });
-            return merged;
-          });
+          setSectionMedia(prev => ({ ...prev, ...newState.sectionMedia }));
         }
       }
     });
@@ -189,15 +173,7 @@ export default function App() {
           try { localStorage.setItem('73hills_gallery_cache_v2', JSON.stringify(fbState.gallery)); } catch(e){}
         }
         if (fbState.sectionMedia) {
-          setSectionMedia(prev => {
-            const merged = { ...prev };
-            Object.entries(fbState.sectionMedia).forEach(([k, v]) => {
-              if (v && (v.url || v.customUrl || v.customVideoUrl)) {
-                merged[k] = { ...merged[k], ...v };
-              }
-            });
-            return merged;
-          });
+          setSectionMedia(prev => ({ ...prev, ...fbState.sectionMedia }));
           try { localStorage.setItem('73hills_section_media_cache_v2', JSON.stringify(fbState.sectionMedia)); } catch(e){}
         }
       }
