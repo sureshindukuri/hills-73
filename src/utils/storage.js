@@ -232,13 +232,21 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
               }
             }
 
-            if (cloudUrl && cloudUrl.startsWith('http')) {
-              const permanentRecord = {
-                ...savedRecord,
-                customVideoUrl: cloudUrl,
-                customUrl: cloudUrl,
-                url: cloudUrl
-              };
+            if (cloudUrl) {
+              const permanentRecord = typeof cloudUrl === 'object'
+                ? {
+                    ...savedRecord,
+                    ...cloudUrl,
+                    videoType: 'firestore_stream',
+                    customVideoUrl: instantBlobUrl,
+                    url: instantBlobUrl
+                  }
+                : {
+                    ...savedRecord,
+                    customVideoUrl: cloudUrl,
+                    customUrl: cloudUrl,
+                    url: cloudUrl
+                  };
 
               try {
                 const currentCache = getStoredSectionMediaSync();
