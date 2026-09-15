@@ -194,45 +194,75 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       fileName = fileOrUrl.name || 'uploaded_media';
       
       if (isVideo) {
-        let videoUrl = null;
-
-        // 1. Direct Firebase Storage permanent CDN upload
-        try {
-          videoUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'resort_videos');
-        } catch (e) {
-          console.warn('[Storage] Firebase Storage notice:', e.message);
-        }
-
-        // 2. Fallback to Cloudinary direct upload
-        if (!videoUrl || videoUrl.startsWith('blob:')) {
-          try {
-            const cUrl = await uploadVideoToCloudinary(fileOrUrl);
-            if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
-              videoUrl = cUrl;
-            }
-          } catch (cErr) {
-            console.warn('[Storage] Cloudinary fallback notice:', cErr.message);
-          }
-        }
-
-        // 3. Fallback to local Blob URL for offline preview
-        if (!videoUrl) {
-          videoUrl = createBlobUrl(fileOrUrl);
-        }
+        // 0-second instant local playback URL
+        const instantBlobUrl = createBlobUrl(fileOrUrl) || '';
 
         savedRecord = {
           sectionKey,
           fileName,
           mediaType: 'video',
           videoType: 'custom_url',
-          customVideoUrl: videoUrl,
-          customUrl: videoUrl,
-          url: videoUrl,
+          customVideoUrl: instantBlobUrl,
+          customUrl: instantBlobUrl,
+          url: instantBlobUrl,
           title: meta.title || fileName,
           updatedAt: new Date().toISOString(),
           isDefault: false,
           ...meta
         };
+
+        // Asynchronously stream to permanent Firebase Storage & Cloudinary in the background
+        (async () => {
+          try {
+            let cloudUrl = null;
+            try {
+              cloudUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'resort_videos');
+            } catch (fbErr) {
+              console.warn('[Storage] Firebase Storage upload notice:', fbErr);
+            }
+
+            if (!cloudUrl || !cloudUrl.startsWith('http')) {
+              try {
+                const cUrl = await uploadVideoToCloudinary(fileOrUrl);
+                if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
+                  cloudUrl = cUrl;
+                }
+              } catch (cErr) {
+                console.warn('[Storage] Cloudinary fallback notice:', cErr);
+              }
+            }
+
+            if (cloudUrl && cloudUrl.startsWith('http')) {
+              const permanentRecord = {
+                ...savedRecord,
+                customVideoUrl: cloudUrl,
+                customUrl: cloudUrl,
+                url: cloudUrl
+              };
+
+              try {
+                const currentCache = getStoredSectionMediaSync();
+                currentCache[sectionKey] = permanentRecord;
+                localStorage.setItem(SECTION_MEDIA_CACHE_KEY, JSON.stringify(currentCache));
+              } catch (e) {}
+
+              try {
+                const db = await openDB();
+                const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
+                const store = transaction.objectStore(SECTION_MEDIA_STORE);
+                store.put({ ...permanentRecord, fileBlob: fileOrUrl });
+              } catch (e) {}
+
+              const allCurrent = await getAllSectionMedia();
+              allCurrent[sectionKey] = permanentRecord;
+              await saveToFirebaseCloud('sectionMedia', allCurrent);
+              pushCloudUpdate('sectionMedia', allCurrent);
+              console.log('[Storage] Permanent video cloud sync complete:', cloudUrl);
+            }
+          } catch (bgErr) {
+            console.warn('[Storage] Background video cloud upload notice:', bgErr);
+          }
+        })();
       } else {
         // High-res Image Data URL (permanent, fast, zero server dependencies)
         const finalUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
