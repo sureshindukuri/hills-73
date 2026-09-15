@@ -193,35 +193,64 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       fileName = fileOrUrl.name || 'uploaded_media';
       
       if (isVideo) {
-        // 0-second instant local playback URL
+        // 0-second instant local playback URL from local binary blob
         const instantBlobUrl = createBlobUrl(fileOrUrl) || '';
-
-        // Direct permanent cloud upload (Firebase Storage CDN / Cloudinary / Firestore Chunks)
-        let cloudUrl = null;
-        try {
-          cloudUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
-        } catch (uploadErr) {
-          console.warn('[Storage] Video cloud upload notice:', uploadErr);
-        }
-
-        const isStreamObj = cloudUrl && typeof cloudUrl === 'object' && cloudUrl.videoType === 'firestore_stream';
-        const permanentHttpUrl = (typeof cloudUrl === 'string' && cloudUrl.startsWith('http')) ? cloudUrl : null;
-        const activePlayUrl = permanentHttpUrl || instantBlobUrl;
 
         savedRecord = {
           sectionKey,
           fileName,
           mediaType: 'video',
-          videoType: isStreamObj ? 'firestore_stream' : 'custom_url',
-          ...(isStreamObj ? cloudUrl : {}),
-          customVideoUrl: activePlayUrl,
-          customUrl: activePlayUrl,
-          url: activePlayUrl,
+          videoType: 'custom_url',
+          customVideoUrl: instantBlobUrl,
+          customUrl: instantBlobUrl,
+          url: instantBlobUrl,
+          fileBlob: fileOrUrl,
           title: meta.title || fileName,
           updatedAt: new Date().toISOString(),
           isDefault: false,
           ...meta
         };
+
+        // Asynchronously stream to permanent Firebase Storage CDN / Cloudinary / Firestore Chunks
+        (async () => {
+          try {
+            const cloudUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
+            if (cloudUrl) {
+              const isStreamObj = typeof cloudUrl === 'object' && cloudUrl.videoType === 'firestore_stream';
+              const permanentHttpUrl = (typeof cloudUrl === 'string' && cloudUrl.startsWith('http')) ? cloudUrl : null;
+              
+              const permanentRecord = {
+                ...savedRecord,
+                videoType: isStreamObj ? 'firestore_stream' : 'custom_url',
+                ...(isStreamObj ? cloudUrl : {}),
+                customVideoUrl: permanentHttpUrl || instantBlobUrl,
+                customUrl: permanentHttpUrl || instantBlobUrl,
+                url: permanentHttpUrl || instantBlobUrl
+              };
+
+              try {
+                const currentCache = getStoredSectionMediaSync();
+                currentCache[sectionKey] = permanentRecord;
+                localStorage.setItem(SECTION_MEDIA_CACHE_KEY, JSON.stringify(currentCache));
+              } catch (e) {}
+
+              try {
+                const db = await openDB();
+                const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
+                const store = transaction.objectStore(SECTION_MEDIA_STORE);
+                store.put({ ...permanentRecord, fileBlob: fileOrUrl });
+              } catch (e) {}
+
+              const allCurrent = await getAllSectionMedia();
+              allCurrent[sectionKey] = permanentRecord;
+              await saveToFirebaseCloud('sectionMedia', allCurrent);
+              pushCloudUpdate('sectionMedia', allCurrent);
+              console.log('[Storage] Permanent video cloud sync complete:', permanentRecord);
+            }
+          } catch (bgErr) {
+            console.warn('[Storage] Background video cloud upload notice:', bgErr);
+          }
+        })();
       } else {
         // High-res Image Data URL (permanent, fast, zero server dependencies)
         const finalUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
