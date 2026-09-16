@@ -1,5 +1,6 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
-import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, readFileAsDataUrl } from '../firebase/firestoreSync';
+import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, readFileAsDataUrl, compressImageToDataUrl } from '../firebase/firestoreSync';
+import { saveVideoToFirestore } from '../firebase/videoStreamService';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -173,7 +174,7 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
     let fileName = meta.title || 'Resort Media';
 
     if (typeof fileOrUrl === 'string') {
-      isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.includes('firebasestorage.googleapis.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
+      isVideo = fileOrUrl.includes('youtube.com') || fileOrUrl.includes('youtu.be') || fileOrUrl.includes('vimeo.com') || fileOrUrl.includes('drive.google.com') || fileOrUrl.includes('firebasestorage.googleapis.com') || fileOrUrl.endsWith('.mp4') || fileOrUrl.endsWith('.webm') || meta.mediaType === 'video';
       fileName = meta.title || fileOrUrl.split('/').pop() || 'Custom Video Link';
       savedRecord = {
         sectionKey,
@@ -193,67 +194,34 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       fileName = fileOrUrl.name || 'uploaded_media';
       
       if (isVideo) {
-        // 0-second instant local playback URL from local binary blob
+        // Direct parallel upload to Firestore chunks with live progress (takes ~1-2s for 20MB)
+        let chunkMeta = null;
+        try {
+          chunkMeta = await saveVideoToFirestore(fileOrUrl, sectionKey, onProgress);
+        } catch (chunkErr) {
+          console.warn('[Storage] saveVideoToFirestore chunk notice:', chunkErr);
+        }
+
         const instantBlobUrl = createBlobUrl(fileOrUrl) || '';
 
         savedRecord = {
           sectionKey,
           fileName,
           mediaType: 'video',
-          videoType: 'custom_url',
+          videoType: 'firestore_stream',
+          ...(chunkMeta || {}),
+          fileBlob: fileOrUrl,
           customVideoUrl: instantBlobUrl,
           customUrl: instantBlobUrl,
           url: instantBlobUrl,
-          fileBlob: fileOrUrl,
           title: meta.title || fileName,
           updatedAt: new Date().toISOString(),
           isDefault: false,
           ...meta
         };
-
-        // Asynchronously stream to permanent Firebase Storage CDN / Cloudinary / Firestore Chunks
-        (async () => {
-          try {
-            const cloudUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
-            if (cloudUrl) {
-              const isStreamObj = typeof cloudUrl === 'object' && cloudUrl.videoType === 'firestore_stream';
-              const permanentHttpUrl = (typeof cloudUrl === 'string' && cloudUrl.startsWith('http')) ? cloudUrl : null;
-              
-              const permanentRecord = {
-                ...savedRecord,
-                videoType: isStreamObj ? 'firestore_stream' : 'custom_url',
-                ...(isStreamObj ? cloudUrl : {}),
-                customVideoUrl: permanentHttpUrl || instantBlobUrl,
-                customUrl: permanentHttpUrl || instantBlobUrl,
-                url: permanentHttpUrl || instantBlobUrl
-              };
-
-              try {
-                const currentCache = getStoredSectionMediaSync();
-                currentCache[sectionKey] = permanentRecord;
-                localStorage.setItem(SECTION_MEDIA_CACHE_KEY, JSON.stringify(currentCache));
-              } catch (e) {}
-
-              try {
-                const db = await openDB();
-                const transaction = db.transaction(SECTION_MEDIA_STORE, 'readwrite');
-                const store = transaction.objectStore(SECTION_MEDIA_STORE);
-                store.put({ ...permanentRecord, fileBlob: fileOrUrl });
-              } catch (e) {}
-
-              const allCurrent = await getAllSectionMedia();
-              allCurrent[sectionKey] = permanentRecord;
-              await saveToFirebaseCloud('sectionMedia', allCurrent);
-              pushCloudUpdate('sectionMedia', allCurrent);
-              console.log('[Storage] Permanent video cloud sync complete:', permanentRecord);
-            }
-          } catch (bgErr) {
-            console.warn('[Storage] Background video cloud upload notice:', bgErr);
-          }
-        })();
       } else {
-        // High-res Image Data URL (permanent, fast, zero server dependencies)
-        const finalUrl = await uploadMediaToFirebaseStorage(fileOrUrl, 'section_' + sectionKey, onProgress);
+        // High-res Image Data URL (compressed to crisp 1280px JPEG)
+        const finalUrl = await compressImageToDataUrl(fileOrUrl, 1280, 0.82);
         savedRecord = {
           sectionKey,
           fileName,
@@ -268,17 +236,19 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       }
     }
 
-    const finalUrl = savedRecord.url || savedRecord.customUrl || null;
-    if (!finalUrl) {
-      throw new Error('Please provide a valid video link or choose a supported file.');
-    }
-
     // 1. Save synchronously to localStorage cache for instant zero-latency UI rendering
     try {
       const currentCache = getStoredSectionMediaSync();
+      const storageRecord = {
+        ...savedRecord,
+        fileBlob: undefined,
+        url: savedRecord.videoType === 'firestore_stream' ? undefined : savedRecord.url,
+        customUrl: savedRecord.videoType === 'firestore_stream' ? undefined : savedRecord.customUrl,
+        customVideoUrl: savedRecord.videoType === 'firestore_stream' ? undefined : savedRecord.customVideoUrl
+      };
       const updatedCache = {
         ...currentCache,
-        [sectionKey]: savedRecord
+        [sectionKey]: storageRecord
       };
       localStorage.setItem(SECTION_MEDIA_CACHE_KEY, JSON.stringify(updatedCache));
     } catch (cacheErr) {
@@ -302,16 +272,25 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       const cleanCurrent = {};
       Object.entries(allCurrent).forEach(([k, v]) => {
         if (v && v.sectionKey) {
-          const u = (v.customUrl && !v.customUrl.startsWith('blob:') && !v.customUrl.startsWith('data:video'))
-            ? v.customUrl
-            : (v.url && !v.url.startsWith('blob:') && !v.url.startsWith('data:video'))
-              ? v.url
-              : v.customVideoUrl || null;
+          const isStream = v.videoType === 'firestore_stream';
+          const u = isStream ? undefined : (
+            (v.customUrl && !v.customUrl.startsWith('blob:') && !v.customUrl.startsWith('data:video'))
+              ? v.customUrl
+              : (v.url && !v.url.startsWith('blob:') && !v.url.startsWith('data:video'))
+                ? v.url
+                : v.customVideoUrl || null
+          );
 
           cleanCurrent[k] = {
             sectionKey: v.sectionKey,
             mediaType: v.mediaType || 'image',
             videoType: v.videoType || (v.mediaType === 'video' ? 'custom_url' : undefined),
+            ...(isStream ? {
+              mediaKey: v.mediaKey || v.sectionKey,
+              totalChunks: v.totalChunks,
+              totalSize: v.totalSize,
+              mimeType: v.mimeType
+            } : {}),
             customVideoUrl: u,
             fileName: v.fileName || '',
             title: v.title || '',
@@ -323,11 +302,14 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
         }
       });
 
-      const activeRecordUrl = (savedRecord.url && !savedRecord.url.startsWith('blob:') && !savedRecord.url.startsWith('data:video'))
-        ? savedRecord.url
-        : (savedRecord.customUrl && !savedRecord.customUrl.startsWith('blob:') && !savedRecord.customUrl.startsWith('data:video'))
-          ? savedRecord.customUrl
-          : savedRecord.customVideoUrl;
+      const isStreamRecord = savedRecord.videoType === 'firestore_stream';
+      const activeRecordUrl = isStreamRecord ? undefined : (
+        (savedRecord.url && !savedRecord.url.startsWith('blob:') && !savedRecord.url.startsWith('data:video'))
+          ? savedRecord.url
+          : (savedRecord.customUrl && !savedRecord.customUrl.startsWith('blob:') && !savedRecord.customUrl.startsWith('data:video'))
+            ? savedRecord.customUrl
+            : savedRecord.customVideoUrl
+      );
 
       const updatedCloudMap = {
         ...cleanCurrent,
@@ -335,6 +317,12 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
           sectionKey,
           mediaType: savedRecord.mediaType || (isVideo ? 'video' : 'image'),
           videoType: savedRecord.videoType || (isVideo ? 'custom_url' : undefined),
+          ...(isStreamRecord ? {
+            mediaKey: savedRecord.mediaKey || sectionKey,
+            totalChunks: savedRecord.totalChunks,
+            totalSize: savedRecord.totalSize,
+            mimeType: savedRecord.mimeType
+          } : {}),
           customVideoUrl: activeRecordUrl,
           fileName: savedRecord.fileName,
           title: savedRecord.title,

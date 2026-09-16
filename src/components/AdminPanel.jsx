@@ -218,9 +218,12 @@ export default function AdminPanel({
         currentSectionMedia.about = savedAbout;
         setAboutVideoUrlInput('');
       } else if (aboutFile) {
+        setActionFeedback({ text: '⚡ Slicing & uploading video chunks to Cloud...', type: 'info' });
         const savedAbout = await saveSectionMedia('about', aboutFile, {
           mediaType: 'video',
           title: aboutFile.name
+        }, (pct) => {
+          setActionFeedback({ text: `⚡ Saving video chunks to Cloud... ${pct}%`, type: 'info' });
         });
         currentSectionMedia.about = savedAbout;
         setAboutFile(null);
@@ -1838,12 +1841,14 @@ export default function AdminPanel({
                       disabled={isProcessing}
                       onClick={async () => {
                         setIsProcessing(true);
-                        setActionFeedback({ text: '⚡ Uploading & publishing video to main website...', type: 'info' });
+                        setActionFeedback({ text: '⚡ Slicing & uploading video to Cloud...', type: 'info' });
                         try {
                           const isVid = aboutFile.type ? aboutFile.type.startsWith('video/') : /\.(mp4|webm|mov|mkv|m4v|ogg)$/i.test(aboutFile.name);
                           const saved = await saveSectionMedia('about', aboutFile, {
                             mediaType: isVid ? 'video' : 'image',
                             title: aboutFile.name
+                          }, (pct) => {
+                            setActionFeedback({ text: `⚡ Saving video chunks to Cloud... ${pct}%`, type: 'info' });
                           });
 
                           const updated = { ...sectionMedia, about: saved };
@@ -1866,7 +1871,7 @@ export default function AdminPanel({
                           setAboutFile(null);
                           const fileInp = document.getElementById('about-file-input');
                           if (fileInp) fileInp.value = '';
-                          showNotification('✓ 100% SAVED! Resort tour video is now live on the main website.');
+                          showNotification('✓ 100% SAVED! Resort tour video is now permanently live on the main website.');
                         } catch (e) {
                           console.warn('Video save notice:', e);
                           showNotification('✓ Video saved and published to website!');

@@ -38,6 +38,8 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
   const videoRef = useRef(null);
 
   const aboutMedia = sectionMedia?.about;
+  const isFirestoreStream = aboutMedia?.videoType === 'firestore_stream';
+  const isStreamLoading = isFirestoreStream && !streamBlobUrl;
 
   useEffect(() => {
     let isMounted = true;
@@ -61,16 +63,20 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
   }, [aboutMedia]);
 
   const isVideo = aboutMedia 
-    ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customVideoUrl || !!aboutMedia.customUrl || !!aboutMedia.url || !!streamBlobUrl))) 
+    ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customVideoUrl || !!aboutMedia.customUrl || !!aboutMedia.url || !!streamBlobUrl || isFirestoreStream))) 
     : true;
 
   const rawCandidate = streamBlobUrl || (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl || '');
+  
+  // If a custom stream is loading, do not fall back to default video prematurely
   const candidateUrl = (typeof rawCandidate === 'string' && isValidHttpUrl(rawCandidate))
     ? rawCandidate.trim()
-    : DEFAULT_DRONE_VIDEO;
+    : isStreamLoading 
+      ? null
+      : DEFAULT_DRONE_VIDEO;
 
-  const embedUrl = getEmbedUrl(candidateUrl);
-  const aboutUrl = (hasVideoError && !rawCandidate) ? DEFAULT_DRONE_VIDEO : candidateUrl;
+  const embedUrl = candidateUrl ? getEmbedUrl(candidateUrl) : null;
+  const aboutUrl = (hasVideoError && !rawCandidate) ? DEFAULT_DRONE_VIDEO : (candidateUrl || DEFAULT_DRONE_VIDEO);
 
   // Reset error state when media changes
   useEffect(() => {
@@ -103,8 +109,23 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
               onClick={() => setVideoModalOpen(true)}
               className="luxury-card"
             >
-              {/* If YouTube / Embed Link */}
-              {embedUrl ? (
+              {isStreamLoading ? (
+                /* Premium Loader while high-capacity video chunks assemble */
+                <div style={{ position: 'relative', height: 'clamp(280px, 42vw, 460px)', backgroundColor: '#0D2116', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <img 
+                    src="/assets/hero_aerial_73hills.jpg" 
+                    alt="73 Hills Resort Sanctuary" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45 }} 
+                  />
+                  <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '42px', height: '42px', border: '3px solid rgba(179,139,89,0.25)', borderTopColor: '#B38B59', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    <span style={{ color: '#FFFFFF', fontSize: '0.85rem', fontWeight: '700', letterSpacing: '0.04em' }}>
+                      Streaming Resort Tour Video...
+                    </span>
+                  </div>
+                </div>
+              ) : embedUrl ? (
+                /* YouTube / Google Drive / Vimeo Iframe */
                 <div style={{ position: 'relative', height: 'clamp(280px, 42vw, 460px)', overflow: 'hidden' }}>
                   <iframe 
                     src={embedUrl}
@@ -120,7 +141,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                     key={aboutUrl}
                     ref={videoRef}
                     src={aboutUrl} 
-                    poster={rawCandidate ? undefined : "/assets/hero_aerial_73hills.jpg"}
+                    poster="/assets/hero_aerial_73hills.jpg"
                     autoPlay 
                     muted 
                     loop 
@@ -220,7 +241,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
                   <Trees size={18} color="#B38B59" style={{ flexShrink: 0 }} />
                   <div>
                     <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#FFFFFF', lineHeight: 1.2 }}>
-                      73 Acres Sandalwood Sanctuary Tour
+                      {aboutMedia?.title || '73 Acres Sandalwood Sanctuary Tour'}
                     </div>
                     <div style={{ fontSize: '0.675rem', color: '#B38B59', letterSpacing: '0.03em', marginTop: '2px' }}>
                       Click to watch in cinematic full-screen
@@ -341,7 +362,7 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Film size={20} color="#B38B59" />
                 <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: '600' }}>
-                  73 Hills Resort — 73 Acres Full Aerial & Ground Video Experience
+                  {aboutMedia?.title || '73 Hills Resort — 73 Acres Full Video Tour Experience'}
                 </span>
               </div>
 
@@ -365,7 +386,12 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
             </div>
 
             <div style={{ position: 'relative', width: '100%', minHeight: '440px', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {embedUrl ? (
+              {isStreamLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '48px', height: '48px', border: '3px solid rgba(179,139,89,0.25)', borderTopColor: '#B38B59', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  <span style={{ color: '#FFFFFF', fontSize: '0.9rem', fontWeight: '600' }}>Loading Video Stream...</span>
+                </div>
+              ) : embedUrl ? (
                 <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0 }}>
                   <iframe
                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
