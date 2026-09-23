@@ -50,15 +50,19 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
         return () => { isMounted = false; };
       } catch (e) {}
     }
-    if (aboutMedia && aboutMedia.videoType === 'firestore_stream') {
-      loadVideoFromFirestore(aboutMedia).then((blobUrl) => {
-        if (isMounted && blobUrl) {
-          setStreamBlobUrl(blobUrl);
-        }
-      });
-    } else if (!aboutMedia?.fileBlob) {
-      setStreamBlobUrl(null);
-    }
+
+    const streamMeta = (aboutMedia && aboutMedia.videoType === 'firestore_stream')
+      ? aboutMedia
+      : { videoType: 'firestore_stream', mediaKey: 'about' };
+
+    loadVideoFromFirestore(streamMeta).then((blobUrl) => {
+      if (isMounted && blobUrl) {
+        setStreamBlobUrl(blobUrl);
+      }
+    }).catch((err) => {
+      console.warn('[AboutSection] Video stream load notice:', err);
+    });
+
     return () => { isMounted = false; };
   }, [aboutMedia]);
 
