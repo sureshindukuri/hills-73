@@ -1,24 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { Users, Maximize, Star, Check, ArrowRight, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { DEFAULT_ROOMS } from '../utils/storage';
+import { ensureThreeRooms } from '../utils/storage';
+
+const MINI_MASTER_PHOTOS = [
+  '/assets/mini_master_room_1.jpg',
+  '/assets/mini_master_room_2.jpg',
+  '/assets/mini_master_room_3.jpg'
+];
 
 export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking }) {
   const [selectedRoomModal, setSelectedRoomModal] = useState(null);
   const [miniMasterImgIdx, setMiniMasterImgIdx] = useState(0);
 
   const displayRooms = useMemo(() => {
-    if (!Array.isArray(rooms) || rooms.length === 0) return DEFAULT_ROOMS;
-    return DEFAULT_ROOMS.map((defRoom, index) => {
-      const existing = rooms.find(r => r && (r.id === defRoom.id || r.id === `room-${index + 1}`)) || rooms[index] || {};
-      return {
-        ...defRoom,
-        ...existing,
-        id: defRoom.id,
-        name: defRoom.name,
-        image: defRoom.image || existing.image,
-        images: (defRoom.images && defRoom.images.length > 0) ? defRoom.images : (existing.images || [defRoom.image || existing.image])
-      };
-    });
+    return ensureThreeRooms(rooms);
   }, [rooms]);
 
   return (
@@ -46,10 +41,10 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '24px'
         }}>
-          {displayRooms.map((room) => {
-            const isMiniMaster = room.id === 'room-1' || room.name === 'Mini Family Master Room';
-            const roomPhotos = (isMiniMaster && room.images && room.images.length > 0) ? room.images : [room.image];
-            const currentImg = isMiniMaster ? roomPhotos[miniMasterImgIdx % roomPhotos.length] : (room.image || roomPhotos[0]);
+          {displayRooms.map((room, index) => {
+            const isMiniMaster = room.id === 'room-1' || room.name === 'Mini Family Master Room' || index === 0;
+            const roomPhotos = isMiniMaster ? MINI_MASTER_PHOTOS : ((room.images && room.images.length > 0) ? room.images : [room.image]);
+            const currentImg = isMiniMaster ? MINI_MASTER_PHOTOS[miniMasterImgIdx % MINI_MASTER_PHOTOS.length] : (room.image || roomPhotos[0]);
 
             return (
               <div key={room.id} className="luxury-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -304,7 +299,7 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
             </button>
 
             <img 
-              src={selectedRoomModal.image} 
+              src={(selectedRoomModal.id === 'room-1' || selectedRoomModal.name === 'Mini Family Master Room') ? MINI_MASTER_PHOTOS[miniMasterImgIdx % MINI_MASTER_PHOTOS.length] : selectedRoomModal.image} 
               alt={selectedRoomModal.name}
               style={{
                 width: '100%',
