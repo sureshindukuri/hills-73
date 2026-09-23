@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Users, Maximize, Star, Check, ArrowRight, X } from 'lucide-react';
+import { Users, Maximize, Star, Check, ArrowRight, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DEFAULT_ROOMS } from '../utils/storage';
 
 export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking }) {
   const [selectedRoomModal, setSelectedRoomModal] = useState(null);
+  const [miniMasterImgIdx, setMiniMasterImgIdx] = useState(0);
 
   const displayRooms = useMemo(() => {
     if (!Array.isArray(rooms) || rooms.length === 0) return DEFAULT_ROOMS;
@@ -13,7 +14,9 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
         ...defRoom,
         ...existing,
         id: defRoom.id,
-        name: defRoom.name
+        name: defRoom.name,
+        image: defRoom.image || existing.image,
+        images: (defRoom.images && defRoom.images.length > 0) ? defRoom.images : (existing.images || [defRoom.image || existing.image])
       };
     });
   }, [rooms]);
@@ -43,40 +46,148 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: '24px'
         }}>
-          {displayRooms.map((room) => (
-            <div key={room.id} className="luxury-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              
-              {/* Room Image */}
-              <div style={{ position: 'relative', height: '240px', overflow: 'hidden' }}>
-                <img 
-                  src={room.image} 
-                  alt={room.name} 
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'transform 0.5s ease'
-                  }}
-                />
-                <div style={{
-                  position: 'absolute',
-                  top: '14px',
-                  right: '14px',
-                  backgroundColor: 'rgba(19, 46, 31, 0.9)',
-                  color: '#FFFFFF',
-                  padding: '5px 12px',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  letterSpacing: '0.05em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  <Star size={13} fill="#B38B59" color="#B38B59" />
-                  {room.rating || 4.9}
+          {displayRooms.map((room) => {
+            const isMiniMaster = room.id === 'room-1' || room.name === 'Mini Family Master Room';
+            const roomPhotos = (isMiniMaster && room.images && room.images.length > 0) ? room.images : [room.image];
+            const currentImg = isMiniMaster ? roomPhotos[miniMasterImgIdx % roomPhotos.length] : (room.image || roomPhotos[0]);
+
+            return (
+              <div key={room.id} className="luxury-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                
+                {/* Room Image */}
+                <div style={{ position: 'relative', height: '240px', overflow: 'hidden', backgroundColor: '#0D2116' }}>
+                  <img 
+                    src={currentImg} 
+                    alt={room.name} 
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      transition: 'transform 0.4s ease, opacity 0.3s ease',
+                      filter: 'contrast(1.05) brightness(1.02)'
+                    }}
+                  />
+
+                  {/* Small arrow marks ONLY for Mini Family Master Room */}
+                  {isMiniMaster && roomPhotos.length > 1 && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMiniMasterImgIdx((prev) => (prev === 0 ? roomPhotos.length - 1 : prev - 1));
+                        }}
+                        aria-label="Previous photo"
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          left: '10px',
+                          transform: 'translateY(-50%)',
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(13, 33, 22, 0.85)',
+                          backdropFilter: 'blur(4px)',
+                          border: '1px solid rgba(179, 139, 89, 0.8)',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                          zIndex: 6,
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <ChevronLeft size={16} color="#B38B59" />
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMiniMasterImgIdx((prev) => (prev + 1) % roomPhotos.length);
+                        }}
+                        aria-label="Next photo"
+                        style={{
+                          position: 'absolute',
+                          top: '50%',
+                          right: '10px',
+                          transform: 'translateY(-50%)',
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '50%',
+                          backgroundColor: 'rgba(13, 33, 22, 0.85)',
+                          backdropFilter: 'blur(4px)',
+                          border: '1px solid rgba(179, 139, 89, 0.8)',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                          zIndex: 6,
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <ChevronRight size={16} color="#B38B59" />
+                      </button>
+
+                      {/* Small Indicator Dots */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '10px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        zIndex: 6,
+                        backgroundColor: 'rgba(13, 33, 22, 0.75)',
+                        padding: '4px 10px',
+                        borderRadius: 'var(--radius-full)',
+                        backdropFilter: 'blur(6px)',
+                        border: '1px solid rgba(179, 139, 89, 0.3)'
+                      }}>
+                        {roomPhotos.map((_, idx) => (
+                          <div 
+                            key={idx}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMiniMasterImgIdx(idx);
+                            }}
+                            style={{
+                              width: idx === (miniMasterImgIdx % roomPhotos.length) ? '16px' : '6px',
+                              height: '6px',
+                              borderRadius: '3px',
+                              backgroundColor: idx === (miniMasterImgIdx % roomPhotos.length) ? '#B38B59' : 'rgba(255,255,255,0.5)',
+                              cursor: 'pointer',
+                              transition: 'all 0.25s ease'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  <div style={{
+                    position: 'absolute',
+                    top: '14px',
+                    right: '14px',
+                    backgroundColor: 'rgba(19, 46, 31, 0.9)',
+                    color: '#FFFFFF',
+                    padding: '5px 12px',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    letterSpacing: '0.05em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    zIndex: 5
+                  }}>
+                    <Star size={13} fill="#B38B59" color="#B38B59" />
+                    {room.rating || 4.9}
+                  </div>
                 </div>
-              </div>
 
               {/* Room Details */}
               <div style={{ padding: '22px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
@@ -151,7 +262,8 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
               </div>
 
             </div>
-          ))}
+            );
+          })}
         </div>
 
       </div>

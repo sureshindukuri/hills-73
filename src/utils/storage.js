@@ -663,9 +663,14 @@ export const DEFAULT_ROOMS = [
     rating: 4.9,
     capacity: '2 - 6 Guests',
     size: '1,200 sq.ft',
-    image: '/assets/hero_resort_villa.png',
-    features: ['Private Plunge Pool', 'King Plush Bed', 'Forest View Balcony', '24/7 Butler Service', 'Complimentary Sandalwood Spa'],
-    description: 'Immerse yourself in ultimate tranquility. Built with handcrafted teak wood and surrounded by towering 73 acres of rare Red Sandalwood trees.'
+    image: '/assets/mini_master_room_1.jpg',
+    images: [
+      '/assets/mini_master_room_1.jpg',
+      '/assets/mini_master_room_2.jpg',
+      '/assets/mini_master_room_3.jpg'
+    ],
+    features: ['Panoramic Mirror Glass Suite', 'Private Viewing Deck', 'King Plush Bed', 'Forest View Wall-to-Wall Glass', 'Complimentary Sandalwood Spa'],
+    description: 'Immerse yourself in ultimate tranquility. Built with modern panoramic mirror-glass reflecting the towering 73 acres of rare Red Sandalwood forest.'
   },
   {
     id: 'room-2',
