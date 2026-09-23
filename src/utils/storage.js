@@ -698,9 +698,13 @@ export const DEFAULT_ROOMS = [
     rating: 5.0,
     capacity: '4 - 10 Guests',
     size: '2,400 sq.ft',
-    image: '/assets/celebration_wedding_lawn.png',
-    features: ['Private Garden Lawn', '2 Master Bedrooms', 'Dining Pavilion', 'Personal Chef', 'Private Chauffeur'],
-    description: 'The pinnacle of grandeur. Spanning a private compound with private gardens, outdoor firepit, and direct access to sandalwood walking trails.'
+    image: '/assets/stay_huts_exterior_1.jpg',
+    images: [
+      '/assets/stay_huts_exterior_1.jpg',
+      '/assets/stay_huts_interior_2.jpg'
+    ],
+    features: ['Private Garden Lawn', 'Air Conditioned Master Bedroom', 'Private Deck & Balcony', 'Outdoor Nature Views', 'Complimentary Spa'],
+    description: 'The pinnacle of tranquility and rustic luxury. Cozy wooden stay huts surrounded by lush greenery, complete with air conditioning, private deck, and direct nature access.'
   }
 ];
 
@@ -708,11 +712,14 @@ export function ensureThreeRooms(incomingRooms) {
   if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) return DEFAULT_ROOMS;
   return DEFAULT_ROOMS.map((defRoom, index) => {
     const existing = incomingRooms.find(r => r && (r.id === defRoom.id || r.id === `room-${index + 1}`)) || incomingRooms[index] || {};
+    const isCustomized = defRoom.id === 'room-1' || defRoom.id === 'room-3' || index === 0 || index === 2;
     return {
       ...defRoom,
       ...existing,
       id: defRoom.id,
-      name: defRoom.name
+      name: defRoom.name,
+      image: isCustomized ? defRoom.image : (existing.image || defRoom.image),
+      images: isCustomized ? defRoom.images : (existing.images || [existing.image || defRoom.image])
     };
   });
 }

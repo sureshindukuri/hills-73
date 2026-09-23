@@ -8,9 +8,15 @@ const MINI_MASTER_PHOTOS = [
   '/assets/mini_master_room_3.jpg'
 ];
 
+const STAY_HUTS_PHOTOS = [
+  '/assets/stay_huts_exterior_1.jpg',
+  '/assets/stay_huts_interior_2.jpg'
+];
+
 export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking }) {
   const [selectedRoomModal, setSelectedRoomModal] = useState(null);
   const [miniMasterImgIdx, setMiniMasterImgIdx] = useState(0);
+  const [stayHutsImgIdx, setStayHutsImgIdx] = useState(0);
 
   const displayRooms = useMemo(() => {
     return ensureThreeRooms(rooms);
@@ -43,8 +49,35 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
         }}>
           {displayRooms.map((room, index) => {
             const isMiniMaster = room.id === 'room-1' || room.name === 'Mini Family Master Room' || index === 0;
-            const roomPhotos = isMiniMaster ? MINI_MASTER_PHOTOS : ((room.images && room.images.length > 0) ? room.images : [room.image]);
-            const currentImg = isMiniMaster ? MINI_MASTER_PHOTOS[miniMasterImgIdx % MINI_MASTER_PHOTOS.length] : (room.image || roomPhotos[0]);
+            const isStayHuts = room.id === 'room-3' || room.name === 'Stay Huts' || index === 2;
+
+            const roomPhotos = isMiniMaster 
+              ? MINI_MASTER_PHOTOS 
+              : isStayHuts 
+                ? STAY_HUTS_PHOTOS 
+                : ((room.images && room.images.length > 0) ? room.images : [room.image]);
+
+            const activeIdx = isMiniMaster ? miniMasterImgIdx : (isStayHuts ? stayHutsImgIdx : 0);
+            const currentImg = roomPhotos[activeIdx % roomPhotos.length];
+            const hasMultiPhotos = roomPhotos.length > 1;
+
+            const handlePrev = (e) => {
+              e.stopPropagation();
+              if (isMiniMaster) setMiniMasterImgIdx(prev => (prev === 0 ? roomPhotos.length - 1 : prev - 1));
+              else if (isStayHuts) setStayHutsImgIdx(prev => (prev === 0 ? roomPhotos.length - 1 : prev - 1));
+            };
+
+            const handleNext = (e) => {
+              e.stopPropagation();
+              if (isMiniMaster) setMiniMasterImgIdx(prev => (prev + 1) % roomPhotos.length);
+              else if (isStayHuts) setStayHutsImgIdx(prev => (prev + 1) % roomPhotos.length);
+            };
+
+            const handleSelectDot = (e, idx) => {
+              e.stopPropagation();
+              if (isMiniMaster) setMiniMasterImgIdx(idx);
+              else if (isStayHuts) setStayHutsImgIdx(idx);
+            };
 
             return (
               <div key={room.id} className="luxury-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -63,14 +96,11 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                     }}
                   />
 
-                  {/* Small arrow marks ONLY for Mini Family Master Room */}
-                  {isMiniMaster && roomPhotos.length > 1 && (
+                  {/* Small arrow marks for multi-photo rooms (Mini Master Room & Stay Huts) */}
+                  {hasMultiPhotos && (
                     <>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMiniMasterImgIdx((prev) => (prev === 0 ? roomPhotos.length - 1 : prev - 1));
-                        }}
+                        onClick={handlePrev}
                         aria-label="Previous photo"
                         style={{
                           position: 'absolute',
@@ -97,10 +127,7 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                       </button>
 
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMiniMasterImgIdx((prev) => (prev + 1) % roomPhotos.length);
-                        }}
+                        onClick={handleNext}
                         aria-label="Next photo"
                         style={{
                           position: 'absolute',
@@ -145,15 +172,12 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                         {roomPhotos.map((_, idx) => (
                           <div 
                             key={idx}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMiniMasterImgIdx(idx);
-                            }}
+                            onClick={(e) => handleSelectDot(e, idx)}
                             style={{
-                              width: idx === (miniMasterImgIdx % roomPhotos.length) ? '16px' : '6px',
+                              width: idx === (activeIdx % roomPhotos.length) ? '16px' : '6px',
                               height: '6px',
                               borderRadius: '3px',
-                              backgroundColor: idx === (miniMasterImgIdx % roomPhotos.length) ? '#B38B59' : 'rgba(255,255,255,0.5)',
+                              backgroundColor: idx === (activeIdx % roomPhotos.length) ? '#B38B59' : 'rgba(255,255,255,0.5)',
                               cursor: 'pointer',
                               transition: 'all 0.25s ease'
                             }}
@@ -299,7 +323,11 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
             </button>
 
             <img 
-              src={(selectedRoomModal.id === 'room-1' || selectedRoomModal.name === 'Mini Family Master Room') ? MINI_MASTER_PHOTOS[miniMasterImgIdx % MINI_MASTER_PHOTOS.length] : selectedRoomModal.image} 
+              src={(selectedRoomModal.id === 'room-1' || selectedRoomModal.name === 'Mini Family Master Room') 
+                ? MINI_MASTER_PHOTOS[miniMasterImgIdx % MINI_MASTER_PHOTOS.length] 
+                : (selectedRoomModal.id === 'room-3' || selectedRoomModal.name === 'Stay Huts')
+                  ? STAY_HUTS_PHOTOS[stayHutsImgIdx % STAY_HUTS_PHOTOS.length]
+                  : selectedRoomModal.image} 
               alt={selectedRoomModal.name}
               style={{
                 width: '100%',
