@@ -647,7 +647,7 @@ export async function deleteMediaItem(id) {
 }
 
 // LocalStorage keys for Rooms, Bookings, and Site Content
-const ROOMS_KEY = '73hills_rooms_v1';
+const ROOMS_KEY = '73hills_rooms_v2';
 const BOOKINGS_KEY = '73hills_bookings_v1';
 const SETTINGS_KEY = '73hills_settings_v1';
 
@@ -701,20 +701,15 @@ export const DEFAULT_ROOMS = [
 
 export function ensureThreeRooms(incomingRooms) {
   if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) return DEFAULT_ROOMS;
-  const mergedMap = new Map();
-  DEFAULT_ROOMS.forEach(r => mergedMap.set(r.id, r));
-  incomingRooms.forEach(r => {
-    if (r && r.id) {
-      const def = mergedMap.get(r.id) || {};
-      let updatedName = r.name;
-      if (updatedName === 'Red Sandalwood Villa') updatedName = 'Mini Family Master Room';
-      else if (updatedName === 'Hilltop Teak Cottage') updatedName = 'Cottages';
-      else if (updatedName === 'Royal Heritage Pavilion') updatedName = 'Stay Huts';
-      mergedMap.set(r.id, { ...def, ...r, name: updatedName || def.name });
-    }
+  return DEFAULT_ROOMS.map((defRoom, index) => {
+    const existing = incomingRooms.find(r => r && (r.id === defRoom.id || r.id === `room-${index + 1}`)) || incomingRooms[index] || {};
+    return {
+      ...defRoom,
+      ...existing,
+      id: defRoom.id,
+      name: defRoom.name
+    };
   });
-  const result = Array.from(mergedMap.values());
-  return result.length >= 3 ? result : DEFAULT_ROOMS;
 }
 
 export function getStoredRooms() {
