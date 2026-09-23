@@ -654,7 +654,7 @@ const SETTINGS_KEY = '73hills_settings_v1';
 export const DEFAULT_ROOMS = [
   {
     id: 'room-1',
-    name: 'Red Sandalwood Villa',
+    name: 'Mini Family Master Room',
     subtitle: '73 Acres Forest Facing Luxury Suite',
     price: 4999,
     baseGuests: 2,
@@ -669,7 +669,7 @@ export const DEFAULT_ROOMS = [
   },
   {
     id: 'room-2',
-    name: 'Hilltop Teak Cottage',
+    name: 'Cottages',
     subtitle: 'Panoramas of Yerravaram Hills',
     price: 3499,
     baseGuests: 2,
@@ -684,7 +684,7 @@ export const DEFAULT_ROOMS = [
   },
   {
     id: 'room-3',
-    name: 'Royal Heritage Pavilion',
+    name: 'Stay Huts',
     subtitle: 'Family & Group Executive Estate',
     price: 8999,
     baseGuests: 4,
@@ -706,7 +706,11 @@ export function ensureThreeRooms(incomingRooms) {
   incomingRooms.forEach(r => {
     if (r && r.id) {
       const def = mergedMap.get(r.id) || {};
-      mergedMap.set(r.id, { ...def, ...r });
+      let updatedName = r.name;
+      if (updatedName === 'Red Sandalwood Villa') updatedName = 'Mini Family Master Room';
+      else if (updatedName === 'Hilltop Teak Cottage') updatedName = 'Cottages';
+      else if (updatedName === 'Royal Heritage Pavilion') updatedName = 'Stay Huts';
+      mergedMap.set(r.id, { ...def, ...r, name: updatedName || def.name });
     }
   });
   const result = Array.from(mergedMap.values());

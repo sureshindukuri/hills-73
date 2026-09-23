@@ -1959,7 +1959,7 @@ export default function AdminPanel({
                     <label className="form-label">Room / Villa Title</label>
                     <input 
                       type="text" 
-                      placeholder="e.g. Red Sandalwood Villa"
+                      placeholder="e.g. Mini Family Master Room"
                       className="form-input" 
                       value={roomFormData.name} 
                       onChange={(e) => setRoomFormData({ ...roomFormData, name: e.target.value })} 

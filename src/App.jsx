@@ -30,7 +30,11 @@ const ensureThreeRooms = (incomingRooms) => {
   incomingRooms.forEach(r => {
     if (r && r.id) {
       const def = mergedMap.get(r.id) || {};
-      mergedMap.set(r.id, { ...def, ...r });
+      let updatedName = r.name;
+      if (updatedName === 'Red Sandalwood Villa') updatedName = 'Mini Family Master Room';
+      else if (updatedName === 'Hilltop Teak Cottage') updatedName = 'Cottages';
+      else if (updatedName === 'Royal Heritage Pavilion') updatedName = 'Stay Huts';
+      mergedMap.set(r.id, { ...def, ...r, name: updatedName || def.name });
     }
   });
   const result = Array.from(mergedMap.values());
