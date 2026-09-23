@@ -197,19 +197,19 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       if (isVideo) {
         let cdnUrl = null;
 
-        // Tier 1: Try Cloudinary High-Speed Video CDN
+        // Tier 1: Direct Firebase Storage (blazing fast upload to Google Cloud Storage CDN)
         try {
-          cdnUrl = await uploadVideoToCloudinary(fileOrUrl, onProgress);
-        } catch (cErr) {
-          console.warn('[Storage] Cloudinary video upload notice:', cErr?.message || cErr);
+          cdnUrl = await uploadVideoToFirebaseStorage(fileOrUrl, 'resort_videos', onProgress);
+        } catch (fbErr) {
+          console.warn('[Storage] Firebase Storage direct upload notice:', fbErr?.message || fbErr);
         }
 
-        // Tier 2: Try Firebase Storage CDN
-        if (!cdnUrl) {
+        // Tier 2: Cloudinary Video CDN fallback
+        if (!cdnUrl || typeof cdnUrl !== 'string' || !cdnUrl.startsWith('http')) {
           try {
-            cdnUrl = await uploadVideoToFirebaseStorage(fileOrUrl, 'resort_videos', onProgress);
-          } catch (fbErr) {
-            console.warn('[Storage] Firebase Storage video upload notice:', fbErr?.message || fbErr);
+            cdnUrl = await uploadVideoToCloudinary(fileOrUrl, onProgress);
+          } catch (cErr) {
+            console.warn('[Storage] Cloudinary video upload notice:', cErr?.message || cErr);
           }
         }
 
