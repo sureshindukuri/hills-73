@@ -71,7 +71,7 @@ export default function AdminPanel({
   const [celebrationParagraph, setCelebrationParagraph] = useState('');
 
   const [editingRoom, setEditingRoom] = useState(null);
-  const [roomPhotoFile, setRoomPhotoFile] = useState(null);
+  const [roomPhotoFiles, setRoomPhotoFiles] = useState([null, null, null]);
   const [roomFormData, setRoomFormData] = useState({
     name: '',
     subtitle: '',
@@ -83,6 +83,7 @@ export default function AdminPanel({
     capacity: '2 - 6 Guests',
     size: '1,000 sq.ft',
     image: '/assets/hero_resort_villa.png',
+    images: ['/assets/hero_resort_villa.png'],
     features: ['Sandalwood Forest View', 'King Bed', 'Private Deck'],
     description: ''
   });
@@ -273,22 +274,45 @@ export default function AdminPanel({
       // 6. Process pending Room form if name is filled
       let currentRooms = ensureThreeRooms(rooms);
       if (roomFormData.name && roomFormData.name.trim()) {
-        let imageUrl = roomFormData.image || '/assets/hero_resort_villa.png';
-        if (roomPhotoFile) {
-          const roomId = editingRoom ? editingRoom.id : 'room-' + Date.now();
-          const savedMedia = await saveSectionMedia(`room-${roomId}`, roomPhotoFile, {});
-          imageUrl = savedMedia.url || savedMedia.fileName || imageUrl;
+        const roomId = editingRoom ? editingRoom.id : 'room-' + Date.now();
+        let existingImgs = Array.isArray(roomFormData.images) && roomFormData.images.length > 0 
+          ? [...roomFormData.images] 
+          : (roomFormData.image ? [roomFormData.image] : ['/assets/hero_resort_villa.png']);
+        
+        // Upload any attached photo files in the 3 slots
+        const finalImages = [...existingImgs];
+        for (let i = 0; i < 3; i++) {
+          const file = roomPhotoFiles[i];
+          if (file) {
+            const savedMedia = await saveSectionMedia(`room-${roomId}-slot-${i + 1}-${Date.now()}`, file, {
+              title: `${roomFormData.name} Photo ${i + 1}`
+            });
+            const url = savedMedia.url || savedMedia.fileName;
+            if (url) {
+              finalImages[i] = url;
+            }
+          }
         }
 
+        const cleanedImages = finalImages.filter(Boolean);
+        const primaryImage = cleanedImages[0] || '/assets/hero_resort_villa.png';
+
+        const updatedRoomObj = {
+          ...roomFormData,
+          id: roomId,
+          image: primaryImage,
+          images: cleanedImages.length > 0 ? cleanedImages : [primaryImage]
+        };
+
         if (editingRoom) {
-          currentRooms = currentRooms.map(r => r.id === editingRoom.id ? { ...roomFormData, id: editingRoom.id, image: imageUrl } : r);
+          currentRooms = currentRooms.map(r => r.id === editingRoom.id ? updatedRoomObj : r);
         } else {
-          currentRooms.push({ ...roomFormData, id: 'room-' + Date.now(), image: imageUrl });
+          currentRooms.push(updatedRoomObj);
         }
         currentRooms = ensureThreeRooms(currentRooms);
         setRooms(currentRooms);
         setEditingRoom(null);
-        setRoomPhotoFile(null);
+        setRoomPhotoFiles([null, null, null]);
         setRoomFormData({
           name: '',
           subtitle: '',
@@ -300,6 +324,7 @@ export default function AdminPanel({
           capacity: '2 - 6 Guests',
           size: '1,000 sq.ft',
           image: '/assets/hero_resort_villa.png',
+          images: ['/assets/hero_resort_villa.png'],
           features: ['Sandalwood Forest View', 'King Bed', 'Private Deck'],
           description: ''
         });
@@ -2014,19 +2039,206 @@ export default function AdminPanel({
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '16px' }}>
-                  <label className="form-label">Attach Room Photo From Device</label>
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    className="form-input" 
-                    onChange={(e) => setRoomPhotoFile(e.target.files[0])} 
-                  />
-                  {roomPhotoFile && (
-                    <div style={{ marginTop: '6px', fontSize: '0.8rem', color: 'var(--color-emerald)', fontWeight: '600' }}>
-                      📁 Attached Photo: {roomPhotoFile.name}
+                {/* 2 to 3 Images Uploader */}
+                <div style={{
+                  marginBottom: '22px',
+                  backgroundColor: '#FFFFFF',
+                  padding: '18px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border-light)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)', fontSize: '0.95rem', marginBottom: '2px' }}>
+                        📷 Room Photos Gallery (Upload 2 to 3 Images)
+                      </label>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+                        Upload up to 3 high-resolution photos (e.g. 1: Exterior / Cover, 2: Interior Bedroom, 3: Balcony / View). Visitors can slide between photos using arrow marks.
+                      </p>
                     </div>
-                  )}
+
+                    {/* Bulk 2-3 files selector */}
+                    <div>
+                      <label 
+                        htmlFor="room-bulk-photos-input"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          backgroundColor: 'var(--bg-cream)',
+                          border: '1px solid var(--color-gold)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.75rem',
+                          fontWeight: '700',
+                          color: 'var(--color-emerald)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Upload size={13} color="var(--color-gold)" /> Select 2-3 Photos at Once
+                      </label>
+                      <input 
+                        id="room-bulk-photos-input"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []).slice(0, 3);
+                          if (files.length > 0) {
+                            const newFiles = [...roomPhotoFiles];
+                            files.forEach((f, idx) => {
+                              newFiles[idx] = f;
+                            });
+                            setRoomPhotoFiles(newFiles);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3 Photo Slots */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+                    gap: '14px',
+                    marginTop: '12px'
+                  }}>
+                    {[
+                      { slotIdx: 0, label: 'Photo 1 (Exterior / Cover)' },
+                      { slotIdx: 1, label: 'Photo 2 (Bedroom / Interior)' },
+                      { slotIdx: 2, label: 'Photo 3 (Balcony / Garden / View)' }
+                    ].map(({ slotIdx, label }) => {
+                      const attachedFile = roomPhotoFiles[slotIdx];
+                      const existingImgUrl = roomFormData.images && roomFormData.images[slotIdx] ? roomFormData.images[slotIdx] : (slotIdx === 0 ? roomFormData.image : null);
+                      const previewSrc = attachedFile ? URL.createObjectURL(attachedFile) : existingImgUrl;
+
+                      return (
+                        <div 
+                          key={slotIdx}
+                          style={{
+                            border: attachedFile ? '2px solid #28A745' : '1px solid var(--border-light)',
+                            borderRadius: 'var(--radius-sm)',
+                            padding: '12px',
+                            backgroundColor: attachedFile ? '#F0F9F4' : 'var(--bg-cream)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-emerald)' }}>
+                              {label}
+                            </span>
+                            {attachedFile && (
+                              <span style={{ fontSize: '0.65rem', backgroundColor: '#D4EDDA', color: '#155724', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                ✓ Ready
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Image preview box */}
+                          <div style={{
+                            width: '100%',
+                            height: '110px',
+                            backgroundColor: '#0D2116',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            {previewSrc ? (
+                              <img 
+                                src={previewSrc} 
+                                alt={`Slot ${slotIdx + 1}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', textAlign: 'center', padding: '0 8px' }}>
+                                No photo attached yet
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Action controls for slot */}
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: 'auto' }}>
+                            <label
+                              htmlFor={`room-slot-input-${slotIdx}`}
+                              style={{
+                                flex: 1,
+                                textAlign: 'center',
+                                padding: '6px 8px',
+                                backgroundColor: '#FFFFFF',
+                                border: '1px solid var(--color-gold)',
+                                borderRadius: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: '600',
+                                color: 'var(--color-emerald)',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {previewSrc ? 'Change Photo' : '+ Add Photo'}
+                            </label>
+                            <input 
+                              id={`room-slot-input-${slotIdx}`}
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  const updated = [...roomPhotoFiles];
+                                  updated[slotIdx] = file;
+                                  setRoomPhotoFiles(updated);
+                                }
+                              }}
+                            />
+
+                            {(attachedFile || (roomFormData.images && roomFormData.images[slotIdx])) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updatedFiles = [...roomPhotoFiles];
+                                  updatedFiles[slotIdx] = null;
+                                  setRoomPhotoFiles(updatedFiles);
+
+                                  if (roomFormData.images) {
+                                    const updatedImgs = [...roomFormData.images];
+                                    updatedImgs[slotIdx] = null;
+                                    setRoomFormData({
+                                      ...roomFormData,
+                                      images: updatedImgs.filter(Boolean),
+                                      image: updatedImgs.filter(Boolean)[0] || '/assets/hero_resort_villa.png'
+                                    });
+                                  }
+                                }}
+                                style={{
+                                  padding: '6px 8px',
+                                  backgroundColor: 'transparent',
+                                  border: '1px solid #FF6B6B',
+                                  borderRadius: '4px',
+                                  color: '#FF6B6B',
+                                  fontSize: '0.72rem',
+                                  cursor: 'pointer'
+                                }}
+                                title="Remove photo from this slot"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+
+                          {attachedFile && (
+                            <span style={{ fontSize: '0.68rem', color: '#155724', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              📁 {attachedFile.name}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -2048,6 +2260,7 @@ export default function AdminPanel({
                       type="button" 
                       onClick={() => {
                         setEditingRoom(null);
+                        setRoomPhotoFiles([null, null, null]);
                         setRoomFormData({
                           name: '',
                           subtitle: '',
@@ -2059,6 +2272,7 @@ export default function AdminPanel({
                           capacity: '2 - 6 Guests',
                           size: '1,000 sq.ft',
                           image: '/assets/hero_resort_villa.png',
+                          images: ['/assets/hero_resort_villa.png'],
                           features: ['Sandalwood Forest View', 'King Bed', 'Private Deck'],
                           description: ''
                         });
@@ -2074,40 +2288,73 @@ export default function AdminPanel({
 
               {/* Room Cards */}
               <div style={{ display: 'grid', gap: '16px' }}>
-                {rooms.map(room => (
-                  <div key={room.id} style={{ display: 'flex', gap: '20px', padding: '18px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', backgroundColor: '#FFFFFF', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <img src={room.image} alt={room.name} style={{ width: '130px', height: '95px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
-                    
-                    <div style={{ flexGrow: 1, minWidth: '220px' }}>
-                      <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--color-emerald)' }}>{room.name}</h4>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{room.subtitle} — {room.capacity}</p>
-                      <div style={{ fontWeight: '700', color: 'var(--color-gold)', marginTop: '4px' }}>
-                        ₹{room.price?.toLocaleString('en-IN')} / night <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '400' }}>(Base {room.baseGuests || 2}G + ₹{room.extraGuestPrice || 800}/extra)</span>
+                {rooms.map(room => {
+                  const roomImgs = (room.images && room.images.length > 0) ? room.images : [room.image || '/assets/hero_resort_villa.png'];
+                  return (
+                    <div key={room.id} style={{ display: 'flex', gap: '20px', padding: '18px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', backgroundColor: '#FFFFFF', alignItems: 'center', flexWrap: 'wrap' }}>
+                      
+                      {/* Photo previews list */}
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {roomImgs.slice(0, 3).map((imgUrl, i) => (
+                          <img 
+                            key={i} 
+                            src={imgUrl} 
+                            alt={`${room.name} ${i + 1}`} 
+                            style={{ 
+                              width: roomImgs.length > 1 ? '60px' : '110px', 
+                              height: '80px', 
+                              objectFit: 'cover', 
+                              borderRadius: 'var(--radius-sm)',
+                              border: i === 0 ? '2px solid var(--color-gold)' : '1px solid var(--border-light)'
+                            }} 
+                          />
+                        ))}
+                      </div>
+                      
+                      <div style={{ flexGrow: 1, minWidth: '220px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--color-emerald)', margin: 0 }}>
+                            {room.name}
+                          </h4>
+                          <span style={{ fontSize: '0.7rem', backgroundColor: 'var(--bg-cream)', border: '1px solid var(--color-gold)', color: 'var(--color-emerald)', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                            📷 {roomImgs.length} {roomImgs.length === 1 ? 'Photo' : 'Photos'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>{room.subtitle} — {room.capacity}</p>
+                        <div style={{ fontWeight: '700', color: 'var(--color-gold)', marginTop: '4px' }}>
+                          ₹{room.price?.toLocaleString('en-IN')} / night <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '400' }}>(Base {room.baseGuests || 2}G + ₹{room.extraGuestPrice || 800}/extra)</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button 
+                          onClick={() => {
+                            setEditingRoom(room);
+                            const rImgs = (room.images && room.images.length > 0) ? room.images : [room.image || '/assets/hero_resort_villa.png'];
+                            setRoomFormData({ 
+                              ...room,
+                              images: rImgs,
+                              image: rImgs[0]
+                            });
+                            setRoomPhotoFiles([null, null, null]);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="btn-outline-dark"
+                          style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                        >
+                          <Edit3 size={14} /> Edit
+                        </button>
+
+                        <button 
+                          onClick={() => handleDeleteRoom(room.id)}
+                          style={{ padding: '8px 14px', fontSize: '0.8rem', backgroundColor: 'transparent', color: '#FF6B6B', border: '1px solid #FF6B6B', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
                       </div>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button 
-                        onClick={() => {
-                          setEditingRoom(room);
-                          setRoomFormData({ ...room });
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="btn-outline-dark"
-                        style={{ padding: '8px 14px', fontSize: '0.8rem' }}
-                      >
-                        <Edit3 size={14} /> Edit
-                      </button>
-
-                      <button 
-                        onClick={() => handleDeleteRoom(room.id)}
-                        style={{ padding: '8px 14px', fontSize: '0.8rem', backgroundColor: 'transparent', color: '#FF6B6B', border: '1px solid #FF6B6B', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
-                      >
-                        <Trash2 size={14} /> Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

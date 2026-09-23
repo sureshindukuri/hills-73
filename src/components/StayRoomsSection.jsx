@@ -15,8 +15,7 @@ const STAY_HUTS_PHOTOS = [
 
 export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking }) {
   const [selectedRoomModal, setSelectedRoomModal] = useState(null);
-  const [miniMasterImgIdx, setMiniMasterImgIdx] = useState(0);
-  const [stayHutsImgIdx, setStayHutsImgIdx] = useState(0);
+  const [roomImgIndexes, setRoomImgIndexes] = useState({});
 
   const displayRooms = useMemo(() => {
     return ensureThreeRooms(rooms);
@@ -51,32 +50,40 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
             const isMiniMaster = room.id === 'room-1' || room.name === 'Mini Family Master Room' || index === 0;
             const isStayHuts = room.id === 'room-3' || room.name === 'Stay Huts' || index === 2;
 
-            const roomPhotos = isMiniMaster 
-              ? MINI_MASTER_PHOTOS 
-              : isStayHuts 
-                ? STAY_HUTS_PHOTOS 
-                : ((room.images && room.images.length > 0) ? room.images : [room.image]);
+            const roomPhotos = (room.images && room.images.length > 0) 
+              ? room.images 
+              : (isMiniMaster 
+                  ? MINI_MASTER_PHOTOS 
+                  : (isStayHuts 
+                      ? STAY_HUTS_PHOTOS 
+                      : [room.image || '/assets/hero_resort_villa.png']));
 
-            const activeIdx = isMiniMaster ? miniMasterImgIdx : (isStayHuts ? stayHutsImgIdx : 0);
+            const activeIdx = roomImgIndexes[room.id] || 0;
             const currentImg = roomPhotos[activeIdx % roomPhotos.length];
             const hasMultiPhotos = roomPhotos.length > 1;
 
             const handlePrev = (e) => {
               e.stopPropagation();
-              if (isMiniMaster) setMiniMasterImgIdx(prev => (prev === 0 ? roomPhotos.length - 1 : prev - 1));
-              else if (isStayHuts) setStayHutsImgIdx(prev => (prev === 0 ? roomPhotos.length - 1 : prev - 1));
+              setRoomImgIndexes(prev => ({
+                ...prev,
+                [room.id]: ((prev[room.id] || 0) === 0 ? roomPhotos.length - 1 : (prev[room.id] || 0) - 1)
+              }));
             };
 
             const handleNext = (e) => {
               e.stopPropagation();
-              if (isMiniMaster) setMiniMasterImgIdx(prev => (prev + 1) % roomPhotos.length);
-              else if (isStayHuts) setStayHutsImgIdx(prev => (prev + 1) % roomPhotos.length);
+              setRoomImgIndexes(prev => ({
+                ...prev,
+                [room.id]: ((prev[room.id] || 0) + 1) % roomPhotos.length
+              }));
             };
 
             const handleSelectDot = (e, idx) => {
               e.stopPropagation();
-              if (isMiniMaster) setMiniMasterImgIdx(idx);
-              else if (isStayHuts) setStayHutsImgIdx(idx);
+              setRoomImgIndexes(prev => ({
+                ...prev,
+                [room.id]: idx
+              }));
             };
 
             return (
@@ -322,21 +329,29 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
               <X size={20} />
             </button>
 
-            <img 
-              src={(selectedRoomModal.id === 'room-1' || selectedRoomModal.name === 'Mini Family Master Room') 
-                ? MINI_MASTER_PHOTOS[miniMasterImgIdx % MINI_MASTER_PHOTOS.length] 
-                : (selectedRoomModal.id === 'room-3' || selectedRoomModal.name === 'Stay Huts')
-                  ? STAY_HUTS_PHOTOS[stayHutsImgIdx % STAY_HUTS_PHOTOS.length]
-                  : selectedRoomModal.image} 
-              alt={selectedRoomModal.name}
-              style={{
-                width: '100%',
-                height: 'clamp(180px, 35vw, 280px)',
-                objectFit: 'cover',
-                borderRadius: 'var(--radius-sm)',
-                marginBottom: '18px'
-              }}
-            />
+            {(() => {
+              const modalPhotos = (selectedRoomModal.images && selectedRoomModal.images.length > 0)
+                ? selectedRoomModal.images
+                : ((selectedRoomModal.id === 'room-1' || selectedRoomModal.name === 'Mini Family Master Room')
+                    ? MINI_MASTER_PHOTOS
+                    : ((selectedRoomModal.id === 'room-3' || selectedRoomModal.name === 'Stay Huts')
+                        ? STAY_HUTS_PHOTOS
+                        : [selectedRoomModal.image || '/assets/hero_resort_villa.png']));
+              const modalIdx = roomImgIndexes[selectedRoomModal.id] || 0;
+              return (
+                <img 
+                  src={modalPhotos[modalIdx % modalPhotos.length]} 
+                  alt={selectedRoomModal.name}
+                  style={{
+                    width: '100%',
+                    height: 'clamp(180px, 35vw, 280px)',
+                    objectFit: 'cover',
+                    borderRadius: 'var(--radius-sm)',
+                    marginBottom: '18px'
+                  }}
+                />
+              );
+            })()}
 
             <span className="badge-gold" style={{ fontSize: '0.675rem' }}>{selectedRoomModal.subtitle}</span>
 

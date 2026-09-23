@@ -27,14 +27,19 @@ const ensureThreeRooms = (incomingRooms) => {
   if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) return DEFAULT_ROOMS;
   return DEFAULT_ROOMS.map((defRoom, index) => {
     const existing = incomingRooms.find(r => r && (r.id === defRoom.id || r.id === `room-${index + 1}`)) || incomingRooms[index] || {};
-    const isCustomized = defRoom.id === 'room-1' || defRoom.id === 'room-3' || index === 0 || index === 2;
+    const hasCustomImages = Array.isArray(existing.images) && existing.images.length > 0;
+    const hasCustomImage = Boolean(existing.image);
+    const roomImages = hasCustomImages 
+      ? existing.images 
+      : (hasCustomImage ? [existing.image] : (defRoom.images || [defRoom.image]));
+
     return {
       ...defRoom,
       ...existing,
       id: defRoom.id,
-      name: defRoom.name,
-      image: isCustomized ? defRoom.image : (existing.image || defRoom.image),
-      images: isCustomized ? defRoom.images : (existing.images || [existing.image || defRoom.image])
+      name: existing.name || defRoom.name,
+      image: roomImages[0] || defRoom.image,
+      images: roomImages
     };
   });
 };
