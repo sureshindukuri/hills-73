@@ -53,9 +53,10 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
   const nights = calculateNights();
   const roomBasePrice = activeRoom.price || 4999;
   const baseCapacity = activeRoom.baseGuests || 2;
-  const extraGuestPrice = activeRoom.extraGuestPrice || 800;
+  const allowExtraGuests = activeRoom.allowExtraGuests !== false;
+  const extraGuestPrice = allowExtraGuests ? (Number(activeRoom.extraGuestPrice) || 0) : 0;
   
-  const extraGuestsCount = Math.max(0, Number(guests) - baseCapacity);
+  const extraGuestsCount = allowExtraGuests ? Math.max(0, Number(guests) - baseCapacity) : 0;
   const baseRoomTotal = roomBasePrice * nights;
   const extraGuestsTotal = extraGuestsCount * extraGuestPrice * nights;
   const subtotal = baseRoomTotal + extraGuestsTotal;
@@ -544,11 +545,14 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
                   value={chosenRoomId} 
                   onChange={(e) => setChosenRoomId(e.target.value)}
                 >
-                  {rooms.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.name} — ₹{r.price?.toLocaleString('en-IN')}/night (Base: {r.baseGuests || 2} Guests)
-                    </option>
-                  ))}
+                  {rooms.map(r => {
+                    const isAvail = r.isAvailable !== false;
+                    return (
+                      <option key={r.id} value={r.id} disabled={!isAvail}>
+                        {r.name} {!isAvail ? '— [SOLD OUT / BOOKED]' : `— ₹${r.price?.toLocaleString('en-IN')}/night (Base: ${r.baseGuests || 2} Guests)`}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -585,7 +589,7 @@ export default function BookingModal({ isOpen, onClose, selectedRoom, rooms = []
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8, 10].map(num => (
                       <option key={num} value={num}>
-                        {num} Guest{num > 1 ? 's' : ''} {num > baseCapacity ? `(+₹${extraGuestPrice}/extra)` : ''}
+                        {num} Guest{num > 1 ? 's' : ''} {allowExtraGuests && num > baseCapacity && extraGuestPrice > 0 ? `(+₹${extraGuestPrice}/extra)` : ''}
                       </option>
                     ))}
                   </select>

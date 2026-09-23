@@ -47,6 +47,7 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
           gap: '24px'
         }}>
           {displayRooms.map((room, index) => {
+            const isRoomAvailable = room.isAvailable !== false;
             const isMiniMaster = room.id === 'room-1' || room.name === 'Mini Family Master Room' || index === 0;
             const isStayHuts = room.id === 'room-3' || room.name === 'Stay Huts' || index === 2;
 
@@ -194,6 +195,30 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                     </>
                   )}
 
+                  {/* Sold Out / Unavailable Banner / Badge */}
+                  {!isRoomAvailable && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '14px',
+                      left: '14px',
+                      backgroundColor: 'rgba(198, 40, 40, 0.95)',
+                      color: '#FFFFFF',
+                      padding: '5px 14px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      letterSpacing: '0.06em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      zIndex: 8,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                      textTransform: 'uppercase'
+                    }}>
+                      ✕ BOOKED / UNAVAILABLE
+                    </div>
+                  )}
+
                   <div style={{
                     position: 'absolute',
                     top: '14px',
@@ -216,7 +241,7 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                 </div>
 
               {/* Room Details */}
-              <div style={{ padding: '22px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '22px', flexGrow: 1, display: 'flex', flexDirection: 'column', opacity: isRoomAvailable ? 1 : 0.75 }}>
                 <span className="badge-gold" style={{ width: 'fit-content', marginBottom: '8px', fontSize: '0.675rem' }}>
                   {room.subtitle}
                 </span>
@@ -224,9 +249,12 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                 <h3 style={{
                   fontFamily: 'var(--font-serif)',
                   fontSize: '1.55rem',
-                  color: 'var(--text-main)',
+                  color: isRoomAvailable ? 'var(--text-main)' : '#888888',
                   fontWeight: '600',
-                  marginBottom: '8px'
+                  marginBottom: '8px',
+                  textDecoration: !isRoomAvailable ? 'line-through' : 'none',
+                  textDecorationColor: '#D32F2F',
+                  textDecorationThickness: '2px'
                 }}>
                   {room.name}
                 </h3>
@@ -236,7 +264,7 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                 </p>
 
                 {/* Amenities Badges */}
-                <div style={{ display: 'flex', gap: '14px', marginBottom: '18px', fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: '600' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', marginBottom: '18px', fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: '600' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <Users size={15} color="#B38B59" />
                     {room.capacity}
@@ -245,6 +273,11 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                     <Maximize size={15} color="#B38B59" />
                     {room.size}
                   </div>
+                  {room.allowExtraGuests !== false && Number(room.extraGuestPrice) > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#B38B59', fontSize: '0.75rem', fontWeight: '500' }}>
+                      +₹{Number(room.extraGuestPrice).toLocaleString('en-IN')}/extra guest
+                    </div>
+                  )}
                 </div>
 
                 {/* Price & Book CTA */}
@@ -261,7 +294,15 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase' }}>
                       STARTING FROM
                     </span>
-                    <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.45rem', color: 'var(--color-emerald)', fontWeight: '700' }}>
+                    <span style={{ 
+                      fontFamily: 'var(--font-serif)', 
+                      fontSize: '1.45rem', 
+                      color: isRoomAvailable ? 'var(--color-emerald)' : '#888888', 
+                      fontWeight: '700',
+                      textDecoration: !isRoomAvailable ? 'line-through' : 'none',
+                      textDecorationColor: '#D32F2F',
+                      textDecorationThickness: '2px'
+                    }}>
                       ₹{room.price?.toLocaleString('en-IN')}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}> / night</span>
@@ -276,11 +317,20 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
                       Details
                     </button>
                     <button 
-                      onClick={() => onSelectRoomForBooking(room)} 
-                      className="btn-gold"
-                      style={{ padding: '8px 14px', fontSize: '0.725rem' }}
+                      onClick={() => isRoomAvailable && onSelectRoomForBooking(room)} 
+                      disabled={!isRoomAvailable}
+                      className={isRoomAvailable ? "btn-gold" : "btn-outline-dark"}
+                      style={{ 
+                        padding: '8px 14px', 
+                        fontSize: '0.725rem',
+                        opacity: isRoomAvailable ? 1 : 0.6,
+                        cursor: isRoomAvailable ? 'pointer' : 'not-allowed',
+                        backgroundColor: !isRoomAvailable ? '#333333' : undefined,
+                        color: !isRoomAvailable ? '#FFFFFF' : undefined,
+                        borderColor: !isRoomAvailable ? '#555555' : undefined
+                      }}
                     >
-                      Book Now
+                      {isRoomAvailable ? "Book Now" : "Booked (Sold Out)"}
                     </button>
                   </div>
                 </div>
@@ -295,119 +345,176 @@ export default function StayRoomsSection({ rooms = [], onSelectRoomForBooking })
       </div>
 
       {/* Room Details Modal */}
-      {selectedRoomModal && (
-        <div className="modal-overlay" onClick={() => setSelectedRoomModal(null)}>
-          <div 
-            className="modal-content" 
-            onClick={(e) => e.stopPropagation()} 
-            style={{ 
-              maxWidth: '680px', 
-              width: '95%',
-              padding: 'clamp(18px, 4vw, 32px)', 
-              maxHeight: '90vh' 
-            }}
-          >
-            <button 
-              onClick={() => setSelectedRoomModal(null)}
-              aria-label="Close dialog"
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'rgba(0,0,0,0.06)',
-                border: 'none',
-                borderRadius: '50%',
-                width: '36px',
-                height: '36px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-main)'
+      {selectedRoomModal && (() => {
+        const isModalRoomAvailable = selectedRoomModal.isAvailable !== false;
+        return (
+          <div className="modal-overlay" onClick={() => setSelectedRoomModal(null)}>
+            <div 
+              className="modal-content" 
+              onClick={(e) => e.stopPropagation()} 
+              style={{ 
+                maxWidth: '680px', 
+                width: '95%',
+                padding: 'clamp(18px, 4vw, 32px)', 
+                maxHeight: '90vh' 
               }}
             >
-              <X size={20} />
-            </button>
+              <button 
+                onClick={() => setSelectedRoomModal(null)}
+                aria-label="Close dialog"
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'rgba(0,0,0,0.06)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-main)'
+                }}
+              >
+                <X size={20} />
+              </button>
 
-            {(() => {
-              const modalPhotos = (selectedRoomModal.images && selectedRoomModal.images.length > 0)
-                ? selectedRoomModal.images
-                : ((selectedRoomModal.id === 'room-1' || selectedRoomModal.name === 'Mini Family Master Room')
-                    ? MINI_MASTER_PHOTOS
-                    : ((selectedRoomModal.id === 'room-3' || selectedRoomModal.name === 'Stay Huts')
-                        ? STAY_HUTS_PHOTOS
-                        : [selectedRoomModal.image || '/assets/hero_resort_villa.png']));
-              const modalIdx = roomImgIndexes[selectedRoomModal.id] || 0;
-              return (
-                <img 
-                  src={modalPhotos[modalIdx % modalPhotos.length]} 
-                  alt={selectedRoomModal.name}
-                  style={{
-                    width: '100%',
-                    height: 'clamp(180px, 35vw, 280px)',
-                    objectFit: 'cover',
-                    borderRadius: 'var(--radius-sm)',
-                    marginBottom: '18px'
-                  }}
-                />
-              );
-            })()}
+              {(() => {
+                const modalPhotos = (selectedRoomModal.images && selectedRoomModal.images.length > 0)
+                  ? selectedRoomModal.images
+                  : ((selectedRoomModal.id === 'room-1' || selectedRoomModal.name === 'Mini Family Master Room')
+                      ? MINI_MASTER_PHOTOS
+                      : ((selectedRoomModal.id === 'room-3' || selectedRoomModal.name === 'Stay Huts')
+                          ? STAY_HUTS_PHOTOS
+                          : [selectedRoomModal.image || '/assets/hero_resort_villa.png']));
+                const modalIdx = roomImgIndexes[selectedRoomModal.id] || 0;
+                return (
+                  <div style={{ position: 'relative' }}>
+                    <img 
+                      src={modalPhotos[modalIdx % modalPhotos.length]} 
+                      alt={selectedRoomModal.name}
+                      style={{
+                        width: '100%',
+                        height: 'clamp(180px, 35vw, 280px)',
+                        objectFit: 'cover',
+                        borderRadius: 'var(--radius-sm)',
+                        marginBottom: '18px'
+                      }}
+                    />
+                    {!isModalRoomAvailable && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '14px',
+                        left: '14px',
+                        backgroundColor: 'rgba(198, 40, 40, 0.95)',
+                        color: '#FFFFFF',
+                        padding: '6px 16px',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '0.8rem',
+                        fontWeight: '800',
+                        letterSpacing: '0.06em',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                        textTransform: 'uppercase'
+                      }}>
+                        ✕ Currently Booked / Unavailable
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
-            <span className="badge-gold" style={{ fontSize: '0.675rem' }}>{selectedRoomModal.subtitle}</span>
+              <span className="badge-gold" style={{ fontSize: '0.675rem' }}>{selectedRoomModal.subtitle}</span>
 
-            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.5rem, 3.5vw, 2rem)', margin: '8px 0', lineHeight: 1.15 }}>
-              {selectedRoomModal.name}
-            </h3>
+              <h3 style={{ 
+                fontFamily: 'var(--font-serif)', 
+                fontSize: 'clamp(1.5rem, 3.5vw, 2rem)', 
+                margin: '8px 0', 
+                lineHeight: 1.15,
+                textDecoration: !isModalRoomAvailable ? 'line-through' : 'none',
+                textDecorationColor: '#D32F2F',
+                textDecorationThickness: '2px'
+              }}>
+                {selectedRoomModal.name}
+              </h3>
 
-            <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontSize: '0.9rem', marginBottom: '20px' }}>
-              {selectedRoomModal.description}
-            </p>
+              <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontSize: '0.9rem', marginBottom: '20px' }}>
+                {selectedRoomModal.description}
+              </p>
 
-            <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', marginBottom: '10px', color: 'var(--color-emerald)' }}>
-              Premium Amenities Included
-            </h4>
+              <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', marginBottom: '10px', color: 'var(--color-emerald)' }}>
+                Premium Amenities Included
+              </h4>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '22px' }}>
-              {selectedRoomModal.features?.map((feat, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
-                  <Check size={15} color="#B38B59" style={{ flexShrink: 0 }} />
-                  <span>{feat}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ 
-              display: 'flex', 
-              flexWrap: 'wrap',
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              gap: '12px',
-              paddingTop: '16px', 
-              borderTop: '1px solid var(--border-light)' 
-            }}>
-              <div>
-                <span style={{ fontSize: '1.5rem', fontFamily: 'var(--font-serif)', fontWeight: '700', color: 'var(--color-emerald)' }}>
-                  ₹{selectedRoomModal.price?.toLocaleString('en-IN')}
-                </span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> / night (Excl. Tax)</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '22px' }}>
+                {selectedRoomModal.features?.map((feat, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                    <Check size={15} color="#B38B59" style={{ flexShrink: 0 }} />
+                    <span>{feat}</span>
+                  </div>
+                ))}
               </div>
 
-              <button
-                onClick={() => {
-                  const room = selectedRoomModal;
-                  setSelectedRoomModal(null);
-                  onSelectRoomForBooking(room);
-                }}
-                className="btn-gold"
-                style={{ padding: '10px 20px', fontSize: '0.85rem' }}
-              >
-                Proceed to Reserve <ArrowRight size={15} />
-              </button>
-            </div>
+              <div style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap',
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                gap: '12px',
+                paddingTop: '16px', 
+                borderTop: '1px solid var(--border-light)' 
+              }}>
+                <div>
+                  <span style={{ 
+                    fontSize: '1.5rem', 
+                    fontFamily: 'var(--font-serif)', 
+                    fontWeight: '700', 
+                    color: isModalRoomAvailable ? 'var(--color-emerald)' : '#888888',
+                    textDecoration: !isModalRoomAvailable ? 'line-through' : 'none',
+                    textDecorationColor: '#D32F2F',
+                    textDecorationThickness: '2px'
+                  }}>
+                    ₹{selectedRoomModal.price?.toLocaleString('en-IN')}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}> / night (Excl. Tax)</span>
+                  {selectedRoomModal.allowExtraGuests !== false && Number(selectedRoomModal.extraGuestPrice) > 0 && (
+                    <div style={{ fontSize: '0.75rem', color: '#B38B59', marginTop: '2px' }}>
+                      Extra Guest Surcharge: ₹{Number(selectedRoomModal.extraGuestPrice).toLocaleString('en-IN')}/night
+                    </div>
+                  )}
+                </div>
 
+                <button
+                  onClick={() => {
+                    if (!isModalRoomAvailable) return;
+                    const room = selectedRoomModal;
+                    setSelectedRoomModal(null);
+                    onSelectRoomForBooking(room);
+                  }}
+                  disabled={!isModalRoomAvailable}
+                  className={isModalRoomAvailable ? "btn-gold" : "btn-outline-dark"}
+                  style={{ 
+                    padding: '10px 20px', 
+                    fontSize: '0.85rem',
+                    opacity: isModalRoomAvailable ? 1 : 0.6,
+                    cursor: isModalRoomAvailable ? 'pointer' : 'not-allowed',
+                    backgroundColor: !isModalRoomAvailable ? '#333333' : undefined,
+                    color: !isModalRoomAvailable ? '#FFFFFF' : undefined
+                  }}
+                >
+                  {isModalRoomAvailable ? (
+                    <>Proceed to Reserve <ArrowRight size={15} /></>
+                  ) : (
+                    'Sold Out / Fully Booked'
+                  )}
+                </button>
+              </div>
+
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </section>
   );
 }

@@ -4,7 +4,7 @@ import {
   Video, Home, Calendar, RefreshCw,
   Sparkles, Heart, Phone, RotateCcw, Layers,
   TrendingUp, Users, Clock, BarChart3,
-  Search, MessageSquare, AlertTriangle, UserCheck
+  Search, MessageSquare, AlertTriangle, UserCheck, X
 } from 'lucide-react';
 import { 
   saveMediaItem, getAllGalleryItems, deleteMediaItem,
@@ -77,7 +77,9 @@ export default function AdminPanel({
     subtitle: '',
     price: 4999,
     baseGuests: 2,
+    allowExtraGuests: true,
     extraGuestPrice: 800,
+    isAvailable: true,
     maxGuests: 6,
     rating: 4.9,
     capacity: '2 - 6 Guests',
@@ -280,10 +282,19 @@ export default function AdminPanel({
           imageUrl = savedMedia.url || savedMedia.fileName || imageUrl;
         }
 
+        const roomObj = {
+          ...roomFormData,
+          id: editingRoom ? editingRoom.id : 'room-' + Date.now(),
+          image: imageUrl,
+          isAvailable: roomFormData.isAvailable !== false,
+          allowExtraGuests: roomFormData.allowExtraGuests !== false,
+          extraGuestPrice: roomFormData.allowExtraGuests === false ? 0 : (Number(roomFormData.extraGuestPrice) || 0)
+        };
+
         if (editingRoom) {
-          currentRooms = currentRooms.map(r => r.id === editingRoom.id ? { ...roomFormData, id: editingRoom.id, image: imageUrl } : r);
+          currentRooms = currentRooms.map(r => r.id === editingRoom.id ? roomObj : r);
         } else {
-          currentRooms.push({ ...roomFormData, id: 'room-' + Date.now(), image: imageUrl });
+          currentRooms.push(roomObj);
         }
         currentRooms = ensureThreeRooms(currentRooms);
         setRooms(currentRooms);
@@ -294,7 +305,9 @@ export default function AdminPanel({
           subtitle: '',
           price: 4999,
           baseGuests: 2,
+          allowExtraGuests: true,
           extraGuestPrice: 800,
+          isAvailable: true,
           maxGuests: 6,
           rating: 4.9,
           capacity: '2 - 6 Guests',
@@ -1994,15 +2007,6 @@ export default function AdminPanel({
                     />
                   </div>
                   <div>
-                    <label className="form-label">Extra Guest Surcharge / Night (₹)</label>
-                    <input 
-                      type="number" 
-                      className="form-input" 
-                      value={roomFormData.extraGuestPrice || 800} 
-                      onChange={(e) => setRoomFormData({ ...roomFormData, extraGuestPrice: Number(e.target.value) })} 
-                    />
-                  </div>
-                  <div>
                     <label className="form-label">Capacity String & Size</label>
                     <input 
                       type="text" 
@@ -2012,6 +2016,114 @@ export default function AdminPanel({
                       onChange={(e) => setRoomFormData({ ...roomFormData, capacity: e.target.value })} 
                     />
                   </div>
+
+                  {/* Room Availability Status Option (Available vs No/Booked) */}
+                  <div>
+                    <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>
+                      Room Availability Status
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setRoomFormData({ ...roomFormData, isAvailable: true })}
+                        style={{
+                          flex: 1,
+                          padding: '9px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: roomFormData.isAvailable !== false ? '2px solid #28A745' : '1px solid var(--border-light)',
+                          backgroundColor: roomFormData.isAvailable !== false ? '#D4EDDA' : '#FFFFFF',
+                          color: roomFormData.isAvailable !== false ? '#155724' : 'var(--text-muted)',
+                          fontWeight: '700',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Check size={14} color="#28A745" /> Available (Yes)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRoomFormData({ ...roomFormData, isAvailable: false })}
+                        style={{
+                          flex: 1,
+                          padding: '9px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: roomFormData.isAvailable === false ? '2px solid #DC3545' : '1px solid var(--border-light)',
+                          backgroundColor: roomFormData.isAvailable === false ? '#F8D7DA' : '#FFFFFF',
+                          color: roomFormData.isAvailable === false ? '#721C24' : 'var(--text-muted)',
+                          fontWeight: '700',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <X size={14} color="#DC3545" /> Unavailable / Booked (No)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Extra Person Charge 2 Options (Available vs Unavailable) */}
+                  <div>
+                    <label className="form-label" style={{ fontWeight: '700', color: 'var(--color-emerald)' }}>
+                      Extra Person Charge Option
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setRoomFormData({ ...roomFormData, allowExtraGuests: true, extraGuestPrice: roomFormData.extraGuestPrice || 800 })}
+                        style={{
+                          flex: 1,
+                          padding: '9px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: roomFormData.allowExtraGuests !== false ? '2px solid #28A745' : '1px solid var(--border-light)',
+                          backgroundColor: roomFormData.allowExtraGuests !== false ? '#D4EDDA' : '#FFFFFF',
+                          color: roomFormData.allowExtraGuests !== false ? '#155724' : 'var(--text-muted)',
+                          fontWeight: '700',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✓ Available
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRoomFormData({ ...roomFormData, allowExtraGuests: false, extraGuestPrice: 0 })}
+                        style={{
+                          flex: 1,
+                          padding: '9px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: roomFormData.allowExtraGuests === false ? '2px solid #DC3545' : '1px solid var(--border-light)',
+                          backgroundColor: roomFormData.allowExtraGuests === false ? '#F8D7DA' : '#FFFFFF',
+                          color: roomFormData.allowExtraGuests === false ? '#721C24' : 'var(--text-muted)',
+                          fontWeight: '700',
+                          fontSize: '0.82rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✕ Unavailable
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Price input only shown if Extra Person is Available */}
+                  {roomFormData.allowExtraGuests !== false && (
+                    <div>
+                      <label className="form-label">Extra Guest Surcharge / Night (₹)</label>
+                      <input 
+                        type="number" 
+                        placeholder="e.g. 800"
+                        className="form-input" 
+                        value={roomFormData.extraGuestPrice || ''} 
+                        onChange={(e) => setRoomFormData({ ...roomFormData, extraGuestPrice: Number(e.target.value) })} 
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ marginBottom: '16px' }}>
@@ -2053,7 +2165,9 @@ export default function AdminPanel({
                           subtitle: '',
                           price: 4999,
                           baseGuests: 2,
+                          allowExtraGuests: true,
                           extraGuestPrice: 800,
+                          isAvailable: true,
                           maxGuests: 6,
                           rating: 4.9,
                           capacity: '2 - 6 Guests',
@@ -2075,22 +2189,76 @@ export default function AdminPanel({
               {/* Room Cards */}
               <div style={{ display: 'grid', gap: '16px' }}>
                 {rooms.map(room => (
-                  <div key={room.id} style={{ display: 'flex', gap: '20px', padding: '18px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', backgroundColor: '#FFFFFF', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <img src={room.image} alt={room.name} style={{ width: '130px', height: '95px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
+                  <div key={room.id} style={{ display: 'flex', gap: '20px', padding: '18px', border: room.isAvailable === false ? '1px solid #DC3545' : '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', backgroundColor: room.isAvailable === false ? '#FFF8F8' : '#FFFFFF', alignItems: 'center', flexWrap: 'wrap', position: 'relative' }}>
+                    <div style={{ position: 'relative' }}>
+                      <img src={room.image} alt={room.name} style={{ width: '130px', height: '95px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', filter: room.isAvailable === false ? 'grayscale(0.5)' : 'none' }} />
+                      {room.isAvailable === false && (
+                        <span style={{ position: 'absolute', top: '6px', left: '6px', backgroundColor: '#DC3545', color: '#FFF', fontSize: '0.65rem', fontWeight: '700', padding: '2px 6px', borderRadius: '3px' }}>
+                          SOLD OUT
+                        </span>
+                      )}
+                    </div>
                     
                     <div style={{ flexGrow: 1, minWidth: '220px' }}>
-                      <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--color-emerald)' }}>{room.name}</h4>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{room.subtitle} — {room.capacity}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.3rem', color: 'var(--color-emerald)', margin: 0, textDecoration: room.isAvailable === false ? 'line-through' : 'none' }}>
+                          {room.name}
+                        </h4>
+                        {room.isAvailable === false ? (
+                          <span style={{ fontSize: '0.7rem', backgroundColor: '#F8D7DA', border: '1px solid #F5C6CB', color: '#721C24', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                            ✕ Marked Booked / Unavailable
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', backgroundColor: '#D4EDDA', border: '1px solid #C3E6CB', color: '#155724', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                            ✓ Available for Booking
+                          </span>
+                        )}
+                      </div>
+                      
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>{room.subtitle} — {room.capacity}</p>
+                      
                       <div style={{ fontWeight: '700', color: 'var(--color-gold)', marginTop: '4px' }}>
-                        ₹{room.price?.toLocaleString('en-IN')} / night <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '400' }}>(Base {room.baseGuests || 2}G + ₹{room.extraGuestPrice || 800}/extra)</span>
+                        ₹{room.price?.toLocaleString('en-IN')} / night 
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '400', marginLeft: '6px' }}>
+                          (Base {room.baseGuests || 2} Guests {room.allowExtraGuests !== false && Number(room.extraGuestPrice) > 0 ? `+ ₹${room.extraGuestPrice}/extra` : '• No extra guests'})
+                        </span>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      {/* Quick 1-Click Toggle Availability */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = rooms.map(r => r.id === room.id ? { ...r, isAvailable: r.isAvailable === false ? true : false } : r);
+                          setRooms(updated);
+                          saveStoredRooms(updated);
+                          if (onUpdateRooms) onUpdateRooms(updated);
+                        }}
+                        style={{
+                          padding: '7px 12px',
+                          fontSize: '0.75rem',
+                          fontWeight: '700',
+                          borderRadius: 'var(--radius-sm)',
+                          border: room.isAvailable === false ? '1px solid #28A745' : '1px solid #DC3545',
+                          backgroundColor: room.isAvailable === false ? '#D4EDDA' : '#F8D7DA',
+                          color: room.isAvailable === false ? '#155724' : '#721C24',
+                          cursor: 'pointer'
+                        }}
+                        title="Quickly switch status between Available and Booked"
+                      >
+                        {room.isAvailable === false ? '✓ Mark Available' : '✕ Mark Booked'}
+                      </button>
+
                       <button 
                         onClick={() => {
                           setEditingRoom(room);
-                          setRoomFormData({ ...room });
+                          setRoomFormData({ 
+                            ...room,
+                            isAvailable: room.isAvailable !== false,
+                            allowExtraGuests: room.allowExtraGuests !== false && Number(room.extraGuestPrice) > 0,
+                            extraGuestPrice: room.extraGuestPrice || 800
+                          });
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                         className="btn-outline-dark"

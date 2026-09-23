@@ -24,7 +24,13 @@ import { subscribeToCloudUpdates } from './utils/cloudSync';
 import { subscribeToFirebaseLiveUpdates, getFirebaseLiveState } from './firebase/firestoreSync';
 
 const ensureThreeRooms = (incomingRooms) => {
-  if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) return DEFAULT_ROOMS;
+  if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) {
+    return DEFAULT_ROOMS.map(r => ({
+      ...r,
+      isAvailable: r.isAvailable !== false,
+      allowExtraGuests: r.allowExtraGuests !== false
+    }));
+  }
   return DEFAULT_ROOMS.map((defRoom, index) => {
     const existing = incomingRooms.find(r => r && (r.id === defRoom.id || r.id === `room-${index + 1}`)) || incomingRooms[index] || {};
     const hasCustomImages = Array.isArray(existing.images) && existing.images.length > 0;
@@ -39,7 +45,10 @@ const ensureThreeRooms = (incomingRooms) => {
       id: defRoom.id,
       name: existing.name || defRoom.name,
       image: roomImages[0] || defRoom.image,
-      images: roomImages
+      images: roomImages,
+      isAvailable: existing.isAvailable !== false,
+      allowExtraGuests: existing.allowExtraGuests !== false,
+      extraGuestPrice: existing.allowExtraGuests === false ? 0 : (existing.extraGuestPrice ?? defRoom.extraGuestPrice)
     };
   });
 };

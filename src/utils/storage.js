@@ -693,7 +693,9 @@ export const DEFAULT_ROOMS = [
     subtitle: '73 Acres Forest Facing Luxury Suite',
     price: 4999,
     baseGuests: 2,
+    allowExtraGuests: true,
     extraGuestPrice: 800,
+    isAvailable: true,
     maxGuests: 6,
     rating: 4.9,
     capacity: '2 - 6 Guests',
@@ -713,7 +715,9 @@ export const DEFAULT_ROOMS = [
     subtitle: 'Panoramas of Yerravaram Hills',
     price: 3499,
     baseGuests: 2,
+    allowExtraGuests: true,
     extraGuestPrice: 600,
+    isAvailable: true,
     maxGuests: 4,
     rating: 4.8,
     capacity: '2 - 4 Guests',
@@ -728,7 +732,9 @@ export const DEFAULT_ROOMS = [
     subtitle: 'Family & Group Executive Estate',
     price: 8999,
     baseGuests: 4,
+    allowExtraGuests: true,
     extraGuestPrice: 1000,
+    isAvailable: true,
     maxGuests: 10,
     rating: 5.0,
     capacity: '4 - 10 Guests',
@@ -744,7 +750,13 @@ export const DEFAULT_ROOMS = [
 ];
 
 export function ensureThreeRooms(incomingRooms) {
-  if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) return DEFAULT_ROOMS;
+  if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) {
+    return DEFAULT_ROOMS.map(r => ({
+      ...r,
+      isAvailable: r.isAvailable !== false,
+      allowExtraGuests: r.allowExtraGuests !== false
+    }));
+  }
   return DEFAULT_ROOMS.map((defRoom, index) => {
     const existing = incomingRooms.find(r => r && (r.id === defRoom.id || r.id === `room-${index + 1}`)) || incomingRooms[index] || {};
     const hasCustomImages = Array.isArray(existing.images) && existing.images.length > 0;
@@ -759,7 +771,10 @@ export function ensureThreeRooms(incomingRooms) {
       id: defRoom.id,
       name: existing.name || defRoom.name,
       image: roomImages[0] || defRoom.image,
-      images: roomImages
+      images: roomImages,
+      isAvailable: existing.isAvailable !== false,
+      allowExtraGuests: existing.allowExtraGuests !== false,
+      extraGuestPrice: existing.allowExtraGuests === false ? 0 : (existing.extraGuestPrice ?? defRoom.extraGuestPrice)
     };
   });
 }
