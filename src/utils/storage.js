@@ -1,6 +1,7 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
-import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, readFileAsDataUrl, compressImageToDataUrl } from '../firebase/firestoreSync';
+import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, uploadVideoToFirebaseStorage, readFileAsDataUrl, compressImageToDataUrl } from '../firebase/firestoreSync';
 import { saveVideoToFirestore } from '../firebase/videoStreamService';
+import { uploadVideoToCloudinary } from '../cloudinary/cloudinaryService';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -194,31 +195,65 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       fileName = fileOrUrl.name || 'uploaded_media';
       
       if (isVideo) {
-        // Direct parallel upload to Firestore chunks with live progress (takes ~1-2s for 20MB)
-        let chunkMeta = null;
+        let cdnUrl = null;
+
+        // Tier 1: Try Cloudinary High-Speed Video CDN
         try {
-          chunkMeta = await saveVideoToFirestore(fileOrUrl, sectionKey, onProgress);
-        } catch (chunkErr) {
-          console.warn('[Storage] saveVideoToFirestore chunk notice:', chunkErr);
+          cdnUrl = await uploadVideoToCloudinary(fileOrUrl, onProgress);
+        } catch (cErr) {
+          console.warn('[Storage] Cloudinary video upload notice:', cErr?.message || cErr);
         }
 
-        const instantBlobUrl = createBlobUrl(fileOrUrl) || '';
+        // Tier 2: Try Firebase Storage CDN
+        if (!cdnUrl) {
+          try {
+            cdnUrl = await uploadVideoToFirebaseStorage(fileOrUrl, 'resort_videos', onProgress);
+          } catch (fbErr) {
+            console.warn('[Storage] Firebase Storage video upload notice:', fbErr?.message || fbErr);
+          }
+        }
 
-        savedRecord = {
-          sectionKey,
-          fileName,
-          mediaType: 'video',
-          videoType: 'firestore_stream',
-          ...(chunkMeta || {}),
-          fileBlob: fileOrUrl,
-          customVideoUrl: instantBlobUrl,
-          customUrl: instantBlobUrl,
-          url: instantBlobUrl,
-          title: meta.title || fileName,
-          updatedAt: new Date().toISOString(),
-          isDefault: false,
-          ...meta
-        };
+        if (cdnUrl && typeof cdnUrl === 'string' && cdnUrl.startsWith('http')) {
+          savedRecord = {
+            sectionKey,
+            fileName,
+            mediaType: 'video',
+            videoType: 'custom_url',
+            customVideoUrl: cdnUrl,
+            customUrl: cdnUrl,
+            url: cdnUrl,
+            title: meta.title || fileName,
+            updatedAt: new Date().toISOString(),
+            isDefault: false,
+            ...meta
+          };
+        } else {
+          // Tier 3: Direct parallel upload to Firestore chunks with live progress
+          let chunkMeta = null;
+          try {
+            chunkMeta = await saveVideoToFirestore(fileOrUrl, sectionKey, onProgress);
+          } catch (chunkErr) {
+            console.warn('[Storage] saveVideoToFirestore chunk notice:', chunkErr);
+          }
+
+          const instantBlobUrl = createBlobUrl(fileOrUrl) || '';
+
+          savedRecord = {
+            sectionKey,
+            fileName,
+            mediaType: 'video',
+            videoType: 'firestore_stream',
+            ...(chunkMeta || {}),
+            fileBlob: fileOrUrl,
+            customVideoUrl: instantBlobUrl,
+            customUrl: instantBlobUrl,
+            url: instantBlobUrl,
+            title: meta.title || fileName,
+            updatedAt: new Date().toISOString(),
+            isDefault: false,
+            ...meta
+          };
+        }
       } else {
         // High-res Image Data URL (compressed to crisp 1280px JPEG)
         const finalUrl = await compressImageToDataUrl(fileOrUrl, 1280, 0.82);
