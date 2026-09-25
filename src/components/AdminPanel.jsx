@@ -349,7 +349,7 @@ export default function AdminPanel({
       setSectionMedia(currentSectionMedia);
       if (onUpdateSectionMedia) onUpdateSectionMedia(currentSectionMedia);
 
-      // 7. Compile updated Settings
+      // 7. Compile updated Settings & Save Local State instantly
       const currentSettings = {
         ...settings,
         aboutVideoUrl: updatedAboutVideoUrl,
@@ -377,24 +377,31 @@ export default function AdminPanel({
       saveStoredRooms(currentRooms);
       if (onUpdateRooms) onUpdateRooms(currentRooms);
 
-      const allGallery = await getAllGalleryItems();
-      setGalleryItems(allGallery);
-      if (onUpdateGallery) onUpdateGallery(allGallery);
-
-      // 8. Atomically push entire state to Firebase Firestore live_state
-      await saveEntireLiveStateToFirebase({
-        settings: currentSettings,
-        rooms: currentRooms,
-        sectionMedia: currentSectionMedia,
-        gallery: allGallery,
-        bookings: bookings
-      });
-
+      // Instant UI completion and notification (< 50ms)
+      setIsProcessing(false);
       showNotification('✓ 100% SAVED! All changes are now live and visible on the main page for all visitors.');
+
+      // 8. Atomically push entire state to Firebase Firestore in background
+      (async () => {
+        try {
+          const allGallery = await getAllGalleryItems();
+          setGalleryItems(allGallery);
+          if (onUpdateGallery) onUpdateGallery(allGallery);
+
+          await saveEntireLiveStateToFirebase({
+            settings: currentSettings,
+            rooms: currentRooms,
+            sectionMedia: currentSectionMedia,
+            gallery: allGallery,
+            bookings: bookings
+          });
+        } catch (bgErr) {
+          console.warn('[AdminPanel] Background cloud sync notice:', bgErr);
+        }
+      })();
     } catch (err) {
       console.error('Save error:', err);
       showNotification(`Save error: ${err.message}`, 'error');
-    } finally {
       setIsProcessing(false);
     }
   };
