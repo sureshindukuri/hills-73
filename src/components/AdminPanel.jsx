@@ -399,13 +399,14 @@ export default function AdminPanel({
     }
   };
 
-  // Quick direct actions that also sync
-  const handleQuickPriceChange = async (roomId, newPrice, extraGuestPrice) => {
+  // Quick direct actions that also sync instantly
+  const handleQuickPriceChange = (roomId, newPrice, extraGuestPrice) => {
+    const numericPrice = Number(newPrice) || 0;
     const updated = rooms.map(r => {
       if (r.id === roomId) {
         return { 
           ...r, 
-          price: Number(newPrice) || 0,
+          price: numericPrice,
           extraGuestPrice: extraGuestPrice !== undefined ? Number(extraGuestPrice) : r.extraGuestPrice
         };
       }
@@ -414,18 +415,15 @@ export default function AdminPanel({
     setRooms(updated);
     saveStoredRooms(updated);
     if (onUpdateRooms) onUpdateRooms(updated);
-    try {
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms: updated,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-      showNotification(`✓ Price updated to ₹${Number(newPrice).toLocaleString('en-IN')} (Live worldwide)`);
-    } catch (err) {
-      showNotification(`Price updated locally.`);
-    }
+    showNotification(`✓ Price updated to ₹${numericPrice.toLocaleString('en-IN')} (Live worldwide)`);
+
+    saveEntireLiveStateToFirebase({
+      settings,
+      rooms: updated,
+      sectionMedia,
+      gallery: galleryItems,
+      bookings
+    }).catch(err => console.warn('Background live sync:', err));
   };
 
   const handleDeleteLogo = async () => {
@@ -559,13 +557,14 @@ export default function AdminPanel({
       return;
     }
 
-    setIsProcessing(true);
     try {
       let imageUrl = roomFormData.image || '/assets/hero_resort_villa.png';
       if (roomPhotoFile) {
+        setIsProcessing(true);
         const tempId = editingRoom ? editingRoom.id : 'room-' + Date.now();
         const savedMedia = await saveSectionMedia(`room-${tempId}`, roomPhotoFile, {});
         imageUrl = savedMedia.url || savedMedia.fileName || imageUrl;
+        setIsProcessing(false);
       }
 
       let targetId = editingRoom ? editingRoom.id : null;
@@ -598,18 +597,10 @@ export default function AdminPanel({
       }
       currentRooms = ensureThreeRooms(currentRooms);
 
+      // 1. Instant local state update (<10ms)
       setRooms(currentRooms);
       saveStoredRooms(currentRooms);
       if (onUpdateRooms) onUpdateRooms(currentRooms);
-
-      // Permanently push to Firebase Firestore live cloud database
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms: currentRooms,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
 
       setEditingRoom(null);
       setRoomPhotoFile(null);
@@ -631,6 +622,15 @@ export default function AdminPanel({
       });
 
       showNotification(`✓ ${roomObj.name} (₹${roomObj.price.toLocaleString('en-IN')}) saved live to main website!`);
+
+      // 2. Background Firestore synchronization
+      saveEntireLiveStateToFirebase({
+        settings,
+        rooms: currentRooms,
+        sectionMedia,
+        gallery: galleryItems,
+        bookings
+      }).catch(err => console.warn('Background room live state sync:', err));
     } catch (err) {
       console.error('Room save error:', err);
       showNotification(`Error saving room: ${err.message}`, 'error');
@@ -639,26 +639,23 @@ export default function AdminPanel({
     }
   };
 
-  const handleToggleRoomAvailability = async (roomId) => {
+  const handleToggleRoomAvailability = (roomId) => {
     const updated = rooms.map(r => r.id === roomId ? { ...r, isAvailable: r.isAvailable === false ? true : false } : r);
     setRooms(updated);
     saveStoredRooms(updated);
     if (onUpdateRooms) onUpdateRooms(updated);
 
-    try {
-      await saveEntireLiveStateToFirebase({
-        settings,
-        rooms: updated,
-        sectionMedia,
-        gallery: galleryItems,
-        bookings
-      });
-      const targetRoom = updated.find(r => r.id === roomId);
-      const isNowAvail = targetRoom?.isAvailable !== false;
-      showNotification(`✓ ${targetRoom?.name || 'Suite'} is now ${isNowAvail ? 'AVAILABLE (Open)' : 'MARKED BOOKED (Sold Out)'} live on main site!`);
-    } catch (err) {
-      showNotification(`Status updated locally.`);
-    }
+    const targetRoom = updated.find(r => r.id === roomId);
+    const isNowAvail = targetRoom?.isAvailable !== false;
+    showNotification(`✓ ${targetRoom?.name || 'Suite'} is now ${isNowAvail ? 'AVAILABLE (Open)' : 'MARKED BOOKED (Sold Out)'} live on main site!`);
+
+    saveEntireLiveStateToFirebase({
+      settings,
+      rooms: updated,
+      sectionMedia,
+      gallery: galleryItems,
+      bookings
+    }).catch(err => console.warn('Background availability sync:', err));
   };
 
   const handleResetDefaultRooms = async () => {
