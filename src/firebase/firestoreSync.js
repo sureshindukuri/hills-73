@@ -111,28 +111,24 @@ export async function uploadVideoToFirebaseStorage(file, folder = 'resort_videos
     const uploadTask = uploadBytesResumable(storageRef, file);
 
     return await new Promise((resolve) => {
-      // 25-second resilience timeout for mobile networks
+      // 8-second responsive timeout
       const timeoutId = setTimeout(async () => {
-        console.warn('[Firebase Storage] Upload timed out, initiating Tier 2 Cloudinary fallback');
+        console.warn('[Firebase Storage] Direct upload timeout, trying fast fallback...');
         try {
           const cUrl = await uploadVideoToCloudinary(file, onProgress);
           if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
             resolve(cUrl);
             return;
           }
-        } catch (cErr) {
-          console.warn('[Cloudinary] Fallback failed:', cErr);
-        }
+        } catch (cErr) {}
 
         try {
           const chunkMeta = await saveVideoToFirestore(file, 'about', onProgress);
           resolve(chunkMeta);
           return;
-        } catch (chunkErr) {
-          console.warn('[Firestore Chunk] Fallback failed:', chunkErr);
-        }
+        } catch (chunkErr) {}
         resolve(URL.createObjectURL(file));
-      }, 25000);
+      }, 8000);
 
       uploadTask.on(
         'state_changed',
@@ -144,7 +140,7 @@ export async function uploadVideoToFirebaseStorage(file, folder = 'resort_videos
         },
         async (error) => {
           clearTimeout(timeoutId);
-          console.warn('[Firebase Storage] Upload notice:', error.message);
+          console.warn('[Firebase Storage] Upload error:', error.message);
           try {
             const cUrl = await uploadVideoToCloudinary(file, onProgress);
             if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
@@ -164,6 +160,7 @@ export async function uploadVideoToFirebaseStorage(file, folder = 'resort_videos
           clearTimeout(timeoutId);
           try {
             const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            if (typeof onProgress === 'function') onProgress(100);
             resolve(downloadUrl);
           } catch (err) {
             try {
@@ -179,7 +176,7 @@ export async function uploadVideoToFirebaseStorage(file, folder = 'resort_videos
       );
     });
   } catch (err) {
-    console.warn('[Firebase Storage] Direct initialization notice:', err.message);
+    console.warn('[Firebase Storage] Init warning:', err.message);
     try {
       const cUrl = await uploadVideoToCloudinary(file, onProgress);
       if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
