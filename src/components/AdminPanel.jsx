@@ -1795,7 +1795,7 @@ export default function AdminPanel({
 
                     const videoSrc = (typeof activeUrl === 'string' && activeUrl.length > 0)
                       ? activeUrl
-                      : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+                      : '/assets/resort_tour_video.mp4';
 
                     return (
                       <video 
@@ -1808,7 +1808,7 @@ export default function AdminPanel({
                         playsInline
                         preload="auto"
                         onError={(e) => {
-                          e.target.src = 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+                          e.target.src = '/assets/resort_tour_video.mp4';
                         }}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} 
                       />

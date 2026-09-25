@@ -24,7 +24,7 @@ export function getEmbedUrl(url) {
   return null;
 }
 
-const DEFAULT_DRONE_VIDEO = 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
+const DEFAULT_DRONE_VIDEO = '/assets/resort_tour_video.mp4';
 
 export default function AboutSection({ settings, sectionMedia = {} }) {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
