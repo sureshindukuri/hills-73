@@ -10,7 +10,13 @@ const DB_NAME = '73HillsResortDB';
 const DB_VERSION = 2;
 const GALLERY_STORE = 'gallery_media';
 const SECTION_MEDIA_STORE = 'section_media';
-const SECTION_MEDIA_CACHE_KEY = '73hills_section_media_cache_v2';
+
+// LocalStorage & Cache Keys
+export const ROOMS_KEY = '73hills_rooms_v2';
+export const BOOKINGS_KEY = '73hills_bookings_v2';
+export const SETTINGS_KEY = '73hills_settings_v2';
+export const GALLERY_CACHE_KEY = '73hills_gallery_cache_v2';
+export const SECTION_MEDIA_CACHE_KEY = '73hills_section_media_cache_v2';
 const LAST_LOCAL_UPDATE_KEY = '73hills_last_local_update';
 
 export function touchLocalUpdate() {
@@ -243,9 +249,9 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
             mediaType: 'video',
             videoType: 'custom_url',
             fileBlob: fileOrUrl,
-            customVideoUrl: fallbackPath,
-            customUrl: fallbackPath,
-            url: fallbackPath,
+            customVideoUrl: instantBlobUrl,
+            customUrl: instantBlobUrl,
+            url: instantBlobUrl,
             title: meta.title || fileName,
             updatedAt: new Date().toISOString(),
             isDefault: false,
@@ -494,8 +500,6 @@ export async function deleteSectionMedia(sectionKey) {
   }
 }
 
-export const GALLERY_CACHE_KEY = '73hills_gallery_cache_v2';
-
 /**
  * Synchronously get stored gallery items from localStorage cache
  */
@@ -678,11 +682,6 @@ export async function deleteMediaItem(id) {
     return false;
   }
 }
-
-// LocalStorage keys for Rooms, Bookings, and Site Content
-const ROOMS_KEY = '73hills_rooms_v2';
-const BOOKINGS_KEY = '73hills_bookings_v1';
-const SETTINGS_KEY = '73hills_settings_v1';
 
 export const DEFAULT_ROOMS = [
   {
