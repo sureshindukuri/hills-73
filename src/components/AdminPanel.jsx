@@ -557,23 +557,36 @@ export default function AdminPanel({
     try {
       let imageUrl = roomFormData.image || '/assets/hero_resort_villa.png';
       if (roomPhotoFile) {
-        const roomId = editingRoom ? editingRoom.id : 'room-' + Date.now();
-        const savedMedia = await saveSectionMedia(`room-${roomId}`, roomPhotoFile, {});
+        const tempId = editingRoom ? editingRoom.id : 'room-' + Date.now();
+        const savedMedia = await saveSectionMedia(`room-${tempId}`, roomPhotoFile, {});
         imageUrl = savedMedia.url || savedMedia.fileName || imageUrl;
+      }
+
+      let targetId = editingRoom ? editingRoom.id : null;
+      if (!targetId) {
+        const matchingExisting = rooms.find(r => r.name && r.name.trim().toLowerCase() === roomFormData.name.trim().toLowerCase());
+        if (matchingExisting) {
+          targetId = matchingExisting.id;
+        } else {
+          targetId = 'room-' + Date.now();
+        }
       }
 
       const roomObj = {
         ...roomFormData,
-        id: editingRoom ? editingRoom.id : 'room-' + Date.now(),
+        id: targetId,
+        price: Number(roomFormData.price) || 0,
+        baseGuests: Number(roomFormData.baseGuests) || 2,
+        extraGuestPrice: roomFormData.allowExtraGuests === false ? 0 : (Number(roomFormData.extraGuestPrice) || 0),
         image: imageUrl,
         isAvailable: roomFormData.isAvailable !== false,
-        allowExtraGuests: roomFormData.allowExtraGuests !== false,
-        extraGuestPrice: roomFormData.allowExtraGuests === false ? 0 : (Number(roomFormData.extraGuestPrice) || 0)
+        allowExtraGuests: roomFormData.allowExtraGuests !== false
       };
 
       let currentRooms = ensureThreeRooms(rooms);
-      if (editingRoom) {
-        currentRooms = currentRooms.map(r => r.id === editingRoom.id ? roomObj : r);
+      const isExistingInList = currentRooms.some(r => r.id === targetId);
+      if (isExistingInList) {
+        currentRooms = currentRooms.map(r => r.id === targetId ? roomObj : r);
       } else {
         currentRooms.push(roomObj);
       }
@@ -611,7 +624,7 @@ export default function AdminPanel({
         description: ''
       });
 
-      showNotification(`✓ ${roomObj.name} saved permanently to main website!`);
+      showNotification(`✓ ${roomObj.name} (₹${roomObj.price.toLocaleString('en-IN')}) saved live to main website!`);
     } catch (err) {
       console.error('Room save error:', err);
       showNotification(`Error saving room: ${err.message}`, 'error');
@@ -2097,13 +2110,60 @@ export default function AdminPanel({
               <div style={{ backgroundColor: 'var(--bg-cream)', padding: 'clamp(16px, 3vw, 24px)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-gold)', marginBottom: '32px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
                   <h5 style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(1.15rem, 3vw, 1.35rem)', margin: 0, color: 'var(--color-emerald)' }}>
-                    {editingRoom ? `Editing Suite: ${editingRoom.name}` : 'Create / Edit Luxury Cottage'}
+                    {editingRoom ? `Editing Suite: ${editingRoom.name}` : 'Select & Edit Luxury Cottage'}
                   </h5>
                   {editingRoom && (
                     <span style={{ fontSize: '0.75rem', backgroundColor: '#D4EDDA', color: '#155724', padding: '3px 10px', borderRadius: 'var(--radius-full)', fontWeight: '700' }}>
                       ✏️ Edit Mode Active
                     </span>
                   )}
+                </div>
+
+                {/* 1-Tap Suite Quick Selector */}
+                <div style={{ marginBottom: '16px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--color-emerald)', display: 'flex', alignItems: 'center', width: '100%' }}>
+                    ⚡ Tap Suite to Load & Edit:
+                  </span>
+                  {rooms.map((r, i) => {
+                    const isSelected = (editingRoom && editingRoom.id === r.id) || (!editingRoom && roomFormData.name === r.name);
+                    return (
+                      <button
+                        key={r.id || i}
+                        type="button"
+                        onClick={() => {
+                          setEditingRoom(r);
+                          setRoomFormData({
+                            ...r,
+                            price: Number(r.price) || 0,
+                            baseGuests: Number(r.baseGuests) || 2,
+                            isAvailable: r.isAvailable !== false,
+                            allowExtraGuests: r.allowExtraGuests !== false && Number(r.extraGuestPrice) > 0,
+                            extraGuestPrice: Number(r.extraGuestPrice) || 0
+                          });
+                        }}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: 'var(--radius-sm)',
+                          border: isSelected ? '2px solid var(--color-gold)' : '1px solid var(--border-light)',
+                          backgroundColor: isSelected ? '#132E1F' : '#FFFFFF',
+                          color: isSelected ? '#FFFFFF' : 'var(--text-main)',
+                          fontSize: '0.82rem',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <span>{i + 1}. {r.name}</span>
+                        <span style={{ color: isSelected ? 'var(--color-gold)' : 'var(--color-emerald)', fontWeight: '800' }}>
+                          ₹{r.price?.toLocaleString('en-IN')}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '14px', marginBottom: '16px' }}>
@@ -2404,6 +2464,47 @@ export default function AdminPanel({
                     </div>
 
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
+                      {/* Inline Quick Price Update */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#F4EFEA', padding: '4px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(179, 139, 89, 0.4)' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-emerald)' }}>₹</span>
+                        <input
+                          type="number"
+                          defaultValue={room.price}
+                          id={`quick-price-${room.id}`}
+                          style={{
+                            width: '80px',
+                            padding: '4px 6px',
+                            fontSize: '0.82rem',
+                            fontWeight: '700',
+                            border: '1px solid var(--border-light)',
+                            borderRadius: '3px',
+                            backgroundColor: '#FFFFFF',
+                            color: 'var(--color-emerald)'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const inp = document.getElementById(`quick-price-${room.id}`);
+                            if (inp && inp.value) {
+                              handleQuickPriceChange(room.id, Number(inp.value));
+                            }
+                          }}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '0.72rem',
+                            fontWeight: '700',
+                            backgroundColor: 'var(--color-gold)',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '3px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Save ₹
+                        </button>
+                      </div>
+
                       {/* Quick 1-Click Toggle Availability (Instant live cloud sync) */}
                       <button
                         type="button"
@@ -2433,23 +2534,25 @@ export default function AdminPanel({
                           setEditingRoom(room);
                           setRoomFormData({ 
                             ...room,
+                            price: Number(room.price) || 0,
+                            baseGuests: Number(room.baseGuests) || 2,
                             isAvailable: room.isAvailable !== false,
                             allowExtraGuests: room.allowExtraGuests !== false && Number(room.extraGuestPrice) > 0,
-                            extraGuestPrice: room.extraGuestPrice || 800
+                            extraGuestPrice: Number(room.extraGuestPrice) || 0
                           });
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
                         className="btn-outline-dark"
                         style={{ padding: '8px 14px', fontSize: '0.78rem', minHeight: '38px' }}
                       >
-                        <Edit3 size={14} /> Edit
+                        <Edit3 size={14} /> Full Edit
                       </button>
 
                       <button 
                         onClick={() => handleDeleteRoom(room.id)}
                         style={{ padding: '8px 12px', fontSize: '0.78rem', backgroundColor: 'transparent', color: '#FF6B6B', border: '1px solid #FF6B6B', borderRadius: 'var(--radius-sm)', cursor: 'pointer', minHeight: '38px' }}
                       >
-                        <Trash2 size={14} /> Delete
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>

@@ -751,28 +751,53 @@ export function ensureThreeRooms(incomingRooms) {
   if (!Array.isArray(incomingRooms) || incomingRooms.length === 0) {
     return DEFAULT_ROOMS.map(r => ({
       ...r,
+      price: Number(r.price) || 0,
+      baseGuests: Number(r.baseGuests) || 2,
+      extraGuestPrice: r.allowExtraGuests === false ? 0 : (Number(r.extraGuestPrice) || 0),
       isAvailable: r.isAvailable !== false,
       allowExtraGuests: r.allowExtraGuests !== false
     }));
   }
+
   return DEFAULT_ROOMS.map((defRoom, index) => {
-    const existing = incomingRooms.find(r => r && (r.id === defRoom.id || r.id === `room-${index + 1}`)) || incomingRooms[index] || {};
+    // Match by ID, name match, or index fallback
+    const existing = incomingRooms.find(r => r && (
+      r.id === defRoom.id ||
+      r.id === `room-${index + 1}` ||
+      (r.name && defRoom.name && r.name.trim().toLowerCase() === defRoom.name.trim().toLowerCase())
+    )) || incomingRooms[index] || {};
+
     const hasCustomImages = Array.isArray(existing.images) && existing.images.length > 0;
     const hasCustomImage = Boolean(existing.image);
     const roomImages = hasCustomImages 
       ? existing.images 
       : (hasCustomImage ? [existing.image] : (defRoom.images || [defRoom.image]));
 
+    const parsedPrice = existing.price !== undefined ? Number(existing.price) : defRoom.price;
+    const parsedBaseGuests = existing.baseGuests !== undefined ? Number(existing.baseGuests) : (defRoom.baseGuests || 2);
+    const isAllowExtra = existing.allowExtraGuests !== undefined ? (existing.allowExtraGuests !== false) : (defRoom.allowExtraGuests !== false);
+    const parsedExtraPrice = isAllowExtra === false 
+      ? 0 
+      : (existing.extraGuestPrice !== undefined ? Number(existing.extraGuestPrice) : (defRoom.extraGuestPrice || 0));
+
     return {
       ...defRoom,
       ...existing,
       id: defRoom.id,
       name: existing.name || defRoom.name,
-      image: roomImages[0] || defRoom.image,
-      images: roomImages,
+      subtitle: existing.subtitle || defRoom.subtitle,
+      price: parsedPrice,
+      baseGuests: parsedBaseGuests,
+      allowExtraGuests: isAllowExtra,
+      extraGuestPrice: parsedExtraPrice,
       isAvailable: existing.isAvailable !== false,
-      allowExtraGuests: existing.allowExtraGuests !== false,
-      extraGuestPrice: existing.allowExtraGuests === false ? 0 : (existing.extraGuestPrice ?? defRoom.extraGuestPrice)
+      capacity: existing.capacity || defRoom.capacity,
+      size: existing.size || defRoom.size,
+      rating: existing.rating !== undefined ? Number(existing.rating) : (defRoom.rating || 4.9),
+      description: existing.description || defRoom.description,
+      features: Array.isArray(existing.features) && existing.features.length > 0 ? existing.features : (defRoom.features || []),
+      image: roomImages[0] || defRoom.image,
+      images: roomImages
     };
   });
 }

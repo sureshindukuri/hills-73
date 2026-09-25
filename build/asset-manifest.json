@@ -1,14 +1,14 @@
 {
   "files": {
     "main.css": "/static/css/main.26caf67b.css",
-    "main.js": "/static/js/main.db82ea04.js",
+    "main.js": "/static/js/main.cae1acbd.js",
     "static/media/73hills_official_logo.png": "/static/media/73hills_official_logo.1b2f5c97bee5e5d1e922.png",
     "index.html": "/index.html",
     "main.26caf67b.css.map": "/static/css/main.26caf67b.css.map",
-    "main.db82ea04.js.map": "/static/js/main.db82ea04.js.map"
+    "main.cae1acbd.js.map": "/static/js/main.cae1acbd.js.map"
   },
   "entrypoints": [
     "static/css/main.26caf67b.css",
-    "static/js/main.db82ea04.js"
+    "static/js/main.cae1acbd.js"
   ]
 }
