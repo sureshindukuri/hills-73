@@ -352,13 +352,23 @@ export async function saveEntireLiveStateToFirebase(fullState) {
     if (fullState.settings) lightweightPayload.settings = sanitizeForFirestore(fullState.settings, 10000);
     if (fullState.sectionMedia) lightweightPayload.sectionMedia = sanitizeForFirestore(fullState.sectionMedia, 15000);
     if (fullState.rooms) {
-      // Keep lightweight room metadata
+      // Keep complete room metadata for synchronization across all devices
       lightweightPayload.rooms = (fullState.rooms || []).map(r => ({
         id: r.id,
         name: r.name,
-        price: r.price,
-        extraGuestPrice: r.extraGuestPrice,
-        image: typeof r.image === 'string' && r.image.startsWith('data:') ? undefined : r.image
+        subtitle: r.subtitle || '',
+        price: Number(r.price) || 0,
+        baseGuests: Number(r.baseGuests) || 2,
+        allowExtraGuests: r.allowExtraGuests !== false,
+        extraGuestPrice: r.allowExtraGuests === false ? 0 : (Number(r.extraGuestPrice) || 0),
+        isAvailable: r.isAvailable !== false,
+        capacity: r.capacity || '',
+        size: r.size || '',
+        rating: Number(r.rating) || 4.9,
+        description: r.description || '',
+        features: Array.isArray(r.features) ? r.features : [],
+        images: Array.isArray(r.images) ? r.images : [],
+        image: typeof r.image === 'string' && r.image.startsWith('data:') && r.image.length > 25000 ? undefined : r.image
       }));
     }
 
