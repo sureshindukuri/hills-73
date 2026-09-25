@@ -294,8 +294,14 @@ export default function AdminPanel({
         if (fileInp) fileInp.value = '';
       }
 
-      // 6. Process pending Room form if name is filled
-      let currentRooms = ensureThreeRooms(rooms);
+      // 6. Process pending Room form & quick price input fields
+      let currentRooms = ensureThreeRooms(rooms).map(r => {
+        const domInp = document.getElementById(`quick-price-${r.id}`);
+        if (domInp && domInp.value && !isNaN(Number(domInp.value)) && Number(domInp.value) > 0) {
+          return { ...r, price: Number(domInp.value) };
+        }
+        return r;
+      });
       if (roomFormData.name && roomFormData.name.trim()) {
         let imageUrl = roomFormData.image || '/assets/hero_resort_villa.png';
         if (roomPhotoFile) {
@@ -399,7 +405,7 @@ export default function AdminPanel({
       if (r.id === roomId) {
         return { 
           ...r, 
-          price: Number(newPrice),
+          price: Number(newPrice) || 0,
           extraGuestPrice: extraGuestPrice !== undefined ? Number(extraGuestPrice) : r.extraGuestPrice
         };
       }
@@ -2469,12 +2475,22 @@ export default function AdminPanel({
                         <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-emerald)' }}>₹</span>
                         <input
                           type="number"
-                          defaultValue={room.price}
+                          value={room.price !== undefined ? room.price : ''}
                           id={`quick-price-${room.id}`}
+                          onChange={(e) => {
+                            const val = Number(e.target.value) || 0;
+                            setRooms(prev => prev.map(r => r.id === room.id ? { ...r, price: val } : r));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleQuickPriceChange(room.id, room.price);
+                            }
+                          }}
                           style={{
-                            width: '80px',
-                            padding: '4px 6px',
-                            fontSize: '0.82rem',
+                            width: '85px',
+                            padding: '5px 6px',
+                            fontSize: '0.85rem',
                             fontWeight: '700',
                             border: '1px solid var(--border-light)',
                             borderRadius: '3px',
@@ -2484,21 +2500,19 @@ export default function AdminPanel({
                         />
                         <button
                           type="button"
-                          onClick={() => {
-                            const inp = document.getElementById(`quick-price-${room.id}`);
-                            if (inp && inp.value) {
-                              handleQuickPriceChange(room.id, Number(inp.value));
-                            }
-                          }}
+                          onClick={() => handleQuickPriceChange(room.id, room.price)}
                           style={{
-                            padding: '4px 8px',
-                            fontSize: '0.72rem',
+                            padding: '5px 10px',
+                            fontSize: '0.75rem',
                             fontWeight: '700',
                             backgroundColor: 'var(--color-gold)',
                             color: '#FFFFFF',
                             border: 'none',
                             borderRadius: '3px',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2px'
                           }}
                         >
                           Save ₹
