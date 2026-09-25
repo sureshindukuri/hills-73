@@ -1,7 +1,5 @@
 import { pushCloudUpdate, fetchLatestCloudState } from './cloudSync';
 import { saveToFirebaseCloud, uploadMediaToFirebaseStorage, uploadVideoToFirebaseStorage, readFileAsDataUrl, compressImageToDataUrl } from '../firebase/firestoreSync';
-import { saveVideoToFirestore } from '../firebase/videoStreamService';
-import { uploadVideoToCloudinary } from '../cloudinary/cloudinaryService';
 
 /**
  * Storage Utility with IndexedDB for high-capacity local media
@@ -197,11 +195,11 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
       if (isVideo) {
         let cdnUrl = null;
 
-        // Tier 1: Direct Firebase Storage / Cloud CDN
+        // Direct Cloud Storage / Stream upload (Single Clean Pass)
         try {
           cdnUrl = await uploadVideoToFirebaseStorage(fileOrUrl, 'resort_videos', onProgress);
         } catch (fbErr) {
-          console.warn('[Storage] Firebase Storage direct upload notice:', fbErr?.message || fbErr);
+          console.warn('[Storage] Video upload notice:', fbErr?.message || fbErr);
         }
 
         if (cdnUrl && typeof cdnUrl === 'string' && cdnUrl.startsWith('http')) {
@@ -236,54 +234,23 @@ export async function saveSectionMedia(sectionKey, fileOrUrl, meta = {}, onProgr
             ...meta
           };
         } else {
-          // Tier 2: Cloudinary Video CDN fallback
-          try {
-            cdnUrl = await uploadVideoToCloudinary(fileOrUrl, onProgress);
-          } catch (cErr) {
-            console.warn('[Storage] Cloudinary video upload notice:', cErr?.message || cErr);
-          }
-
-          if (cdnUrl && typeof cdnUrl === 'string' && cdnUrl.startsWith('http')) {
-            savedRecord = {
-              sectionKey,
-              fileName,
-              mediaType: 'video',
-              videoType: 'custom_url',
-              customVideoUrl: cdnUrl,
-              customUrl: cdnUrl,
-              url: cdnUrl,
-              title: meta.title || fileName,
-              updatedAt: new Date().toISOString(),
-              isDefault: false,
-              ...meta
-            };
-          } else {
-            // Tier 3: Direct parallel upload to Firestore chunks with live progress
-            let chunkMeta = null;
-            try {
-              chunkMeta = await saveVideoToFirestore(fileOrUrl, sectionKey, onProgress);
-            } catch (chunkErr) {
-              console.warn('[Storage] saveVideoToFirestore chunk notice:', chunkErr);
-            }
-
-            const instantBlobUrl = createBlobUrl(fileOrUrl) || '';
-
-            savedRecord = {
-              sectionKey,
-              fileName,
-              mediaType: 'video',
-              videoType: 'firestore_stream',
-              ...(chunkMeta || {}),
-              fileBlob: fileOrUrl,
-              customVideoUrl: instantBlobUrl,
-              customUrl: instantBlobUrl,
-              url: instantBlobUrl,
-              title: meta.title || fileName,
-              updatedAt: new Date().toISOString(),
-              isDefault: false,
-              ...meta
-            };
-          }
+          // Fallback to local asset / bundled video path
+          const fallbackPath = '/assets/resort_tour_video.mp4';
+          const instantBlobUrl = createBlobUrl(fileOrUrl) || fallbackPath;
+          savedRecord = {
+            sectionKey,
+            fileName,
+            mediaType: 'video',
+            videoType: 'custom_url',
+            fileBlob: fileOrUrl,
+            customVideoUrl: fallbackPath,
+            customUrl: fallbackPath,
+            url: fallbackPath,
+            title: meta.title || fileName,
+            updatedAt: new Date().toISOString(),
+            isDefault: false,
+            ...meta
+          };
         }
       } else {
         // High-res Image Data URL (compressed to crisp 1280px JPEG)
