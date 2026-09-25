@@ -52,10 +52,10 @@ export default function AboutSection({ settings, sectionMedia = {} }) {
 
     if (isFirestoreStream) {
       setIsStreamLoading(true);
-      // Safety timeout: never hang longer than 4 seconds
+      // Safety timeout: allow up to 15s for full multi-chunk retrieval
       const timer = setTimeout(() => {
         if (isMounted) setIsStreamLoading(false);
-      }, 4000);
+      }, 15000);
 
       loadVideoFromFirestore(aboutMedia).then((blobUrl) => {
         clearTimeout(timer);

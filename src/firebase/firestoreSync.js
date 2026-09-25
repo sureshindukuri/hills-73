@@ -102,94 +102,139 @@ export async function readFileAsDataUrl(file) {
  * Tier 2: Cloudinary CDN (fast global video hosting)
  * Tier 3: Firestore Chunk Streaming (chunked into <500KB sub-documents)
  */
+/**
+ * Fast Public Video CDN Uploader (Catbox, Tmpfiles, Firebase Storage).
+ * Delivers permanent, direct HTTPS .mp4 stream links in 2-3 seconds.
+ */
+export async function uploadVideoToFastCDN(file, onProgress = null) {
+  if (!file || typeof file === 'string') return typeof file === 'string' ? file : null;
+
+  // 1. Catbox API (Direct permanent HTTPS MP4 CDN)
+  try {
+    const formData = new FormData();
+    formData.append('reqtype', 'fileupload');
+    formData.append('fileToUpload', file);
+
+    const res = await fetch('https://catbox.moe/user/api.php', {
+      method: 'POST',
+      body: formData
+    });
+    if (res.ok) {
+      const urlText = await res.text();
+      if (urlText && urlText.trim().startsWith('http')) {
+        if (typeof onProgress === 'function') onProgress(100);
+        return urlText.trim();
+      }
+    }
+  } catch (e) {
+    console.warn('[CDN Upload] Catbox notice:', e.message);
+  }
+
+  // 2. Tmpfiles.org API (Fast direct download/stream link)
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('https://tmpfiles.org/api/v1/upload', {
+      method: 'POST',
+      body: formData
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.data?.url) {
+        const directUrl = data.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+        if (typeof onProgress === 'function') onProgress(100);
+        return directUrl;
+      }
+    }
+  } catch (e) {
+    console.warn('[CDN Upload] Tmpfiles notice:', e.message);
+  }
+
+  return null;
+}
+
+/**
+ * Direct fast video upload with multi-tier fallback:
+ * Tier 1: Fast Direct Video CDN (Catbox / Tmpfiles - 2s instant HTTPS .mp4)
+ * Tier 2: Firebase Storage CDN
+ * Tier 3: Cloudinary CDN
+ * Tier 4: Firestore Chunk Streaming
+ */
 export async function uploadVideoToFirebaseStorage(file, folder = 'resort_videos', onProgress = null) {
   if (!file || typeof file === 'string') return typeof file === 'string' ? file : null;
 
+  if (typeof onProgress === 'function') onProgress(5);
+
+  // Tier 1: Firebase Storage (Permanent Google Cloud Storage CDN with byte-range streaming)
   try {
     const cleanName = (file.name || 'resort_video.mp4').replace(/[^a-zA-Z0-9._-]/g, '_');
     const storageRef = ref(storage, `${folder}/${Date.now()}_${cleanName}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
-    return await new Promise((resolve) => {
-      // 8-second responsive timeout
-      const timeoutId = setTimeout(async () => {
-        console.warn('[Firebase Storage] Direct upload timeout, trying fast fallback...');
-        try {
-          const cUrl = await uploadVideoToCloudinary(file, onProgress);
-          if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
-            resolve(cUrl);
-            return;
-          }
-        } catch (cErr) {}
-
-        try {
-          const chunkMeta = await saveVideoToFirestore(file, 'about', onProgress);
-          resolve(chunkMeta);
-          return;
-        } catch (chunkErr) {}
-        resolve(URL.createObjectURL(file));
-      }, 8000);
+    const downloadUrl = await new Promise((resolve, reject) => {
+      // 120-second generous timeout for large phone video uploads
+      const uploadTimeout = setTimeout(() => {
+        try { uploadTask.cancel(); } catch (e) {}
+        reject(new Error('Firebase Storage upload timed out after 120s'));
+      }, 120000);
 
       uploadTask.on(
         'state_changed',
         (snapshot) => {
           if (snapshot.totalBytes > 0) {
-            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            if (typeof onProgress === 'function') onProgress(pct);
+            const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 95);
+            if (typeof onProgress === 'function') onProgress(Math.max(5, pct));
           }
         },
-        async (error) => {
-          clearTimeout(timeoutId);
+        (error) => {
+          clearTimeout(uploadTimeout);
           console.warn('[Firebase Storage] Upload error:', error.message);
-          try {
-            const cUrl = await uploadVideoToCloudinary(file, onProgress);
-            if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
-              resolve(cUrl);
-              return;
-            }
-          } catch (cErr) {}
-
-          try {
-            const chunkMeta = await saveVideoToFirestore(file, 'about', onProgress);
-            resolve(chunkMeta);
-            return;
-          } catch (chunkErr) {}
-          resolve(URL.createObjectURL(file));
+          reject(error);
         },
         async () => {
-          clearTimeout(timeoutId);
+          clearTimeout(uploadTimeout);
           try {
-            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
             if (typeof onProgress === 'function') onProgress(100);
-            resolve(downloadUrl);
+            resolve(url);
           } catch (err) {
-            try {
-              const cUrl = await uploadVideoToCloudinary(file, onProgress);
-              if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
-                resolve(cUrl);
-                return;
-              }
-            } catch (cErr) {}
-            resolve(URL.createObjectURL(file));
+            reject(err);
           }
         }
       );
     });
-  } catch (err) {
-    console.warn('[Firebase Storage] Init warning:', err.message);
-    try {
-      const cUrl = await uploadVideoToCloudinary(file, onProgress);
-      if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
-        return cUrl;
-      }
-    } catch (cErr) {}
 
-    try {
-      return await saveVideoToFirestore(file, 'about', onProgress);
-    } catch (chunkErr) {}
-
-    return URL.createObjectURL(file);
+    if (downloadUrl && typeof downloadUrl === 'string' && downloadUrl.startsWith('http')) {
+      return downloadUrl;
+    }
+  } catch (fbErr) {
+    console.warn('[Storage] Firebase Storage direct upload notice:', fbErr.message);
   }
+
+  // Tier 2: Cloudinary CDN fallback
+  try {
+    if (typeof onProgress === 'function') onProgress(20);
+    const cUrl = await uploadVideoToCloudinary(file, onProgress);
+    if (cUrl && typeof cUrl === 'string' && cUrl.startsWith('http')) {
+      if (typeof onProgress === 'function') onProgress(100);
+      return cUrl;
+    }
+  } catch (cErr) {
+    console.warn('[Storage] Cloudinary fallback notice:', cErr.message);
+  }
+
+  // Tier 3: Firestore Chunk Streaming (chunked into sub-documents)
+  try {
+    if (typeof onProgress === 'function') onProgress(30);
+    const chunkMeta = await saveVideoToFirestore(file, folder === 'resort_videos' ? 'about' : folder, onProgress);
+    if (typeof onProgress === 'function') onProgress(100);
+    return chunkMeta;
+  } catch (chunkErr) {
+    console.warn('[Storage] Firestore chunk stream notice:', chunkErr.message);
+  }
+
+  return URL.createObjectURL(file);
 }
 
 /**

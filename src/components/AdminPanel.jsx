@@ -229,22 +229,27 @@ export default function AdminPanel({
       let currentSectionMedia = { ...sectionMedia };
 
       // 1. Process pending About Video / Link / Media
+      let updatedAboutVideoUrl = settings.aboutVideoUrl || '';
       if (aboutVideoUrlInput && aboutVideoUrlInput.trim()) {
         const savedAbout = await saveSectionMedia('about', aboutVideoUrlInput.trim(), {
           title: 'Custom Resort Tour Video Link',
           mediaType: 'video'
         });
         currentSectionMedia.about = savedAbout;
+        updatedAboutVideoUrl = aboutVideoUrlInput.trim();
         setAboutVideoUrlInput('');
       } else if (aboutFile) {
-        setActionFeedback({ text: '⚡ Slicing & uploading video chunks to Cloud...', type: 'info' });
+        setActionFeedback({ text: '⚡ Uploading video to Cloud Storage...', type: 'info' });
         const savedAbout = await saveSectionMedia('about', aboutFile, {
           mediaType: 'video',
           title: aboutFile.name
         }, (pct) => {
-          setActionFeedback({ text: `⚡ Saving video chunks to Cloud... ${pct}%`, type: 'info' });
+          setActionFeedback({ text: `⚡ Uploading video to Cloud... ${pct}%`, type: 'info' });
         });
         currentSectionMedia.about = savedAbout;
+        if (savedAbout?.url && typeof savedAbout.url === 'string' && savedAbout.url.startsWith('http')) {
+          updatedAboutVideoUrl = savedAbout.url;
+        }
         setAboutFile(null);
         const fileInp = document.getElementById('about-file-input');
         if (fileInp) fileInp.value = '';
@@ -341,6 +346,7 @@ export default function AdminPanel({
       // 7. Compile updated Settings
       const currentSettings = {
         ...settings,
+        aboutVideoUrl: updatedAboutVideoUrl,
         brandName,
         brandSubtitle,
         heroTitle,
@@ -1973,24 +1979,31 @@ export default function AdminPanel({
                       disabled={isProcessing}
                       onClick={async () => {
                         setIsProcessing(true);
-                        setActionFeedback({ text: '⚡ Slicing & uploading video to Cloud...', type: 'info' });
+                        setActionFeedback({ text: '⚡ Uploading video to Cloud Storage...', type: 'info' });
                         try {
                           const isVid = aboutFile.type ? aboutFile.type.startsWith('video/') : /\.(mp4|webm|mov|mkv|m4v|ogg)$/i.test(aboutFile.name);
                           const saved = await saveSectionMedia('about', aboutFile, {
                             mediaType: isVid ? 'video' : 'image',
                             title: aboutFile.name
                           }, (pct) => {
-                            setActionFeedback({ text: `⚡ Saving video chunks to Cloud... ${pct}%`, type: 'info' });
+                            setActionFeedback({ text: `⚡ Uploading video to Cloud... ${pct}%`, type: 'info' });
                           });
 
                           const updated = { ...sectionMedia, about: saved };
                           setSectionMedia(updated);
                           if (onUpdateSectionMedia) onUpdateSectionMedia(updated);
 
-                          // Save to Firebase live_state in background
+                          const updatedSettings = {
+                            ...settings,
+                            aboutVideoUrl: (saved?.url && typeof saved.url === 'string' && saved.url.startsWith('http')) ? saved.url : (settings.aboutVideoUrl || '')
+                          };
+                          setSettings(updatedSettings);
+                          if (onUpdateSettings) onUpdateSettings(updatedSettings);
+
+                          // Save to Firebase live_state immediately
                           try {
                             await saveEntireLiveStateToFirebase({
-                              settings,
+                              settings: updatedSettings,
                               rooms,
                               sectionMedia: updated,
                               gallery: galleryItems,
