@@ -172,6 +172,9 @@ export async function loadVideoFromFirestore(meta) {
   if (!meta || meta.videoType !== 'firestore_stream') return null;
 
   const mediaKey = meta.mediaKey || meta.sectionKey || 'about';
+  const totalChunks = Number(meta.totalChunks) || 0;
+  if (totalChunks <= 0) return null;
+
   const cacheKey = `${mediaKey}_${meta.updatedAt || 'default'}`;
 
   if (memoryBlobCache.has(cacheKey)) {
@@ -182,20 +185,18 @@ export async function loadVideoFromFirestore(meta) {
   }
 
   // Check persistent IndexedDB cache
-  const cachedBlob = await getCachedStreamBlob(cacheKey) || await getCachedStreamBlob(mediaKey);
-  if (cachedBlob) {
-    try {
+  try {
+    const cachedBlob = await getCachedStreamBlob(cacheKey) || await getCachedStreamBlob(mediaKey);
+    if (cachedBlob && cachedBlob.size > 0) {
       const idbBlobUrl = URL.createObjectURL(cachedBlob);
       memoryBlobCache.set(cacheKey, idbBlobUrl);
       memoryBlobCache.set(mediaKey, idbBlobUrl);
       return idbBlobUrl;
-    } catch (e) {}
-  }
+    }
+  } catch (e) {}
 
   try {
-    const totalChunks = meta.totalChunks || 1;
     const mimeType = meta.mimeType || 'video/mp4';
-
     const chunkDocs = [];
     const BATCH_SIZE = 10;
 
@@ -207,14 +208,24 @@ export async function loadVideoFromFirestore(meta) {
         batchPromises.push(
           getDoc(chunkDocRef).then((snap) => {
             if (!snap.exists()) {
-              throw new Error(`Missing video chunk ${j}`);
+              return null;
             }
             return snap.data();
-          })
+          }).catch(() => null)
         );
       }
       const batchResults = await Promise.all(batchPromises);
-      chunkDocs.push(...batchResults);
+      const validResults = batchResults.filter(Boolean);
+      if (validResults.length === 0 && end > i) {
+        // Chunks missing
+        return null;
+      }
+      chunkDocs.push(...validResults);
+    }
+
+    if (chunkDocs.length < totalChunks) {
+      console.warn(`[FirestoreVideo] Incomplete chunks (${chunkDocs.length}/${totalChunks}) for ${mediaKey}`);
+      return null;
     }
 
     chunkDocs.sort((a, b) => a.index - b.index);

@@ -26,61 +26,74 @@ export function getEmbedUrl(url) {
 
 const DEFAULT_DRONE_VIDEO = 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
 
-function isValidHttpUrl(string) {
-  if (!string || typeof string !== 'string') return false;
-  return string.startsWith('http://') || string.startsWith('https://') || string.startsWith('data:') || string.startsWith('/') || string.startsWith('blob:');
-}
-
 export default function AboutSection({ settings, sectionMedia = {} }) {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [hasVideoError, setHasVideoError] = useState(false);
   const [streamBlobUrl, setStreamBlobUrl] = useState(null);
+  const [isStreamLoading, setIsStreamLoading] = useState(false);
   const videoRef = useRef(null);
 
   const aboutMedia = sectionMedia?.about;
-  const isFirestoreStream = aboutMedia?.videoType === 'firestore_stream';
-  const isStreamLoading = isFirestoreStream && !streamBlobUrl;
+  const isFirestoreStream = aboutMedia?.videoType === 'firestore_stream' && Number(aboutMedia?.totalChunks) > 0;
 
   useEffect(() => {
     let isMounted = true;
+
     if (aboutMedia && aboutMedia.fileBlob) {
       try {
         const localBlob = URL.createObjectURL(aboutMedia.fileBlob);
-        if (isMounted) setStreamBlobUrl(localBlob);
+        if (isMounted) {
+          setStreamBlobUrl(localBlob);
+          setIsStreamLoading(false);
+        }
         return () => { isMounted = false; };
       } catch (e) {}
     }
 
-    const streamMeta = (aboutMedia && aboutMedia.videoType === 'firestore_stream')
-      ? aboutMedia
-      : { videoType: 'firestore_stream', mediaKey: 'about' };
+    if (isFirestoreStream) {
+      setIsStreamLoading(true);
+      // Safety timeout: never hang longer than 4 seconds
+      const timer = setTimeout(() => {
+        if (isMounted) setIsStreamLoading(false);
+      }, 4000);
 
-    loadVideoFromFirestore(streamMeta).then((blobUrl) => {
-      if (isMounted && blobUrl) {
-        setStreamBlobUrl(blobUrl);
-      }
-    }).catch((err) => {
-      console.warn('[AboutSection] Video stream load notice:', err);
-    });
+      loadVideoFromFirestore(aboutMedia).then((blobUrl) => {
+        clearTimeout(timer);
+        if (isMounted) {
+          if (blobUrl) setStreamBlobUrl(blobUrl);
+          setIsStreamLoading(false);
+        }
+      }).catch((err) => {
+        clearTimeout(timer);
+        if (isMounted) setIsStreamLoading(false);
+        console.warn('[AboutSection] Video stream load notice:', err);
+      });
+
+      return () => { 
+        clearTimeout(timer);
+        isMounted = false; 
+      };
+    } else {
+      setIsStreamLoading(false);
+    }
 
     return () => { isMounted = false; };
-  }, [aboutMedia]);
+  }, [aboutMedia, isFirestoreStream]);
 
+  // Determine candidate video URL (filtering out dead local blob URLs)
   const isVideo = aboutMedia 
     ? (aboutMedia.mediaType === 'video' || (!aboutMedia.mediaType && (!!aboutMedia.customVideoUrl || !!aboutMedia.customUrl || !!aboutMedia.url || !!streamBlobUrl || isFirestoreStream))) 
     : true;
 
-  const rawCandidate = streamBlobUrl || (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl || '');
-  
-  // If a custom stream is loading, do not fall back to default video prematurely
-  const candidateUrl = (typeof rawCandidate === 'string' && isValidHttpUrl(rawCandidate))
-    ? rawCandidate.trim()
-    : isStreamLoading 
-      ? null
-      : DEFAULT_DRONE_VIDEO;
+  const rawCustomUrl = (aboutMedia?.customVideoUrl || aboutMedia?.customUrl || aboutMedia?.url || settings?.aboutVideoUrl || '');
+  const isValidHttpCandidate = typeof rawCustomUrl === 'string' && (rawCustomUrl.startsWith('http://') || rawCustomUrl.startsWith('https://') || rawCustomUrl.startsWith('data:') || rawCustomUrl.startsWith('/'));
 
-  const embedUrl = candidateUrl ? getEmbedUrl(candidateUrl) : null;
-  const aboutUrl = (hasVideoError && !rawCandidate) ? DEFAULT_DRONE_VIDEO : (candidateUrl || DEFAULT_DRONE_VIDEO);
+  const activeVideoUrl = streamBlobUrl 
+    ? streamBlobUrl 
+    : (isValidHttpCandidate ? rawCustomUrl.trim() : (isStreamLoading ? null : DEFAULT_DRONE_VIDEO));
+
+  const embedUrl = activeVideoUrl ? getEmbedUrl(activeVideoUrl) : null;
+  const aboutUrl = (hasVideoError || !activeVideoUrl) ? DEFAULT_DRONE_VIDEO : activeVideoUrl;
 
   // Reset error state when media changes
   useEffect(() => {

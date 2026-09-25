@@ -15,6 +15,7 @@ import {
 } from '../utils/storage';
 import { signInWithEmailPass, logOutAdmin, onAdminAuthStateChanged, isEmailAuthorized } from '../firebase/authService';
 import { saveEntireLiveStateToFirebase } from '../firebase/firestoreSync';
+import { loadVideoFromFirestore } from '../firebase/videoStreamService';
 import { SandalwoodTreeLogo } from './SandalwoodGraphics';
 import { getEmbedUrl } from './AboutSection';
 
@@ -65,6 +66,22 @@ export default function AdminPanel({
   const [aboutVideoUrlInput, setAboutVideoUrlInput] = useState('');
   const [aboutHeadline, setAboutHeadline] = useState('');
   const [aboutParagraph, setAboutParagraph] = useState('');
+  const [aboutAdminStreamUrl, setAboutAdminStreamUrl] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const aboutMed = sectionMedia?.about;
+    if (aboutMed && aboutMed.videoType === 'firestore_stream' && Number(aboutMed.totalChunks) > 0) {
+      loadVideoFromFirestore(aboutMed).then((bUrl) => {
+        if (isMounted && bUrl) {
+          setAboutAdminStreamUrl(bUrl);
+        }
+      }).catch(() => {});
+    } else {
+      setAboutAdminStreamUrl(null);
+    }
+    return () => { isMounted = false; };
+  }, [sectionMedia?.about]);
 
   const [celebrationFile, setCelebrationFile] = useState(null);
   const [celebrationHeadline, setCelebrationHeadline] = useState('');
@@ -1750,7 +1767,13 @@ export default function AdminPanel({
               <div style={{ marginBottom: '28px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: '#0D2116', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
                 <div style={{ height: '280px', position: 'relative' }}>
                   {(() => {
-                    const activeUrl = aboutFile ? URL.createObjectURL(aboutFile) : (sectionMedia.about?.customVideoUrl || sectionMedia.about?.customUrl || sectionMedia.about?.url || '');
+                    const rawCustomUrl = (sectionMedia.about?.customVideoUrl || sectionMedia.about?.customUrl || sectionMedia.about?.url || '');
+                    const isRawHttp = typeof rawCustomUrl === 'string' && (rawCustomUrl.startsWith('http://') || rawCustomUrl.startsWith('https://') || rawCustomUrl.startsWith('data:') || rawCustomUrl.startsWith('/'));
+                    
+                    const activeUrl = aboutFile 
+                      ? URL.createObjectURL(aboutFile) 
+                      : (aboutAdminStreamUrl || (isRawHttp ? rawCustomUrl : ''));
+
                     const embed = getEmbedUrl(activeUrl);
 
                     if (embed) {
@@ -1764,7 +1787,7 @@ export default function AdminPanel({
                       );
                     }
 
-                    const videoSrc = (typeof activeUrl === 'string' && (activeUrl.startsWith('http://') || activeUrl.startsWith('https://') || activeUrl.startsWith('data:') || activeUrl.startsWith('blob:') || activeUrl.startsWith('/')))
+                    const videoSrc = (typeof activeUrl === 'string' && activeUrl.length > 0)
                       ? activeUrl
                       : 'https://assets.mixkit.co/videos/preview/mixkit-aerial-view-of-a-luxury-resort-in-the-forest-42407-large.mp4';
 
