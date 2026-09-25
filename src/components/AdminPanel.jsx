@@ -304,24 +304,36 @@ export default function AdminPanel({
       });
       if (roomFormData.name && roomFormData.name.trim()) {
         let imageUrl = roomFormData.image || '/assets/hero_resort_villa.png';
+        let targetId = editingRoom ? editingRoom.id : null;
+        if (!targetId) {
+          const lowerName = (roomFormData.name || '').toLowerCase();
+          if (lowerName.includes('mini') || lowerName.includes('master')) targetId = 'room-1';
+          else if (lowerName.includes('cottage')) targetId = 'room-2';
+          else if (lowerName.includes('hut') || lowerName.includes('stay')) targetId = 'room-3';
+          else {
+            const match = currentRooms.find(r => r.name && r.name.trim().toLowerCase() === roomFormData.name.trim().toLowerCase());
+            targetId = match ? match.id : 'room-' + (currentRooms.length + 1);
+          }
+        }
+
         if (roomPhotoFile) {
-          const roomId = editingRoom ? editingRoom.id : 'room-' + Date.now();
-          const savedMedia = await saveSectionMedia(`room-${roomId}`, roomPhotoFile, {});
+          const savedMedia = await saveSectionMedia(`room-${targetId}`, roomPhotoFile, {});
           imageUrl = savedMedia.url || savedMedia.fileName || imageUrl;
         }
 
         const roomObj = {
           ...roomFormData,
-          id: editingRoom ? editingRoom.id : 'room-' + Date.now(),
+          id: targetId,
+          price: Number(roomFormData.price) || 0,
+          baseGuests: Number(roomFormData.baseGuests) || 2,
           image: imageUrl,
           isAvailable: roomFormData.isAvailable !== false,
           allowExtraGuests: roomFormData.allowExtraGuests !== false,
           extraGuestPrice: roomFormData.allowExtraGuests === false ? 0 : (Number(roomFormData.extraGuestPrice) || 0)
         };
 
-        if (editingRoom) {
-          currentRooms = currentRooms.map(r => r.id === editingRoom.id ? roomObj : r);
-        } else {
+        currentRooms = currentRooms.map(r => r.id === targetId ? roomObj : r);
+        if (!currentRooms.some(r => r.id === targetId)) {
           currentRooms.push(roomObj);
         }
         currentRooms = ensureThreeRooms(currentRooms);

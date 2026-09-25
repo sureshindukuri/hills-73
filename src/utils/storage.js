@@ -759,12 +759,18 @@ export function ensureThreeRooms(incomingRooms) {
   }
 
   return DEFAULT_ROOMS.map((defRoom, index) => {
-    // Match by ID, name match, or index fallback
-    const existing = incomingRooms.find(r => r && (
+    // Find all matching candidates in incomingRooms
+    const candidates = incomingRooms.filter(r => r && (
       r.id === defRoom.id ||
       r.id === `room-${index + 1}` ||
-      (r.name && defRoom.name && r.name.trim().toLowerCase() === defRoom.name.trim().toLowerCase())
-    )) || incomingRooms[index] || {};
+      (r.name && defRoom.name && r.name.trim().toLowerCase() === defRoom.name.trim().toLowerCase()) ||
+      (index === 0 && (r.id === 'room-1' || (r.name && r.name.toLowerCase().includes('mini')))) ||
+      (index === 1 && (r.id === 'room-2' || (r.name && r.name.toLowerCase().includes('cottage')))) ||
+      (index === 2 && (r.id === 'room-3' || (r.name && (r.name.toLowerCase().includes('hut') || r.name.toLowerCase().includes('stay')))))
+    ));
+
+    // Pick candidate: if multiple matches exist, take the last one (most recent modification)
+    const existing = candidates.length > 0 ? candidates[candidates.length - 1] : (incomingRooms[index] || {});
 
     const hasCustomImages = Array.isArray(existing.images) && existing.images.length > 0;
     const hasCustomImage = Boolean(existing.image);
@@ -772,12 +778,20 @@ export function ensureThreeRooms(incomingRooms) {
       ? existing.images 
       : (hasCustomImage ? [existing.image] : (defRoom.images || [defRoom.image]));
 
-    const parsedPrice = existing.price !== undefined ? Number(existing.price) : defRoom.price;
-    const parsedBaseGuests = existing.baseGuests !== undefined ? Number(existing.baseGuests) : (defRoom.baseGuests || 2);
-    const isAllowExtra = existing.allowExtraGuests !== undefined ? (existing.allowExtraGuests !== false) : (defRoom.allowExtraGuests !== false);
+    const parsedPrice = existing.price !== undefined && !isNaN(Number(existing.price))
+      ? Number(existing.price) 
+      : defRoom.price;
+    const parsedBaseGuests = existing.baseGuests !== undefined && !isNaN(Number(existing.baseGuests))
+      ? Number(existing.baseGuests) 
+      : (defRoom.baseGuests || 2);
+    const isAllowExtra = existing.allowExtraGuests !== undefined 
+      ? (existing.allowExtraGuests !== false) 
+      : (defRoom.allowExtraGuests !== false);
     const parsedExtraPrice = isAllowExtra === false 
       ? 0 
-      : (existing.extraGuestPrice !== undefined ? Number(existing.extraGuestPrice) : (defRoom.extraGuestPrice || 0));
+      : (existing.extraGuestPrice !== undefined && !isNaN(Number(existing.extraGuestPrice))
+          ? Number(existing.extraGuestPrice) 
+          : (defRoom.extraGuestPrice || 0));
 
     return {
       ...defRoom,
